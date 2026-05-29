@@ -1,0 +1,32 @@
+_format_version: "3.0"
+services:
+- name: bookstore-service
+  url: https://httpbin.org
+  retries: 3
+  connect_timeout: 30000
+  read_timeout: 30000
+  write_timeout: 30000
+  routes:
+  - name: bookstore-route
+    paths:
+    - /bookstore
+    strip_path: true
+    protocols:
+    - http
+    - https
+  plugins:
+  - name: rate-limiting
+    config:
+      minute: 100
+      policy: local
+  - name: correlation-id
+    config:
+      header_name: X-Request-ID
+      generator: uuid#counter
+      echo_downstream: true
+  - name: request-transformer
+    config:
+      add:
+        headers:
+        - "X-API-Version:v1"
+        - "X-Service:bookstore"

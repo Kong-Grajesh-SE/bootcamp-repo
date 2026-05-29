@@ -1,0 +1,59 @@
+# =============================================================================
+# Step 01 — AI Proxy Advanced with Multi-Provider Load Balancing
+# Routes LLM traffic through Kong with Mistral (primary) and Cerebras
+# (secondary) in round-robin. This multi-provider setup carries through
+# every subsequent step.
+# =============================================================================
+_format_version: "3.0"
+
+services:
+  - name: ai-gateway-service
+    host: example.com
+    port: 443
+    protocol: https
+    routes:
+      - name: ai-chat-route
+        paths:
+          - /ai/proxy/chat
+        methods:
+          - POST
+        strip_path: false
+        plugins:
+          - name: ai-proxy-advanced
+            config:
+              model_name_header: true
+              response_streaming: allow
+              targets:
+                - route_type: llm/v1/chat
+                  auth:
+                    header_name: Authorization
+                    header_value: 'Bearer ${{ env "DECK_MISTRAL_API_KEY" }}'
+                    allow_override: false
+                  model:
+                    provider: mistral
+                    name: mistral-tiny
+                    options:
+                      mistral_format: openai
+                      upstream_url: https://api.mistral.ai/v1/chat/completions
+                  logging:
+                    log_payloads: false
+                    log_statistics: true
+                  weight: 100
+                - route_type: llm/v1/chat
+                  auth:
+                    header_name: Authorization
+                    header_value: 'Bearer ${{ env "DECK_CEREBRAS_API_KEY" }}'
+                    allow_override: false
+                  model:
+                    provider: cerebras
+                    name: gpt-oss-120b
+                  logging:
+                    log_payloads: false
+                    log_statistics: true
+                  weight: 100
+              balancer:
+                algorithm: round-robin
+                retries: 5
+                failover_criteria:
+                  - error
+                  - timeout

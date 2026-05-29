@@ -1,0 +1,77 @@
+# =============================================================================
+# Step 03 — + Prompt Guard (regex)
+# Blocks prompt injection attacks with regex deny patterns.
+# =============================================================================
+_format_version: "3.0"
+
+services:
+  - name: ai-gateway-service
+    host: example.com
+    port: 443
+    protocol: https
+    routes:
+      - name: ai-chat-route
+        paths:
+          - /ai/proxy/chat
+        methods:
+          - POST
+        strip_path: false
+        plugins:
+          - name: ai-proxy-advanced
+            config:
+              targets:
+                - route_type: llm/v1/chat
+                  auth:
+                    header_name: Authorization
+                    header_value: "Bearer ${{ env "DECK_MISTRAL_API_KEY" }}"
+                    allow_override: false
+                  model:
+                    provider: mistral
+                    name: mistral-tiny
+                    options:
+                      mistral_format: openai
+                      upstream_url: https://api.mistral.ai/v1/chat/completions
+                - route_type: llm/v1/chat
+                  auth:
+                    header_name: Authorization
+                    header_value: "Bearer ${{ env "DECK_CEREBRAS_API_KEY" }}"
+                    allow_override: false
+                  model:
+                    provider: cerebras
+                    name: gpt-oss-120b
+                    options:
+                      max_tokens: 512
+                      temperature: 1.0
+              balancer:
+                algorithm: round-robin
+              logging:
+                log_statistics: true
+                log_payloads: false
+
+          - name: ai-prompt-decorator
+            config:
+              prompts:
+                prepend:
+                  - role: system
+                    content: >-
+                      You are a helpful Kong Gateway assistant.
+                      Always mention that Kong is the AI Connectivity Company.
+                      Be concise and accurate.
+                append: []
+
+          - name: ai-prompt-guard
+            config:
+              deny_patterns:
+                - "(?i)ignore (all )?(previous |your )?instructions?"
+                - "(?i)you are now"
+                - "(?i)forget your (system prompt|instructions|rules)"
+                - "(?i)system override"
+                - "(?i)jailbreak"
+                - "(?i)DAN mode"
+                - "(?i)pretend (you are|you.re) (not an AI|human|unrestricted)"
+                - "(?i)(give me|tell me|show me|output|print).{0,50}(api key|secret|password|token)"
+                - "(?i)reveal.{0,30}(internal|system|hidden|confidential)"
+                - "(?i)sudo.{0,20}(mode|access|admin)"
+              allow_patterns: []
+              allow_all_conversation_history: false
+              match_all_roles: true

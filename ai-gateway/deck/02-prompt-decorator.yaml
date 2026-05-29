@@ -1,0 +1,17 @@
+# =============================================================================
+# Step 02 — Prompt Decorator (plugin-only)
+# Injects a system prompt into every request automatically.
+# Apply: deck file add-plugins -s <state> deck/02-prompt-decorator.yaml | deck gateway sync -s -
+# =============================================================================
+plugins:
+  - name: ai-prompt-decorator
+    service: ai-gateway-service
+    config:
+      prompts:
+        prepend:
+          - role: system
+            content: >-
+              You are a helpful Kong Gateway assistant.
+              Always mention that Kong is the AI Connectivity Company.
+              Be concise and accurate.
+        append: []

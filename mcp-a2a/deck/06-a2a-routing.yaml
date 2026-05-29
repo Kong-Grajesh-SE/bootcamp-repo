@@ -1,0 +1,89 @@
+# =============================================================================
+# Step 06 — A2A Agent Routing
+# Creates an A2A backend service with:
+#   - Agent Card discovery route (/.well-known/agent.json, public)
+#   - Sub-agent routes: flights + hotels (key-auth, 30/min rate-limit)
+#   - Sub-agent route: weather (no auth, 60/min rate-limit)
+#   - Consumer: orchestrator-agent with key-auth credential
+# =============================================================================
+_format_version: "3.0"
+
+consumers:
+  - username: orchestrator-agent
+    tags:
+      - a2a
+    keyauth_credentials:
+      - key: orchestrator-key-xyz
+
+services:
+  - name: a2a-backend
+    host: mcp-backend
+    port: 3001
+    protocol: http
+    tags:
+      - a2a
+    routes:
+      # ── Agent Card (public) ──────────────────────────────────────────────
+      - name: a2a-discovery
+        paths:
+          - /.well-known/agent.json
+        methods:
+          - GET
+        strip_path: false
+        tags:
+          - a2a
+
+      # ── Flights (key-auth + 30/min) ─────────────────────────────────────
+      - name: a2a-flights
+        paths:
+          - /a2a/flights
+        methods:
+          - POST
+        strip_path: false
+        tags:
+          - a2a
+        plugins:
+          - name: key-auth
+            config:
+              key_names:
+                - X-Agent-Key
+              hide_credentials: true
+          - name: rate-limiting
+            config:
+              minute: 30
+              policy: local
+
+      # ── Hotels (key-auth + 30/min) ──────────────────────────────────────
+      - name: a2a-hotels
+        paths:
+          - /a2a/hotels
+        methods:
+          - POST
+        strip_path: false
+        tags:
+          - a2a
+        plugins:
+          - name: key-auth
+            config:
+              key_names:
+                - X-Agent-Key
+              hide_credentials: true
+          - name: rate-limiting
+            config:
+              minute: 30
+              policy: local
+
+      # ── Weather (no auth, 60/min) ───────────────────────────────────────
+      - name: a2a-weather
+        paths:
+          - /a2a/weather
+        methods:
+          - POST
+        strip_path: false
+        tags:
+          - a2a
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 60
+              policy: local

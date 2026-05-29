@@ -1,0 +1,17 @@
+_format_version: "3.0"
+plugins:
+- name: response-transformer
+  service: httpbin-service
+  config:
+    add:
+      headers:
+      - X-Powered-By:Kong-Gateway
+      - X-Bootcamp-Demo:true
+      - X-Environment:bootcamp
+    remove:
+      headers:
+      - Server
+      - Via
+    replace: {}
+    rename: {}
+    append: {}

@@ -1,0 +1,27 @@
+_format_version: "3.0"
+services:
+- name: bookstore-service
+  url: ${{ env "DECK_UPSTREAM_URL" }}
+  retries: 3
+  connect_timeout: ${{ env "DECK_CONNECT_TIMEOUT" }}
+  read_timeout: ${{ env "DECK_READ_TIMEOUT" }}
+  write_timeout: ${{ env "DECK_WRITE_TIMEOUT" }}
+  tags:
+  - env:${{ env "DECK_ENV" }}
+  routes:
+  - name: bookstore-route
+    paths:
+    - /bookstore
+    strip_path: true
+    protocols:
+    - http
+    - https
+    tags:
+    - env:${{ env "DECK_ENV" }}
+  plugins:
+  - name: rate-limiting
+    config:
+      minute: ${{ env "DECK_RATE_LIMIT" }}
+      policy: local
+    tags:
+    - env:${{ env "DECK_ENV" }}

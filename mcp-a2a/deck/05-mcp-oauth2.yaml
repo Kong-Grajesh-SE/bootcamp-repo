@@ -1,0 +1,47 @@
+# =============================================================================
+# Step 05 — MCP + OAuth2 / PKCE
+# Creates a second MCP service (with /mcp path prefix) and route that
+# requires OAuth2 tokens validated against Keycloak. The ai-mcp-oauth2
+# plugin handles MCP OAuth 2.0 spec validation; ai-mcp-proxy in
+# passthrough-listener mode forwards the authenticated request.
+#
+# Prerequisites: Keycloak running at localhost:8080 with the workshop realm.
+# =============================================================================
+_format_version: "3.0"
+
+services:
+  - name: mcp-backend-oauth
+    host: mcp-backend
+    port: 3001
+    protocol: http
+    path: /mcp
+    tags:
+      - mcp
+      - oauth
+    routes:
+      - name: mcp-oauth
+        paths:
+          - /mcp-oauth
+        methods:
+          - POST
+          - GET
+        strip_path: true
+        tags:
+          - oauth2
+        plugins:
+          - name: ai-mcp-oauth2
+            config:
+              resource: http://localhost:8000/mcp-oauth/tools
+              authorization_servers:
+                - http://localhost:8080/realms/workshop
+              jwks_endpoint: http://keycloak:8080/realms/workshop/protocol/openid-connect/certs
+              insecure_relaxed_audience_validation: true
+              ssl_verify: false
+              claim_to_header:
+                - claim: sub
+                  header: X-User-Id
+                - claim: preferred_username
+                  header: X-User-Name
+          - name: ai-mcp-proxy
+            config:
+              mode: passthrough-listener

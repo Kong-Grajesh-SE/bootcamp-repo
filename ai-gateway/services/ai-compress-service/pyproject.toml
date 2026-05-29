@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "ai-compress-service"
+version = "1.0.0"
+description = "An API service for counting and compress prompt"
+authors = ["subnetantoine <antoine.jacquemin@konghq.com>"]
+readme = "README.md"
+license = "Proprietary"
+package-mode = false  # Disable package mode to prevent Poetry from trying to install the project as a package
+
+[tool.poetry.dependencies]
+python = "^3.9"
+gunicorn = "^23.0"
+flask = "^3.1"
+llmlingua = "^0.2.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

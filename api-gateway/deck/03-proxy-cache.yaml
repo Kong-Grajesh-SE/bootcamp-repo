@@ -1,0 +1,20 @@
+_format_version: "3.0"
+plugins:
+- name: proxy-cache
+  service: httpbin-service
+  config:
+    response_code:
+    - 200
+    - 301
+    - 302
+    request_method:
+    - GET
+    - HEAD
+    content_type:
+    - application/json
+    - text/html
+    cache_ttl: 30
+    strategy: memory
+    cache_control: false
+    vary_headers: null
+    vary_query_params: null

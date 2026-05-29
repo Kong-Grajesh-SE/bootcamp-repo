@@ -1,0 +1,30 @@
+# =============================================================================
+# Step 04 — Semantic Cache (plugin-only)
+# Caches semantically similar responses using Mistral embeddings + Redis.
+# Requires: docker compose up -d redis
+# Apply: deck file add-plugins -s <state> deck/04-semantic-cache.yaml | deck gateway sync -s -
+# =============================================================================
+plugins:
+  - name: ai-semantic-cache
+    service: ai-gateway-service
+    config:
+      embeddings:
+        model:
+          provider: mistral
+          name: mistral-embed
+          options:
+            upstream_url: https://api.mistral.ai/v1/embeddings
+        auth:
+          header_name: Authorization
+          header_value: 'Bearer ${{ env "DECK_MISTRAL_API_KEY" }}'
+      vectordb:
+        strategy: redis
+        redis:
+          host: host.docker.internal
+          port: 6379
+          timeout: 2000
+          database: 0
+        dimensions: 1024
+        distance_metric: cosine
+        threshold: 0.1
+      cache_control: false

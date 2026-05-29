@@ -1,0 +1,14 @@
+_format_version: "3.0"
+consumers:
+- username: bookstore-admin
+  custom_id: admin-001
+  keyauth_credentials:
+  - key: admin-key-abc123
+- username: bookstore-reader
+  custom_id: reader-002
+  keyauth_credentials:
+  - key: reader-key-def456
+- username: bookstore-guest
+  custom_id: guest-003
+  keyauth_credentials:
+  - key: guest-key-ghi789

@@ -1,0 +1,30 @@
+_format_version: "3.0"
+services:
+- name: bookstore-service
+  url: https://httpbin.org
+  retries: 3
+  connect_timeout: 30000
+  read_timeout: 30000
+  write_timeout: 30000
+  tags:
+  - team:bookstore
+  - env:staging
+  routes:
+  - name: bookstore-route
+    paths:
+    - /bookstore
+    strip_path: true
+    protocols:
+    - http
+    - https
+    tags:
+    - team:bookstore
+    - env:staging
+  plugins:
+  - name: rate-limiting
+    config:
+      minute: 100
+      policy: local
+    tags:
+    - team:bookstore
+    - env:staging

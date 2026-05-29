@@ -1,0 +1,19 @@
+_format_version: "3.0"
+plugins:
+- name: rate-limiting
+  service: bookstore-service
+  config:
+    minute: 100
+    policy: local
+- name: key-auth
+  service: bookstore-service
+  config:
+    key_names:
+    - apikey
+    hide_credentials: true
+- name: correlation-id
+  service: bookstore-service
+  config:
+    header_name: X-Request-ID
+    generator: uuid#counter
+    echo_downstream: true

@@ -1,0 +1,18 @@
+_format_version: "3.0"
+plugins:
+- name: request-transformer
+  service: httpbin-service
+  config:
+    add:
+      headers:
+      - X-Added-By:Kong-Gateway
+      - X-Bootcamp:API-Gateway-Demo
+      querystring:
+      - source:kong
+      - gateway:true
+    rename:
+      headers:
+      - Accept:X-Original-Accept
+    replace: {}
+    remove: {}
+    append: {}

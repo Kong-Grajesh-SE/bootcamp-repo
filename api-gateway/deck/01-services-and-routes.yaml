@@ -1,0 +1,49 @@
+_format_version: "3.0"
+services:
+# --- httpbin.org (HTTPS) ---
+- name: httpbin-service
+  url: https://httpbin.org
+  retries: 3
+  connect_timeout: 30000
+  read_timeout: 30000
+  write_timeout: 30000
+  routes:
+  - name: httpbin-route
+    paths:
+    - /httpbin
+    strip_path: true
+    protocols:
+    - http
+    - https
+
+# --- httpbun.com (HTTPS) ---
+- name: httpbun-service
+  url: https://httpbun.com
+  retries: 3
+  connect_timeout: 30000
+  read_timeout: 30000
+  write_timeout: 30000
+  routes:
+  - name: httpbun-route
+    paths:
+    - /httpbun
+    strip_path: true
+    protocols:
+    - http
+    - https
+
+# --- httpbin.konghq.com (HTTP only, port 80) ---
+- name: konghq-service
+  url: http://httpbin.konghq.com
+  retries: 3
+  connect_timeout: 30000
+  read_timeout: 30000
+  write_timeout: 30000
+  routes:
+  - name: konghq-route
+    paths:
+    - /konghq
+    strip_path: true
+    protocols:
+    - http
+    - https

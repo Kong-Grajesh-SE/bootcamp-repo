@@ -1,0 +1,27 @@
+# =============================================================================
+# Step 08 — AI Rate Limiting Advanced (plugin-only)
+# Token-aware rate limits with per-model policies for multi-provider setup.
+# Apply: deck file add-plugins -s <state> deck/08-ai-rate-limiting.yaml | deck gateway sync -s -
+# =============================================================================
+plugins:
+  - name: ai-rate-limiting-advanced
+    service: ai-gateway-service
+    config:
+      hide_client_headers: false
+      tokens_count_strategy: total_tokens
+      identifier: service
+      window_type: sliding
+      sync_rate: 1
+      strategy: redis
+      redis:
+        host: host.docker.internal
+        port: 6379
+        timeout: 2000
+      llm_providers:
+        - name: mistral
+          limit:
+            - 100
+            - 1000
+          window_size:
+            - 60
+            - 3600

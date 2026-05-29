@@ -1,0 +1,12 @@
+{
+  "name": "mcp-travel-backend",
+  "version": "1.0.0",
+  "description": "MCP Travel Backend - supports MCP JSON-RPC, A2A agent endpoints, and content moderation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

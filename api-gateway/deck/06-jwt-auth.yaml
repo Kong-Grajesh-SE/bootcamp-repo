@@ -1,0 +1,21 @@
+_format_version: "3.0"
+plugins:
+- name: jwt
+  service: httpbun-service
+  config:
+    claims_to_verify:
+    - exp
+    header_names:
+    - Authorization
+    key_claim_name: iss
+    secret_is_base64: false
+    run_on_preflight: true
+    uri_param_names:
+    - jwt
+consumers:
+- username: jwt-user
+  custom_id: jwt-001
+  jwt_secrets:
+  - algorithm: HS256
+    key: my-jwt-issuer
+    secret: my-super-secret-key

@@ -1,0 +1,12 @@
+_format_version: "3.0"
+plugins:
+- name: rate-limiting
+  service: httpbin-service
+  config:
+    minute: 5
+    policy: local
+    limit_by: ip
+    hide_client_headers: false
+    fault_tolerant: true
+    error_code: 429
+    error_message: Rate limit exceeded — try again later

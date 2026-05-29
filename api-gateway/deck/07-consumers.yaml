@@ -1,0 +1,14 @@
+_format_version: "3.0"
+consumers:
+- username: alice
+  custom_id: alice-001
+  keyauth_credentials:
+  - key: alice-api-key
+- username: bob
+  custom_id: bob-002
+  keyauth_credentials:
+  - key: bob-api-key
+- username: charlie
+  custom_id: charlie-003
+  keyauth_credentials:
+  - key: charlie-api-key

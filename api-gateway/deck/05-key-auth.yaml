@@ -1,0 +1,21 @@
+_format_version: "3.0"
+plugins:
+- name: key-auth
+  service: httpbin-service
+  config:
+    key_names:
+    - apikey
+    key_in_header: true
+    key_in_query: true
+    key_in_body: false
+    hide_credentials: true
+    run_on_preflight: true
+consumers:
+- username: demo-user
+  custom_id: demo-001
+  keyauth_credentials:
+  - key: my-secret-key-123
+- username: test-user
+  custom_id: test-002
+  keyauth_credentials:
+  - key: test-key-456

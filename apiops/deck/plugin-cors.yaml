@@ -1,0 +1,23 @@
+_format_version: "1.0"
+add-plugins:
+- selectors:
+  - "$..services[*]"
+  overwrite: false
+  plugins:
+  - name: cors
+    config:
+      origins:
+      - http://localhost:3000
+      - https://bookstore.example.com
+      methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      headers:
+      - Content-Type
+      - Authorization
+      - X-Request-ID
+      credentials: true
+      max_age: 3600

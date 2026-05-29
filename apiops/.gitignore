@@ -1,0 +1,4 @@
+# Ignore generated output files
+output/
+!/output/.gitkeep
+/tmp/

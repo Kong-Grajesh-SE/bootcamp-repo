@@ -1,0 +1,49 @@
+# Local development Dockerfile for Mac (CPU only, no Rust/CUDA required)
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY . /app
+
+ARG MODELS="en_core_web_lg"
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    libffi-dev \
+    libssl-dev \
+    && apt-get clean \
+    && pip install --upgrade pip \
+    && pip install poetry \
+    && poetry config virtualenvs.create false \
+    && poetry install --no-root \
+    && poetry cache clear . --all --no-interaction \
+    && rm -rf ~/.cache/pypoetry \
+    && apt-get remove --purge -y \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
+    && apt-get autoremove -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download spaCy model(s)
+RUN for model in $MODELS; do \
+    poetry run python -m spacy download $model; \
+    done
+
+# Update tldextract cache
+RUN poetry run tldextract --update || true
+
+EXPOSE 8080
+
+ENV GUNICORN_WORKERS=2
+ENV GUNICORN_LOG_LEVEL=info
+ENV LOG_LEVEL=info
+ENV GUNICORN_CERTFILE=""
+ENV GUNICORN_KEYFILE=""
+ENV PII_SERVICE_ENGINE_CONF=ai_pii_service/nlp_engine_conf.yml
+
+RUN chmod +x /app/gunicorn_entrypoint.sh
+
+ENTRYPOINT ["/app/gunicorn_entrypoint.sh"]

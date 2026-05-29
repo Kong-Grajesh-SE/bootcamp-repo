@@ -1,0 +1,56 @@
+rules:
+  # Every service must have at least one tag
+  no-untagged-services:
+    severity: error
+    message: "Service '{{name}}' has no tags. All services must be tagged for ownership tracking."
+    given: $.services[*]
+    then:
+      field: tags
+      function: truthy
+
+  # Every route must have at least one tag
+  no-untagged-routes:
+    severity: warn
+    message: "Route '{{name}}' has no tags. Consider tagging for traceability."
+    given: $.services[*].routes[*]
+    then:
+      field: tags
+      function: truthy
+
+  # Service names must follow kebab-case convention
+  service-name-convention:
+    severity: error
+    message: "Service name '{{value}}' must be kebab-case (lowercase, hyphens only)."
+    given: $.services[*].name
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+
+  # Route names must follow kebab-case convention
+  route-name-convention:
+    severity: error
+    message: "Route name '{{value}}' must be kebab-case."
+    given: $.services[*].routes[*].name
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+
+  # Services should have timeouts configured
+  service-timeouts:
+    severity: warn
+    message: "Service '{{name}}' is missing explicit timeout configuration."
+    given: $.services[*]
+    then:
+      field: connect_timeout
+      function: truthy
+
+  # Services should have retries configured
+  service-retries:
+    severity: warn
+    message: "Service '{{name}}' is missing retry configuration."
+    given: $.services[*]
+    then:
+      field: retries
+      function: truthy

@@ -1,0 +1,24 @@
+_format_version: "3.0"
+plugins:
+- name: cors
+  config:
+    origins:
+    - http://localhost:3000
+    - http://localhost:5173
+    - https://example.com
+    methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+    headers:
+    - Content-Type
+    - Authorization
+    - apikey
+    - X-Custom-Header
+    - X-Correlation-ID
+    credentials: true
+    max_age: 3600
+    preflight_continue: false
