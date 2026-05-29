@@ -6,7 +6,7 @@ upstreams:
   healthchecks:
     active:
       http_path: /get
-      type: http
+      type: https
       healthy:
         interval: 10
         successes: 3

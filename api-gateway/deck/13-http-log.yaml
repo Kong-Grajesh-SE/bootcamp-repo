@@ -3,7 +3,8 @@ plugins:
 - name: http-log
   service: httpbin-service
   config:
-    http_endpoint: https://webhook.site/49d7dde7-b08a-4493-99e7-7aa1499d91c9
+    # Replace with your own webhook.site URL — go to https://webhook.site to get one
+    http_endpoint: https://webhook.site/<YOUR-UNIQUE-ID>
     method: POST
     content_type: application/json
     timeout: 10000

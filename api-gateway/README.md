@@ -52,7 +52,7 @@ api-gateway/
 
 ```bash
 export KONNECT_TOKEN=<your-personal-access-token>
-export CP_NAME=TCS-Bootcamp
+export CP_NAME="<your-control-plane-name>"
 
 # Then follow the deployment-specific README for PROXY_URL and DP setup
 ```

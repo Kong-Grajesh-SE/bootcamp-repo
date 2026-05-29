@@ -13,8 +13,8 @@
 - Terminal open in this `apiops/` directory
 
 ```bash
-export KONNECT_TOKEN=kpat_FbER48Z5p8RLE0Q5aCecWcRb0nEAHneZzviSeHFLzltg29YN8
-export CP_NAME=Grajesh-bootcamp
+export KONNECT_TOKEN="<your-konnect-pat>"
+export CP_NAME="<your-control-plane-name>"
 export PROXY_URL=http://localhost:8000
 ```
 
@@ -25,20 +25,20 @@ export PROXY_URL=http://localhost:8000
 ```
 apiops/
 ├── deck/
-│   ├── 01-bookstore-base.yaml        ← Base service + route (Step 1-4)
-│   ├── 02-bookstore-plugins.yaml     ← + rate-limiting, correlation-id (Step 5-6)
+│   ├── 01-bookstore-base.yaml        ← Base service + route (Steps 1-4)
+│   ├── 02-bookstore-plugins.yaml     ← + rate-limiting, correlation-id (Steps 5-6)
 │   ├── 03-bookstore-consumers.yaml   ← + key-auth, consumers (Step 7)
-│   ├── 04-bookstore-tagged.yaml      ← Same service with tags (Step 15-17)
-│   ├── 05-bookstore-templated.yaml   ← Same service with env var templates (Step 12)
-│   ├── partial-services.yaml         ← Just the service (Step 11)
-│   ├── partial-plugins.yaml          ← Just the plugins (Step 11)
-│   ├── partial-consumers.yaml        ← Just the consumers (Step 11)
-│   ├── plugin-cors.yaml              ← CORS plugin for add-plugins (Step 14)
-│   └── patch-timeouts.json           ← JSONPath patch for timeouts (Step 13)
+│   ├── 04-bookstore-tagged.yaml      ← Same service with tags (Steps 10, 16-18)
+│   ├── 05-bookstore-templated.yaml   ← Same service with env var templates (Step 13)
+│   ├── partial-services.yaml         ← Just the service (Step 12)
+│   ├── partial-plugins.yaml          ← Just the plugins (Step 12)
+│   ├── partial-consumers.yaml        ← Just the consumers (Step 12)
+│   ├── plugin-cors.yaml              ← CORS plugin for add-plugins (Step 15)
+│   └── patch-timeouts.json           ← JSONPath patch for timeouts (Step 14)
 ├── openapi/
-│   └── bookstore-api.yaml            ← OpenAPI spec (Step 10)
+│   └── bookstore-api.yaml            ← OpenAPI spec (Step 11)
 ├── lint/
-│   └── ruleset.yaml                  ← Linting rules (Step 9)
+│   └── ruleset.yaml                  ← Linting rules (Step 10)
 └── README.md                         ← This file
 ```
 

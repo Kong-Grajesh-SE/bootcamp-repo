@@ -20,9 +20,9 @@ services:
         strip_path: true
 
       # ── Team Routes (conversion-only) ──────────────────────────────────
-      - name: mcp-team-flights
+      - name: mcp-team-alpha
         paths:
-          - /mcp/team-flights
+          - /mcp/team-alpha
         methods:
           - POST
           - GET
@@ -45,9 +45,9 @@ services:
                   method: GET
                   path: /httpbin/headers
 
-      - name: mcp-team-hotels
+      - name: mcp-team-beta
         paths:
-          - /mcp/team-hotels
+          - /mcp/team-beta
         methods:
           - POST
           - GET
@@ -67,12 +67,12 @@ services:
                   path: /httpbin/user-agent
                 - name: echo_anything
                   description: Echo back anything sent
-                  method: GET
+                  method: POST
                   path: /httpbin/anything
 
-      - name: mcp-team-weather
+      - name: mcp-team-gamma
         paths:
-          - /mcp/team-weather
+          - /mcp/team-gamma
         methods:
           - POST
           - GET
@@ -89,7 +89,14 @@ services:
                 - name: check_status
                   description: Get HTTP response with given status code
                   method: GET
-                  path: /httpbin/status/200
+                  path: /httpbin/status/{code}
+                  parameters:
+                    - name: code
+                      in: path
+                      required: true
+                      schema:
+                        type: integer
+                      description: HTTP status code to return
 
       # ── Aggregate Route (listener) ─────────────────────────────────────
       - name: mcp-aggregate

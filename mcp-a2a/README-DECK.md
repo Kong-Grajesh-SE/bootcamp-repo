@@ -1,8 +1,9 @@
 # Agentic AI Bootcamp — decK CLI Walkthrough
 
 > 6-step hands-on lab using declarative `deck gateway` commands.
-> Each step syncs a self-contained YAML file. Steps are cumulative —
-> later files include entities from earlier steps where needed.
+> Each step syncs a self-contained YAML file that **replaces** the
+> previous gateway state. Steps are independent — test each step
+> before moving to the next.
 
 ## Prerequisites
 
@@ -150,7 +151,10 @@ X-RateLimit-Remaining-Minute: 29
 
 ## Step 3 — Conversion Listener (REST → MCP)
 
-Expose a plain REST API (httpbin) as MCP tools. Kong converts MCP JSON-RPC tool calls into standard HTTP requests.
+Expose a plain REST API (httpbin) as MCP tools. Kong converts MCP JSON-RPC tool calls into standard HTTP requests — no changes to the backend required.
+
+> **Note:** This step uses httpbin instead of the travel backend to demonstrate
+> that conversion mode works with *any* existing REST API, not just MCP-aware services.
 
 ### 3.1 Sync
 
@@ -220,11 +224,15 @@ curl -s -X POST $PROXY_URL/mcp/convert \
 
 Three teams each own different tools. One aggregate endpoint merges them all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a `listener` plugin discovers them.
 
+> **Why httpbin?** Steps 3-4 demonstrate how Kong converts *any* REST API into MCP tools.
+> The travel backend from steps 1-2 already speaks MCP natively — here we show Kong
+> making a plain REST API (httpbin) available to MCP clients without any code changes.
+
 ```
               /mcp/aggregate (listener, discovers tag: mcp-agg)
-              ├── /mcp/team-flights  (conversion-only: get_ip, get_headers)
-              ├── /mcp/team-hotels   (conversion-only: get_user_agent, echo_anything)
-              └── /mcp/team-weather  (conversion-only: check_status)
+              ├── /mcp/team-alpha   (conversion-only: get_ip, get_headers)
+              ├── /mcp/team-beta    (conversion-only: get_user_agent, echo_anything)
+              └── /mcp/team-gamma   (conversion-only: check_status)
 ```
 
 ### 4.1 Sync
@@ -261,7 +269,7 @@ curl -s -X POST $PROXY_URL/mcp/aggregate \
 ### 4.3 Test — Call tools from different teams
 
 ```bash
-# get_ip (from flights team)
+# get_ip (from team-alpha)
 curl -s -X POST $PROXY_URL/mcp/aggregate \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
@@ -269,7 +277,7 @@ curl -s -X POST $PROXY_URL/mcp/aggregate \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_ip","arguments":{}}}' \
   | grep "^data:" | sed 's/^data: //' | jq '.result.content[0].text'
 
-# echo_anything (from hotels team)
+# echo_anything (from team-beta)
 curl -s -X POST $PROXY_URL/mcp/aggregate \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \

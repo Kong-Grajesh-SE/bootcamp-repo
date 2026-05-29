@@ -45,7 +45,7 @@
       "parentId": "env_base",
       "name": "Konnect Serverless DP",
       "data": {
-        "base_url": "https://fd92acf341.us.serverless.gateways.konggateway.com"
+        "base_url": "https://<your-serverless-dp-id>.us.serverless.gateways.konggateway.com"
       },
       "isPrivate": false
     },

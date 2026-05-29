@@ -15,11 +15,11 @@
 
 ```bash
 export KONNECT_TOKEN=<your-personal-access-token>
-export CP_NAME=TCS-Bootcamp
+export CP_NAME="<your-control-plane-name>"
 export PROXY_URL=https://<your-serverless-dp-id>.us.serverless.gateways.konggateway.com
 ```
 
-> Get your serverless proxy URL from: **Gateway Manager → TCS-Bootcamp → Overview → Proxy URL**
+> Get your serverless proxy URL from: **Gateway Manager → your CP → Overview → Proxy URL**
 
 ---
 

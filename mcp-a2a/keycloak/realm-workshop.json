@@ -6,7 +6,7 @@
       "clientId": "mcp-oauth-client",
       "name": "MCP OAuth Client",
       "enabled": true,
-      "publicClient": false,
+      "publicClient": true,
       "secret": "mcp-oauth-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,

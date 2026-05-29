@@ -19,7 +19,7 @@ Browse the API catalog and click **Register** on the Bookstore API. Select your 
 Use the API key in the `apikey` header:
 
 ```bash
-curl -H "apikey: YOUR_API_KEY" http://localhost:8000/books/get
+curl -H "apikey: YOUR_API_KEY" http://localhost:8000/books
 ```
 
 ## Step 5: Explore the Docs

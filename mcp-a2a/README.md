@@ -100,18 +100,21 @@ deck gateway sync deck/01-mcp-passthrough.yaml \
   --konnect-control-plane-name "$CP_NAME"
 ```
 
-## All Routes (after all steps)
+## Routes by Step
 
-| Route | Mode / Plugin | Auth | Purpose |
-|-------|--------------|------|---------|
-| `POST /mcp/tools` | passthrough-listener | key-auth + rate-limit | Native MCP clients |
-| `POST /mcp/convert` | conversion-listener | — | REST APIs exposed as MCP |
-| `POST /mcp/aggregate` | listener | — | Multi-team tool aggregation |
-| `POST /mcp-oauth/tools` | passthrough-listener + ai-mcp-oauth2 | OAuth2 PKCE | VS Code, Claude, Insomnia |
-| `GET /.well-known/agent.json` | — | — | A2A Agent Card |
-| `POST /a2a/flights` | — | key-auth, 30/min | Flights sub-agent |
-| `POST /a2a/hotels` | — | key-auth, 30/min | Hotels sub-agent |
-| `POST /a2a/weather` | — | 60/min | Weather sub-agent |
+> Each step syncs a self-contained file that **replaces** the previous gateway state.
+> These routes do NOT all exist simultaneously — see each step for its active routes.
+
+| Step | Route | Mode / Plugin | Auth | Purpose |
+|------|-------|--------------|------|---------|
+| 1-2 | `POST /mcp/tools` | passthrough-listener | key-auth + rate-limit | Native MCP clients |
+| 3 | `POST /mcp/convert` | conversion-listener | — | REST APIs exposed as MCP |
+| 4 | `POST /mcp/aggregate` | listener | — | Multi-team tool aggregation |
+| 5 | `POST /mcp-oauth/tools` | passthrough-listener + ai-mcp-oauth2 | OAuth2 PKCE | VS Code, Claude, Insomnia |
+| 6 | `GET /.well-known/agent.json` | — | — | A2A Agent Card |
+| 6 | `POST /a2a/flights` | — | key-auth, 30/min | Flights sub-agent |
+| 6 | `POST /a2a/hotels` | — | key-auth, 30/min | Hotels sub-agent |
+| 6 | `POST /a2a/weather` | — | 60/min | Weather sub-agent |
 
 ## Teardown
 

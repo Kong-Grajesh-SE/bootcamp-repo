@@ -1,10 +1,8 @@
 # =============================================================================
 # Step 03 — Conversion Listener (REST → MCP)
 # Adds a conversion-listener route on httpbin-service that exposes REST
-# endpoints as MCP tools. Requires httpbin-service to already exist.
-#
-# Prerequisites: httpbin-service + httpbin-route must exist in your CP.
-#   deck gateway sync deck/00-prerequisites.yaml   (if not present)
+# endpoints as MCP tools. The httpbin-service and httpbin-route are
+# included in this file so it is fully self-contained.
 # =============================================================================
 _format_version: "3.0"
 

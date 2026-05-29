@@ -32,13 +32,13 @@
 - [decK CLI](https://docs.konghq.com/deck/latest/installation/) installed
 - Konnect account at [cloud.konghq.com](https://cloud.konghq.com)
 - Konnect Personal Access Token (PAT)
-- A control plane (e.g., `Grajesh-bootcamp`) with a connected data plane
+- A control plane with a connected data plane
 - `curl` and `jq` installed
 - Terminal open in this `api-portal/` directory
 
 ```bash
-export KONNECT_TOKEN=kpat_FbER48Z5p8RLE0Q5aCecWcRb0nEAHneZzviSeHFLzltg29YN8
-export CP_NAME=Grajesh-bootcamp
+export KONNECT_TOKEN="<your-konnect-pat>"
+export CP_NAME="<your-control-plane-name>"
 export PROXY_URL=http://localhost:8000
 
 export KONNECT_PAT="$KONNECT_TOKEN"
@@ -186,10 +186,10 @@ curl -i $PROXY_URL/books
 
 > **Konnect UI verification:**
 > ```
-> Gateway Manager → Grajesh-bootcamp → Services
+> Gateway Manager → your-control-plane → Services
 >   → You should see the bookstore service with routes for /books, /authors, /reviews
 >
-> Gateway Manager → Grajesh-bootcamp → Plugins
+> Gateway Manager → your-control-plane → Plugins
 >   → CORS plugin attached to the service
 > ```
 
@@ -200,7 +200,7 @@ curl -i $PROXY_URL/books
 ```
 1. Log in to cloud.konghq.com
 2. Left sidebar → Gateway Manager
-3. Click your control plane (Grajesh-bootcamp)
+3. Click your control plane (your-control-plane)
 4. Click Services in the left menu
    → You should see the bookstore service (name comes from your OpenAPI title)
 5. Click the service → Routes tab
@@ -354,7 +354,7 @@ Without this, the portal's "Try It" feature won't know where to send requests.
 ```
 1. API Products → Bookstore API
 2. Click Implementations tab → Add Implementation
-3. Select your control plane (Grajesh-bootcamp)
+3. Select your control plane (your-control-plane)
 4. Select the bookstore service (created by openapi2kong)
 5. Click Save
 ```
@@ -364,7 +364,7 @@ Without this, the portal's "Try It" feature won't know where to send requests.
 ```bash
 # Find control plane ID
 export CP_ID=$(curl -s -H "Authorization: Bearer $KONNECT_PAT" \
-  "$KONNECT_API/v2/control-planes" | jq -r '.data[] | select(.name=="Grajesh-bootcamp") | .id')
+  "$KONNECT_API/v2/control-planes" | jq -r '.data[] | select(.name=="'$CP_NAME'") | .id')
 echo "CP ID: $CP_ID"
 
 # Find the gateway service ID
@@ -563,7 +563,7 @@ data plane proxy is. Set the proxy URL on your control plane:
 ### Via Konnect UI
 
 ```
-1. Gateway Manager → Grajesh-bootcamp → Overview
+1. Gateway Manager → your-control-plane → Overview
 2. Under Proxy URL, click Add Endpoint
 3. Enter:
    - Protocol: http (or https if using TLS)
@@ -732,7 +732,7 @@ or with a wrong key return **401 Unauthorized**. The portal auth strategy is wor
 3. Click Applications → you see "bookstore-reading-app" with status Approved
 4. Click into the app → see which APIs it has access to
 
-5. Left sidebar → Gateway Manager → Grajesh-bootcamp
+5. Left sidebar → Gateway Manager → your-control-plane
 6. Click Plugins → you see `konnect-application-auth` (auto-created by the auth strategy)
 ```
 
@@ -942,11 +942,11 @@ curl -s -X POST "$KONNECT_API/v3/portals/$PORTAL_ID/snippets" \
 6. Application Auth → bookstore-key-auth
    → Strategy type: key_auth, key name: apikey
 
-7. Gateway Manager → Grajesh-bootcamp → Services
+7. Gateway Manager → your-control-plane → Services
    → Bookstore service with routes
    → CORS plugin (from decK) + konnect-application-auth plugin (auto-created)
 
-8. Gateway Manager → Grajesh-bootcamp → Plugins
+8. Gateway Manager → your-control-plane → Plugins
    → konnect-application-auth (managed by Konnect, do not edit)
 ```
 
@@ -1003,7 +1003,7 @@ Open the portal in a browser and verify:
 ```
 Konnect Organization
 │
-├── Control Plane (Grajesh-bootcamp)
+├── Control Plane (your-control-plane)
 │   ├── Service: bookstore (generated from OpenAPI via openapi2kong)
 │   │   ├── Routes: /books, /books/{bookId}, /authors, /authors/{authorId}, /reviews
 │   │   ├── Plugin: cors (for portal "Try It")

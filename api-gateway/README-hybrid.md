@@ -16,7 +16,7 @@
 
 ```bash
 export KONNECT_TOKEN=<your-personal-access-token>
-export CP_NAME=Grajesh-bootcamp
+export CP_NAME="<your-control-plane-name>"
 export PROXY_URL=http://localhost:8000
 ```
 
@@ -142,7 +142,7 @@ docker logs upbeat_yonath 2>&1 | tail -20
 # Look for: "successfully connected to the control plane"
 ```
 
-In Konnect UI: **Gateway Manager → Grajesh-bootcamp → Data Plane Nodes** — should show your node as connected.
+In Konnect UI: **Gateway Manager → your-control-plane → Data Plane Nodes** — should show your node as connected.
 
 ```bash
 # Test the proxy (will return 404 — no routes configured yet)
@@ -586,7 +586,7 @@ Client sends request with API key
 **Step 1 — Add Key Auth plugin to httpbin-service:**
 
 ```
-Gateway Manager → Grajesh-bootcamp → Services → httpbin-service → Plugins → Add Plugin
+Gateway Manager → your-control-plane → Services → httpbin-service → Plugins → Add Plugin
   → Authentication → Key Authentication
   → Config:
        Key Names: apikey
@@ -598,7 +598,7 @@ Gateway Manager → Grajesh-bootcamp → Services → httpbin-service → Plugin
 **Step 2 — Add ACL plugin to httpbin-service:**
 
 ```
-Gateway Manager → Grajesh-bootcamp → Services → httpbin-service → Plugins → Add Plugin
+Gateway Manager → your-control-plane → Services → httpbin-service → Plugins → Add Plugin
   → Traffic Control → ACL
   → Config:
        Allow: premium, standard     ← only these groups can access
@@ -609,7 +609,7 @@ Gateway Manager → Grajesh-bootcamp → Services → httpbin-service → Plugin
 **Step 3 — Create consumer: premium-user:**
 
 ```
-Gateway Manager → Grajesh-bootcamp → Consumers → New Consumer
+Gateway Manager → your-control-plane → Consumers → New Consumer
   → Username: premium-user
   → Custom ID: premium-001
   → Save
@@ -626,7 +626,7 @@ Gateway Manager → Grajesh-bootcamp → Consumers → New Consumer
 **Step 4 — Create consumer: standard-user:**
 
 ```
-Gateway Manager → Grajesh-bootcamp → Consumers → New Consumer
+Gateway Manager → your-control-plane → Consumers → New Consumer
   → Username: standard-user
   → Custom ID: standard-002
   → Save
@@ -643,7 +643,7 @@ Gateway Manager → Grajesh-bootcamp → Consumers → New Consumer
 **Step 5 — Create consumer: trial-user:**
 
 ```
-Gateway Manager → Grajesh-bootcamp → Consumers → New Consumer
+Gateway Manager → your-control-plane → Consumers → New Consumer
   → Username: trial-user
   → Custom ID: trial-003
   → Save
@@ -660,7 +660,7 @@ Gateway Manager → Grajesh-bootcamp → Consumers → New Consumer
 **Step 6 — Create consumer group: premium-tier:**
 
 ```
-Gateway Manager → Grajesh-bootcamp → Consumer Groups → New Consumer Group
+Gateway Manager → your-control-plane → Consumer Groups → New Consumer Group
   → Name: premium-tier
   → Save
 
@@ -676,7 +676,7 @@ Gateway Manager → Grajesh-bootcamp → Consumer Groups → New Consumer Group
 **Step 7 — Create consumer group: standard-tier:**
 
 ```
-Gateway Manager → Grajesh-bootcamp → Consumer Groups → New Consumer Group
+Gateway Manager → your-control-plane → Consumer Groups → New Consumer Group
   → Name: standard-tier
   → Save
 
@@ -692,16 +692,16 @@ Gateway Manager → Grajesh-bootcamp → Consumer Groups → New Consumer Group
 **Step 8 — Verify the full setup:**
 
 ```
-Gateway Manager → Grajesh-bootcamp → Plugins
+Gateway Manager → your-control-plane → Plugins
   → You should see: key-auth (httpbin-service), acl (httpbin-service)
 
-Gateway Manager → Grajesh-bootcamp → Consumers
+Gateway Manager → your-control-plane → Consumers
   → 3 consumers listed: premium-user, standard-user, trial-user
   → Click premium-user → Credentials tab → Key: premium-key-123
   → Click premium-user → ACL tab → Group: premium
   → Click premium-user → Groups tab → Consumer Group: premium-tier
 
-Gateway Manager → Grajesh-bootcamp → Consumer Groups
+Gateway Manager → your-control-plane → Consumer Groups
   → premium-tier → 1 member, rate-limiting: 1000/min
   → standard-tier → 1 member, rate-limiting: 10/min
 ```
