@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 07 — + AI Prompt Compressor
+# Step 07 - + AI Prompt Compressor
 # Compresses long prompts before they reach the LLM to save tokens.
 # Requires: docker compose up -d ai-compress-service
 # =============================================================================

@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 10 — + Semantic Response Guard (vectordb-backed output filtering)
+# Step 10 - + Semantic Response Guard (vectordb-backed output filtering)
 # Uses Mistral embeddings + Redis to block LLM responses that match
 # denied topics (secrets disclosure, exploitation, phishing, etc.).
 # Requires: docker compose up -d redis

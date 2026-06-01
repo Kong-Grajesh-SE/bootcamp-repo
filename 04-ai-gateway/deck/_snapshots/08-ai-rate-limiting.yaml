@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 08 — + AI Rate Limiting Advanced (token-aware, per-model)
+# Step 08 - + AI Rate Limiting Advanced (token-aware, per-model)
 # Token-aware rate limits with per-model policies for the multi-provider setup.
 # =============================================================================
 _format_version: "3.0"

@@ -26,7 +26,7 @@
       "_id": "fld_01",
       "parentId": "wrk_aigw",
       "_type": "request_group",
-      "name": "01 — AI Proxy Advanced + Load Balancing"
+      "name": "01 - AI Proxy Advanced + Load Balancing"
     },
     {
       "_id": "req_01_pos_roundrobin_1",
@@ -98,7 +98,7 @@
       "_id": "fld_02",
       "parentId": "wrk_aigw",
       "_type": "request_group",
-      "name": "02 — Prompt Decorator"
+      "name": "02 - Prompt Decorator"
     },
     {
       "_id": "req_02_pos_decorator",
@@ -131,7 +131,7 @@
       "_id": "fld_03",
       "parentId": "wrk_aigw",
       "_type": "request_group",
-      "name": "03 — Prompt Guard (Regex)"
+      "name": "03 - Prompt Guard (Regex)"
     },
     {
       "_id": "req_03_pos_legit",
@@ -203,7 +203,7 @@
       "_id": "fld_04",
       "parentId": "wrk_aigw",
       "_type": "request_group",
-      "name": "04 — Semantic Cache"
+      "name": "04 - Semantic Cache"
     },
     {
       "_id": "req_04_pos_miss",
@@ -222,7 +222,7 @@
       "_id": "req_04_pos_hit_exact",
       "parentId": "fld_04",
       "_type": "request",
-      "name": "✅ Cache Hit — Exact Same Question",
+      "name": "✅ Cache Hit - Exact Same Question",
       "method": "POST",
       "url": "{{ _.proxy_url }}{{ _.chat_path }}",
       "headers": [{"name": "Content-Type", "value": "application/json"}],
@@ -235,7 +235,7 @@
       "_id": "req_04_pos_hit_similar",
       "parentId": "fld_04",
       "_type": "request",
-      "name": "✅ Cache Hit — Paraphrased (semantic match)",
+      "name": "✅ Cache Hit - Paraphrased (semantic match)",
       "method": "POST",
       "url": "{{ _.proxy_url }}{{ _.chat_path }}",
       "headers": [{"name": "Content-Type", "value": "application/json"}],
@@ -265,7 +265,7 @@
       "_id": "fld_05",
       "parentId": "wrk_aigw",
       "_type": "request_group",
-      "name": "05 — Prompt Templates"
+      "name": "05 - Prompt Templates"
     },
     {
       "_id": "req_05_pos_summarizer",
@@ -324,7 +324,7 @@
       "_id": "fld_06",
       "parentId": "wrk_aigw",
       "_type": "request_group",
-      "name": "06 — AI Sanitizer (PII Redaction)"
+      "name": "06 - AI Sanitizer (PII Redaction)"
     },
     {
       "_id": "req_06_pos_pii",
@@ -370,7 +370,7 @@
       "_id": "fld_07",
       "parentId": "wrk_aigw",
       "_type": "request_group",
-      "name": "07 — AI Prompt Compressor"
+      "name": "07 - AI Prompt Compressor"
     },
     {
       "_id": "req_07_pos_long",
@@ -403,7 +403,7 @@
       "_id": "fld_08",
       "parentId": "wrk_aigw",
       "_type": "request_group",
-      "name": "08 — AI Rate Limiting Advanced"
+      "name": "08 - AI Rate Limiting Advanced"
     },
     {
       "_id": "req_08_pos_within",
@@ -436,7 +436,7 @@
       "_id": "fld_09",
       "parentId": "wrk_aigw",
       "_type": "request_group",
-      "name": "09 — Semantic Prompt Guard"
+      "name": "09 - Semantic Prompt Guard"
     },
     {
       "_id": "req_09_pos_kong",
@@ -547,7 +547,7 @@
       "_id": "fld_10",
       "parentId": "wrk_aigw",
       "_type": "request_group",
-      "name": "10 — Semantic Response Guard"
+      "name": "10 - Semantic Response Guard"
     },
     {
       "_id": "req_10_pos_safe",

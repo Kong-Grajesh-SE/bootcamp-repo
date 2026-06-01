@@ -1,5 +1,5 @@
 # =============================================================================
-# Kong AI Gateway Bootcamp — Supporting Services
+# Kong AI Gateway Bootcamp - Supporting Services
 #
 # Starts Redis Stack (vector DB for semantic plugins),
 # AI PII Anonymizer, and AI Prompt Compressor.

@@ -1,6 +1,6 @@
 # Kong AI Gateway Bootcamp
 
-> Enterprise-grade LLM controls — multi-provider load balancing, prompt engineering, guards, cache, compression, rate limits, PII protection, and semantic AI filters on Konnect.
+> Enterprise-grade LLM controls - multi-provider load balancing, prompt engineering, guards, cache, compression, rate limits, PII protection, and semantic AI filters on Konnect.
 
 ## Choose Your Guide
 
@@ -40,7 +40,7 @@ ai-gateway/
 ## Plugin Chain (build order vs runtime order)
 
 This bootcamp adds plugins in the order **01 → 10**: that's the *teaching*
-order. Kong doesn't execute plugins in the order you added them — it runs
+order. Kong doesn't execute plugins in the order you added them - it runs
 them by **phase** (access / response / log) and within a phase by each
 plugin's built-in priority. You don't configure priorities here; Kong does.
 
@@ -67,7 +67,7 @@ Client
 ```
 
 Mental model: **the lab teaches plugins one at a time, but at runtime they're
-already chained in this order — so each step you add slots into the chain
+already chained in this order - so each step you add slots into the chain
 wherever its priority belongs.** If a later test surprises you, check this
 diagram first.
 
@@ -94,11 +94,11 @@ Multi-provider load balancing is configured from **Step 01** and carried through
 ## AI Provider Keys
 
 ```bash
-# Mistral — primary model + embeddings (all steps)
+# Mistral - primary model + embeddings (all steps)
 export MISTRAL_API_KEY="<your-mistral-api-key>"
 export DECK_MISTRAL_API_KEY="$MISTRAL_API_KEY"
 
-# Cerebras — secondary model for load balancing (all steps)
+# Cerebras - secondary model for load balancing (all steps)
 export CEREBRAS_API_KEY="<your-cerebras-api-key>"
 export DECK_CEREBRAS_API_KEY="$CEREBRAS_API_KEY"
 ```

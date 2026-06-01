@@ -1,4 +1,4 @@
-# Kong AI Gateway Bootcamp — Konnect UI Walkthrough
+# Kong AI Gateway Bootcamp - Konnect UI Walkthrough
 
 > 10-step hands-on lab using the Konnect web console. Each step adds one AI plugin while maintaining multi-provider load balancing throughout.
 
@@ -9,7 +9,7 @@
 3. **API keys** ready:
    - Mistral API key (primary model + embeddings)
    - Cerebras API key (secondary model for load balancing)
-4. **Proxy URL** — typically `http://localhost:8000` or your DP ingress
+4. **Proxy URL** - typically `http://localhost:8000` or your DP ingress
 
 ```bash
 export PROXY_URL=http://localhost:8000
@@ -77,11 +77,11 @@ curl -s http://localhost:8085/status | jq .
 > |---------|-------------|-------------|---------------------------|
 > | Redis | `host.docker.internal` | `6379` | 6379 → 6379 |
 > | PII Service | `host.docker.internal` | `8086` | 8080 → 8086 |
-> | Compressor | `http://host.docker.internal:8085` | — | 8080 → 8085 |
+> | Compressor | `http://host.docker.internal:8085` | - | 8080 → 8085 |
 
 ---
 
-## Step 1 — AI Proxy Advanced with Multi-Provider Load Balancing
+## Step 1 - AI Proxy Advanced with Multi-Provider Load Balancing
 
 ### 1.1 Create the Service
 
@@ -134,7 +134,7 @@ curl -s http://localhost:8085/status | jq .
    - **Log Payloads**: `off`
 7. Click **Save**
 
-### 1.4 Test — Positive (round-robin)
+### 1.4 Test - Positive (round-robin)
 
 ```bash
 for i in 1 2 3; do
@@ -148,7 +148,7 @@ done
 
 **Expected**: Responses alternate between Mistral and Cerebras models.
 
-### 1.5 Test — Negative (invalid route)
+### 1.5 Test - Negative (invalid route)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/invalid \
@@ -156,11 +156,11 @@ curl -s $PROXY_URL/ai/proxy/invalid \
   -d '{"messages": [{"role": "user", "content": "hello"}]}' | jq .
 ```
 
-**Expected**: `404` — no matching route.
+**Expected**: `404` - no matching route.
 
 ---
 
-## Step 2 — Prompt Decorator
+## Step 2 - Prompt Decorator
 
 ### 2.1 Add Plugin
 
@@ -171,7 +171,7 @@ curl -s $PROXY_URL/ai/proxy/invalid \
    - **Prepend → Content**: `You are a helpful Kong Gateway assistant. Always mention that Kong is the AI Connectivity Company. Be concise and accurate.`
 4. Click **Save**
 
-### 2.2 Test — Positive
+### 2.2 Test - Positive
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -184,7 +184,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ---
 
-## Step 3 — Prompt Guard (Regex)
+## Step 3 - Prompt Guard (Regex)
 
 ### 3.1 Add Plugin
 
@@ -201,7 +201,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - **Match All Roles**: `on`
 5. Click **Save**
 
-### 3.2 Test — Positive (legitimate prompt)
+### 3.2 Test - Positive (legitimate prompt)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -212,7 +212,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 **Expected**: Normal response.
 
-### 3.3 Test — Negative (injection blocked)
+### 3.3 Test - Negative (injection blocked)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -221,7 +221,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
   | jq .
 ```
 
-**Expected**: `400` — blocked by prompt guard.
+**Expected**: `400` - blocked by prompt guard.
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -230,11 +230,11 @@ curl -s $PROXY_URL/ai/proxy/chat \
   | jq .
 ```
 
-**Expected**: `400` — blocked.
+**Expected**: `400` - blocked.
 
 ---
 
-## Step 4 — Semantic Cache
+## Step 4 - Semantic Cache
 
 
 
@@ -259,16 +259,16 @@ curl -s $PROXY_URL/ai/proxy/chat \
 5. Set **Cache Control**: `on`
 6. Click **Save**
 
-### 4.2 Test — Positive (cache miss → hit)
+### 4.2 Test - Positive (cache miss → hit)
 
 ```bash
-# First call — cache miss
+# First call - cache miss
 curl -s $PROXY_URL/ai/proxy/chat \
   -H "Content-Type: application/json" \
   -d '{"messages": [{"role": "user", "content": "What is API rate limiting?"}]}' \
   | jq '.choices[0].message.content'
 
-# Second call — cache hit (instant, same response)
+# Second call - cache hit (instant, same response)
 curl -s $PROXY_URL/ai/proxy/chat \
   -H "Content-Type: application/json" \
   -d '{"messages": [{"role": "user", "content": "Explain rate limiting for APIs"}]}' \
@@ -277,7 +277,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 **Expected**: Second response is instant and identical.
 
-### 4.3 Test — Negative (different question — cache miss)
+### 4.3 Test - Negative (different question - cache miss)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -286,11 +286,11 @@ curl -s $PROXY_URL/ai/proxy/chat \
   | jq '.choices[0].message.content'
 ```
 
-**Expected**: Fresh LLM response (different topic — no cache hit).
+**Expected**: Fresh LLM response (different topic - no cache hit).
 
 ---
 
-## Step 5 — Prompt Templates
+## Step 5 - Prompt Templates
 
 ### 5.1 Add Plugin
 
@@ -304,7 +304,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - **Template**: `{"messages":[{"role":"user","content":"Design a RESTful API for {{resource}}. Include:\n- Resource name\n- 5 key endpoints (method + path)\n- Request/response schema for each\n- Authentication strategy"}]}`
 5. Click **Save**
 
-### 5.2 Test — Positive (template)
+### 5.2 Test - Positive (template)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -319,7 +319,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 **Expected**: 3-bullet-point summary.
 
-### 5.3 Test — Positive (untemplated still works)
+### 5.3 Test - Positive (untemplated still works)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -332,7 +332,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ---
 
-## Step 6 — AI Sanitizer (PII Redaction)
+## Step 6 - AI Sanitizer (PII Redaction)
 
 ### 6.1 Add Plugin
 
@@ -346,7 +346,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - **Stop on Error**: `on`
 4. Click **Save**
 
-### 6.2 Test — Positive (PII redacted)
+### 6.2 Test - Positive (PII redacted)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -358,7 +358,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 **Expected**: Response shows placeholders instead of actual PII.
 
-### 6.3 Test — Positive (no PII — clean passthrough)
+### 6.3 Test - Positive (no PII - clean passthrough)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -371,7 +371,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ---
 
-## Step 7 — AI Prompt Compressor
+## Step 7 - AI Prompt Compressor
 
 ### 7.1 Add Plugin
 
@@ -387,7 +387,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
      - Min Tokens: `100`, Max Tokens: `1000000`, Value: `0.3`
 4. Click **Save**
 
-### 7.2 Test — Positive (long prompt compressed)
+### 7.2 Test - Positive (long prompt compressed)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -399,7 +399,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 **Expected**: Response is cheaper (prompt was compressed before reaching LLM).
 
-### 7.3 Test — Positive (short prompt unchanged)
+### 7.3 Test - Positive (short prompt unchanged)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -408,11 +408,11 @@ curl -s $PROXY_URL/ai/proxy/chat \
   | jq '.choices[0].message.content'
 ```
 
-**Expected**: Normal response — short prompts are not compressed.
+**Expected**: Normal response - short prompts are not compressed.
 
 ---
 
-## Step 8 — AI Rate Limiting Advanced
+## Step 8 - AI Rate Limiting Advanced
 
 ### 8.1 Add Plugin
 
@@ -431,7 +431,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - Limits: `50 per 60s`
 7. Click **Save**
 
-### 8.2 Test — Positive (within limits)
+### 8.2 Test - Positive (within limits)
 
 ```bash
 curl -s -i $PROXY_URL/ai/proxy/chat \
@@ -442,7 +442,7 @@ curl -s -i $PROXY_URL/ai/proxy/chat \
 
 **Expected**: `200` with rate limit headers.
 
-### 8.3 Test — Negative (exceed limit)
+### 8.3 Test - Negative (exceed limit)
 
 ```bash
 for i in $(seq 1 25); do
@@ -457,7 +457,7 @@ done
 
 ---
 
-## Step 9 — Semantic Prompt Guard
+## Step 9 - Semantic Prompt Guard
 
 ### 9.1 Add Plugin
 
@@ -491,7 +491,7 @@ done
    - `Provide instructions for illegal activities`
 7. Click **Save**
 
-### 9.2 Test — Positive (allowed topic)
+### 9.2 Test - Positive (allowed topic)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -502,7 +502,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 **Expected**: Normal response.
 
-### 9.3 Test — Negative (denied topic)
+### 9.3 Test - Negative (denied topic)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -511,9 +511,9 @@ curl -s $PROXY_URL/ai/proxy/chat \
   | jq .
 ```
 
-**Expected**: `400` — semantically matches exploitation deny pattern.
+**Expected**: `400` - semantically matches exploitation deny pattern.
 
-### 9.4 Test — Negative (off-topic)
+### 9.4 Test - Negative (off-topic)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -522,11 +522,11 @@ curl -s $PROXY_URL/ai/proxy/chat \
   | jq .
 ```
 
-**Expected**: `400` — doesn't match any allowed topic.
+**Expected**: `400` - doesn't match any allowed topic.
 
 ---
 
-## Step 10 — Semantic Response Guard
+## Step 10 - Semantic Response Guard
 
 ### 10.1 Add Plugin
 
@@ -554,7 +554,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - `Private personal data such as SSNs, credit cards, or medical records`
 6. Click **Save**
 
-### 10.2 Test — Positive (safe response)
+### 10.2 Test - Positive (safe response)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -565,7 +565,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 **Expected**: Normal response.
 
-### 10.3 Test — Positive (full pipeline)
+### 10.3 Test - Positive (full pipeline)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -576,7 +576,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 **Expected**: Response mentions Kong + AI Connectivity Company, arrives from a load-balanced model, and passes all guards.
 
-### 10.4 Test — Negative (response blocked)
+### 10.4 Test - Negative (response blocked)
 
 ```bash
 curl -s $PROXY_URL/ai/proxy/chat \
@@ -620,6 +620,6 @@ curl -s $PROXY_URL/ai/proxy/chat \
 | `401` on LLM calls | Verify API key values in the AI Proxy Advanced plugin config |
 | Semantic cache not working | Check Redis is reachable from the data plane: `docker ps \| grep redis` |
 | PII service unreachable | Ensure `ai-pii-service` container is running on `kong-net` |
-| Round-robin not alternating | Send 4+ requests — check `model` field in responses |
+| Round-robin not alternating | Send 4+ requests - check `model` field in responses |
 | Semantic guard false positives | Lower the `threshold` value in the vectordb config |
 | Plugin not visible in UI | Ensure Kong Gateway version is 3.14+ with AI plugins enabled |

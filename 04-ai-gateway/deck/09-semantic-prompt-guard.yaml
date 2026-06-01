@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 09 — Semantic Prompt Guard (plugin-only)
+# Step 09 - Semantic Prompt Guard (plugin-only)
 # Uses Mistral embeddings + Redis vector similarity for topic allow/deny.
 # Requires: docker compose up -d redis
 # Apply: deck file add-plugins -s <state> deck/09-semantic-prompt-guard.yaml | deck gateway sync -s -
@@ -43,7 +43,7 @@ plugins:
           host: host.docker.internal
           port: 6379
           timeout: 2000
-          # DB 2 — see deck/04 for the per-plugin DB convention.
+          # DB 2 - see deck/04 for the per-plugin DB convention.
           database: 2
         dimensions: 1024
         distance_metric: cosine

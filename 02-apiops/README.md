@@ -1,12 +1,12 @@
-# APIOps Bootcamp — Mastering decK Commands
+# APIOps Bootcamp - Mastering decK Commands
 
 > **Story:** You're the platform engineer for the **Bookstore API**.
 > Every step uses the same `bookstore-service` so you can see how each decK command
-> fits into a real API lifecycle — from first deployment through GitOps maturity.
+> fits into a real API lifecycle - from first deployment through GitOps maturity.
 
 > **Looking for the UI walkthrough?** This file is the CLI bootcamp. Several
 > `deck file *` commands (lint, patch, render, merge, add-plugins, add-tags)
-> are CI-time YAML transforms with no Konnect UI counterpart — but the
+> are CI-time YAML transforms with no Konnect UI counterpart - but the
 > *gateway-side* operations (sync, apply, dump, reset) all have UI screens
 > that mirror them. See [README-UI.md](README-UI.md) for the click-by-click
 > companion that covers the UI-reachable steps and explicitly names what
@@ -14,8 +14,8 @@
 
 > **What you bring forward from the previous module:** In api-gateway you
 > applied plugins one at a time with `deck gateway apply`. Here you'll see
-> the *other* gateway commands — `ping`, `dump`, `diff`, `sync`, `validate`,
-> `reset` — plus the offline `deck file` toolchain that powers real CI/CD.
+> the *other* gateway commands - `ping`, `dump`, `diff`, `sync`, `validate`,
+> `reset` - plus the offline `deck file` toolchain that powers real CI/CD.
 > The same plugin types (`rate-limiting`, `key-auth`, `correlation-id`,
 > `request-transformer`) come back, so you can focus on the *workflow*, not
 > the plugin config.
@@ -42,7 +42,7 @@ mkdir -p output
 > - **`_format_version: "3.0"`** at the top of every entity file is decK's
 >   schema version. Quoted because YAML would otherwise parse `3.0` as a
 >   float and lose the trailing zero. Transformer / patch files use the
->   older `"1.0"` schema — that's intentional, not a typo.
+>   older `"1.0"` schema - that's intentional, not a typo.
 > - **Partial** = a YAML file that contains a *subset* of entities (just
 >   services, or just plugins). decK doesn't care that a file is incomplete
 >   as long as you `deck file merge` partials together before `deck gateway
@@ -108,13 +108,13 @@ apiops/
 
 ---
 
-# Part 1 — Gateway Commands (Live Operations)
+# Part 1 - Gateway Commands (Live Operations)
 
 These commands talk to a **live Kong Gateway** (Konnect or self-managed).
 
 ---
 
-## Step 1 — Test Connectivity (`deck gateway ping`)
+## Step 1 - Test Connectivity (`deck gateway ping`)
 
 > **What it does:** Verifies that decK can reach your Kong Gateway and authenticate.
 > Use this as the first troubleshooting step when anything seems wrong.
@@ -143,7 +143,7 @@ Successfully Konnected to the Grajesh-Org organization!
 
 ---
 
-## Step 2 — Validate YAML Before Deploying (`deck gateway validate`)
+## Step 2 - Validate YAML Before Deploying (`deck gateway validate`)
 
 > **What it does:** Sends your YAML to Kong's validation API without applying it.
 > Catches plugin config errors, invalid field values, and schema mismatches.
@@ -167,7 +167,7 @@ deck gateway validate deck/02-bookstore-plugins.yaml \
   --konnect-control-plane-name "$CP_NAME"
 ```
 
-**Try breaking it** — create a bad config to see the error:
+**Try breaking it** - create a bad config to see the error:
 
 ```bash
 # Create a temp file with an invalid plugin config
@@ -192,7 +192,7 @@ deck gateway validate /tmp/bad-config.yaml \
   --konnect-control-plane-name "$CP_NAME"
 ```
 
-> **Teach:** `gateway validate` checks against the **live Kong schema** — it knows which
+> **Teach:** `gateway validate` checks against the **live Kong schema** - it knows which
 > plugins are available, which fields are valid, and catches errors that `file validate`
 > would miss. Use it in CI before `sync` to fail fast.
 
@@ -202,12 +202,12 @@ deck gateway validate /tmp/bad-config.yaml \
 
 ---
 
-## Step 3 — Deploy the Bookstore (`deck gateway sync`)
+## Step 3 - Deploy the Bookstore (`deck gateway sync`)
 
 > **What it does:** Makes Kong's live state **exactly match** your YAML file.
 > Creates missing entities, updates changed ones, and **deletes entities not in the file**.
 >
-> ⚠️ This is the most powerful command — it's a full reconciliation.
+> ⚠️ This is the most powerful command - it's a full reconciliation.
 
 ```bash
 deck gateway sync deck/01-bookstore-base.yaml \
@@ -241,9 +241,9 @@ curl -s $PROXY_URL/bookstore/headers | jq .headers.Host
 
 ---
 
-## Step 4 — Preview Changes Before Applying (`deck gateway diff`)
+## Step 4 - Preview Changes Before Applying (`deck gateway diff`)
 
-> **What it does:** Shows you what `sync` **would** do — without actually doing it.
+> **What it does:** Shows you what `sync` **would** do - without actually doing it.
 > Think of it like `terraform plan` or `git diff`.
 
 First, let's see what adding plugins would change:
@@ -277,7 +277,7 @@ curl -i $PROXY_URL/bookstore/get
 
 ---
 
-## Step 5 — Add Plugins Incrementally (`deck gateway apply`)
+## Step 5 - Add Plugins Incrementally (`deck gateway apply`)
 
 > **What it does:** Creates or updates entities from your YAML but **never deletes** anything.
 > Safe for shared control planes where multiple teams own different entities.
@@ -318,7 +318,7 @@ curl -i $PROXY_URL/bookstore/get 2>&1 | grep -i x-ratelimit
 # → X-RateLimit-Limit-Minute: 100
 ```
 
-### `sync` vs `apply` — When to Use Which
+### `sync` vs `apply` - When to Use Which
 
 | Scenario | Use | Why |
 |----------|-----|-----|
@@ -330,7 +330,7 @@ curl -i $PROXY_URL/bookstore/get 2>&1 | grep -i x-ratelimit
 
 ---
 
-## Step 6 — Export Live State (`deck gateway dump`)
+## Step 6 - Export Live State (`deck gateway dump`)
 
 > **What it does:** Exports the current live Kong state to YAML.
 > Use it to bootstrap GitOps from an existing Gateway, create backups, or audit drift.
@@ -368,7 +368,7 @@ deck gateway dump -o /tmp/live.yaml \
 diff deck/02-bookstore-plugins.yaml /tmp/live.yaml
 ```
 
-> **Teach:** `dump` is read-only — it never changes anything.
+> **Teach:** `dump` is read-only - it never changes anything.
 > Common uses:
 > - **Bootstrap GitOps:** dump a manually configured Gateway into YAML, commit it, manage with `sync` going forward
 > - **Backup:** dump before risky changes
@@ -376,7 +376,7 @@ diff deck/02-bookstore-plugins.yaml /tmp/live.yaml
 
 ---
 
-## Step 7 — Full Config with Consumers (`deck gateway sync` — round 2)
+## Step 7 - Full Config with Consumers (`deck gateway sync` - round 2)
 
 > **What it does:** Syncs the consumers file, which adds key-auth + consumers.
 > This shows how `sync` handles the progression from plugins to consumers.
@@ -391,7 +391,7 @@ deck gateway diff deck/03-bookstore-consumers.yaml \
 
 Notice: the diff shows the correlation-id and request-transformer plugins from Step 5
 will be **deleted** because they're not in `03-bookstore-consumers.yaml`. That's `sync`
-being honest — it reconciles to exactly what's in the file.
+being honest - it reconciles to exactly what's in the file.
 
 ```bash
 deck gateway sync deck/03-bookstore-consumers.yaml \
@@ -414,16 +414,16 @@ curl -i $PROXY_URL/bookstore/get -H "apikey: reader-key-def456"
 # → X-Consumer-Username: bookstore-reader
 ```
 
-> **Teach:** This is a key `sync` lesson — it **deleted** the plugins from Step 5
+> **Teach:** This is a key `sync` lesson - it **deleted** the plugins from Step 5
 > that weren't in the consumers file. In real GitOps, you maintain **one complete
 > file** (or use `merge` to combine partials) so nothing gets accidentally removed.
 
 ---
 
-## Step 8 — Nuclear Reset (`deck gateway reset`)
+## Step 8 - Nuclear Reset (`deck gateway reset`)
 
 > **What it does:** Deletes **every entity** in the control plane.
-> This is the nuclear option — use it for teardown or to start completely fresh.
+> This is the nuclear option - use it for teardown or to start completely fresh.
 >
 > ⚠️ **Destructive.** Requires `--force` flag. No undo.
 
@@ -443,7 +443,7 @@ curl -s $PROXY_URL/bookstore/get
 deck gateway dump \
   --konnect-token $KONNECT_TOKEN \
   --konnect-control-plane-name "$CP_NAME"
-# → _format_version: "3.0" (empty — no entities)
+# → _format_version: "3.0" (empty - no entities)
 ```
 
 > **Teach:** `reset` is rarely used in production. It's for:
@@ -455,16 +455,16 @@ deck gateway dump \
 
 ---
 
-# Part 2 — File Commands (Offline Operations)
+# Part 2 - File Commands (Offline Operations)
 
 These commands work **without a live Kong Gateway**. They transform, validate,
-and manipulate YAML files locally — perfect for CI pipelines and GitOps workflows.
+and manipulate YAML files locally - perfect for CI pipelines and GitOps workflows.
 
 ---
 
-## Step 9 — Schema Validation (`deck file validate`)
+## Step 9 - Schema Validation (`deck file validate`)
 
-> **What it does:** Checks YAML structure and schema offline — no Kong connection needed.
+> **What it does:** Checks YAML structure and schema offline - no Kong connection needed.
 > Catches syntax errors, missing required fields, and malformed configs.
 
 ```bash
@@ -494,7 +494,7 @@ EOF
 deck file validate /tmp/broken.yaml
 ```
 
-> **Teach:** `file validate` is fast and offline — use it in pre-commit hooks and CI.
+> **Teach:** `file validate` is fast and offline - use it in pre-commit hooks and CI.
 > It catches structural errors but can't validate plugin-specific configs (that's `gateway validate`).
 
 ### `file validate` vs `gateway validate`
@@ -511,10 +511,10 @@ deck file validate /tmp/broken.yaml
 
 ---
 
-## Step 10 — Lint Against Rules (`deck file lint`)
+## Step 10 - Lint Against Rules (`deck file lint`)
 
 > **What it does:** Runs custom governance rules against your YAML.
-> Enforce naming conventions, required tags, timeout policies — whatever your team decides.
+> Enforce naming conventions, required tags, timeout policies - whatever your team decides.
 
 ```bash
 # Lint the base file (no tags → will fail!)
@@ -541,12 +541,12 @@ cat lint/ruleset.yaml
 ```
 
 The ruleset enforces:
-- ❌ `no-untagged-services` — every service must have tags
-- ⚠️ `no-untagged-routes` — routes should have tags
-- ❌ `service-name-convention` — kebab-case names only
-- ❌ `route-name-convention` — kebab-case names only
-- ⚠️ `service-timeouts` — explicit timeout config recommended
-- ⚠️ `service-retries` — explicit retry config recommended
+- ❌ `no-untagged-services` - every service must have tags
+- ⚠️ `no-untagged-routes` - routes should have tags
+- ❌ `service-name-convention` - kebab-case names only
+- ❌ `route-name-convention` - kebab-case names only
+- ⚠️ `service-timeouts` - explicit timeout config recommended
+- ⚠️ `service-retries` - explicit retry config recommended
 
 > **Teach:** Linting is how platform teams enforce standards at scale.
 > Put `deck file lint` in your CI pipeline to block PRs that don't follow conventions.
@@ -554,10 +554,10 @@ The ruleset enforces:
 
 ---
 
-## Step 11 — OpenAPI → Kong Config (`deck file openapi2kong`)
+## Step 11 - OpenAPI → Kong Config (`deck file openapi2kong`)
 
 > **What it does:** Generates Kong Gateway config (services, routes) from an OpenAPI spec.
-> This is the **API-first** workflow — start with a spec, auto-generate the gateway config.
+> This is the **API-first** workflow - start with a spec, auto-generate the gateway config.
 
 ```bash
 deck file openapi2kong \
@@ -592,10 +592,10 @@ deck file validate output/from-openapi.yaml
 
 ---
 
-## Step 12 — Combine Partial Files (`deck file merge`)
+## Step 12 - Combine Partial Files (`deck file merge`)
 
 > **What it does:** Merges multiple partial YAML files into one complete config.
-> This is how teams split ownership — one file per concern, combined at deploy time.
+> This is how teams split ownership - one file per concern, combined at deploy time.
 
 ```bash
 deck file merge \
@@ -632,15 +632,15 @@ deck gateway diff output/merged.yaml \
 ```
 
 > **Teach:** Merge enables a split-by-concern file layout:
-> - `services.yaml` — owned by the platform team
-> - `plugins.yaml` — owned by the security team
-> - `consumers.yaml` — owned by the API consumers team
+> - `services.yaml` - owned by the platform team
+> - `plugins.yaml` - owned by the security team
+> - `consumers.yaml` - owned by the API consumers team
 >
 > Each team manages their file independently. CI merges them before `sync`.
 
 ---
 
-## Step 13 — Resolve Environment Variables (`deck file render`)
+## Step 13 - Resolve Environment Variables (`deck file render`)
 
 > **What it does:** Takes a templated YAML file with `${{ env "VAR" }}` placeholders,
 > resolves them against your shell environment, and outputs a concrete YAML file.
@@ -694,12 +694,12 @@ diff output/rendered-dev.yaml output/rendered-staging.yaml
 > The template lives in the repo; environment-specific values come from CI variables,
 > Vault, or deployment configs. No more copying files per environment.
 >
-> Without `--populate-env-vars`, deck substitutes mock placeholder values — useful
+> Without `--populate-env-vars`, deck substitutes mock placeholder values - useful
 > for previewing structure without real config.
 
 ---
 
-## Step 14 — Patch Values (`deck file patch`)
+## Step 14 - Patch Values (`deck file patch`)
 
 > **What it does:** Modifies specific values in a YAML file using JSONPath selectors.
 > Great for bulk updates without editing YAML by hand.
@@ -747,7 +747,7 @@ diff deck/01-bookstore-base.yaml output/patched.yaml
 
 ---
 
-## Step 15 — Add Plugins to Config (`deck file add-plugins`)
+## Step 15 - Add Plugins to Config (`deck file add-plugins`)
 
 > **What it does:** Adds plugin configurations to an existing YAML file.
 > Use it to layer standard plugins onto any config without manual YAML editing.
@@ -767,7 +767,7 @@ cat output/with-cors.yaml
 # → bookstore-service now has a CORS plugin attached
 ```
 
-**Chain it — add plugins to the OpenAPI-generated config:**
+**Chain it - add plugins to the OpenAPI-generated config:**
 
 ```bash
 # Generate from OpenAPI, then add standard plugins
@@ -782,19 +782,19 @@ deck file add-plugins \
 
 > **Teach:** `add-plugins` is the bridge between API-first and platform standards.
 > API teams define specs; the platform team adds security, observability, and traffic
-> plugins automatically in CI — no manual YAML editing needed.
+> plugins automatically in CI - no manual YAML editing needed.
 
 ---
 
-## Step 16 — Tag Entities (`deck file add-tags`)
+## Step 16 - Tag Entities (`deck file add-tags`)
 
 > **What it does:** Adds tags to all entities in a YAML file.
-> Tags are how decK scopes ownership — `select_tags` lets each team sync only their entities.
+> Tags are how decK scopes ownership - `select_tags` lets each team sync only their entities.
 
 ```bash
 # Add team and environment tags to the base file (positional form: file,
 # then one or more tag values). add-tags applies to ALL entities in the
-# file — there is no --selector / --value mode like add-plugins or patch.
+# file - there is no --selector / --value mode like add-plugins or patch.
 deck file add-tags \
   deck/01-bookstore-base.yaml \
   team:bookstore \
@@ -829,7 +829,7 @@ deck file list-tags output/tagged-all.yaml
 
 ---
 
-## Step 17 — List Tags (`deck file list-tags`)
+## Step 17 - List Tags (`deck file list-tags`)
 
 > **What it does:** Shows all tags used in a YAML file. Useful for auditing and discovery.
 
@@ -850,12 +850,12 @@ deck file list-tags deck/03-bookstore-consumers.yaml
 ```
 
 > **Teach:** Use `list-tags` to audit tag coverage before enabling `select_tags` scoping.
-> If entities are missing tags, they'll be invisible to scoped syncs — and could get
+> If entities are missing tags, they'll be invisible to scoped syncs - and could get
 > deleted by another team's `sync`.
 
 ---
 
-## Step 18 — Remove Tags (`deck file remove-tags`)
+## Step 18 - Remove Tags (`deck file remove-tags`)
 
 > **What it does:** Removes specific tags from entities. Use when re-scoping ownership.
 
@@ -891,7 +891,7 @@ deck file list-tags output/no-tags.yaml
 
 ---
 
-# Part 3 — Putting It All Together: A GitOps Pipeline
+# Part 3 - Putting It All Together: A GitOps Pipeline
 
 Here's how these commands chain together in a real CI/CD pipeline:
 

@@ -1,14 +1,16 @@
-# Kong API Gateway Bootcamp — Konnect UI Walkthrough
+# Kong API Gateway Bootcamp - Konnect UI Walkthrough
 
-> 14-step hands-on lab using the Konnect web console. Each step adds one
+> 16-step hands-on lab using the Konnect web console. Each step adds one
 > plugin (or one entity set) to a base of three upstream services so you
 > can see exactly what each policy does without leaving the browser.
+> Steps 15–16 introduce Konnect-native (Kong Identity) and external-IdP
+> (Keycloak) OAuth2 / OpenID Connect.
 
 > **What you bring forward from the previous module:** the decK-driven
 > `README-hybrid.md` (and `README-serverless.md`) walks you through the
-> same fourteen demos as YAML you `deck gateway apply`. This guide
-> rebuilds the *same configuration* in the Konnect UI — Services, Routes,
-> Plugins, Consumers, Consumer Groups — so you can see where every decK
+> same demos as YAML you `deck gateway apply`. This guide
+> rebuilds the *same configuration* in the Konnect UI - Services, Routes,
+> Plugins, Consumers, Consumer Groups - so you can see where every decK
 > field lives in the web console. The plugin names, scopes, and config
 > values are intentionally identical, so feel free to switch back and
 > forth between the YAML and the UI as you go.
@@ -19,7 +21,7 @@
 
 1. **Konnect account** at [cloud.konghq.com](https://cloud.konghq.com)
 2. **Control Plane** with a connected Data Plane (hybrid Docker DP or serverless)
-3. **Proxy URL** — typically `http://localhost:8000` for a Docker DP, or the
+3. **Proxy URL** - typically `http://localhost:8000` for a Docker DP, or the
    serverless proxy URL shown in **Gateway Manager → Control Plane → Overview**
 4. **Insomnia** (optional) for replaying the test requests as a collection
 
@@ -29,7 +31,7 @@ export PROXY_URL=http://localhost:8000
 
 > Replace `<your-control-plane>` everywhere below with the name of the
 > control plane you're working in. Never hardcode a real CP name into
-> shared notes — Konnect organisations and naming conventions vary.
+> shared notes - Konnect organisations and naming conventions vary.
 
 ---
 
@@ -46,7 +48,7 @@ upstream call. The same three services are reused across every step.
 
 ---
 
-## Step 1 — Services & Routes
+## Step 1 - Services & Routes
 
 Build the base topology: three upstream services, each with one route.
 After this step the proxy responds with real upstream payloads for
@@ -116,7 +118,7 @@ After this step the proxy responds with real upstream payloads for
    - **Strip Path**: `on`
 3. Click **Save**
 
-### 1.7 Test — all three routes resolve
+### 1.7 Test - all three routes resolve
 
 ```bash
 curl -s $PROXY_URL/httpbin/get | jq .origin
@@ -126,7 +128,7 @@ curl -s $PROXY_URL/konghq/get | jq .origin
 
 **Expected**: Three JSON bodies from three different upstreams. No `404`s.
 
-### 1.8 Test — unknown path is rejected
+### 1.8 Test - unknown path is rejected
 
 ```bash
 curl -s $PROXY_URL/does-not-exist | jq .message
@@ -136,7 +138,7 @@ curl -s $PROXY_URL/does-not-exist | jq .message
 
 ---
 
-## Step 2 — Rate Limiting
+## Step 2 - Rate Limiting
 
 Limit `httpbin-service` to **5 requests per minute per IP** so you can
 see Kong's classic traffic-control plugin in action.
@@ -152,11 +154,11 @@ see Kong's classic traffic-control plugin in action.
    - **Hide Client Headers**: `off`
    - **Fault Tolerant**: `on`
    - **Error Code**: `429`
-   - **Error Message**: `Rate limit exceeded — try again later`
+   - **Error Message**: `Rate limit exceeded - try again later`
 4. **Scope**: `Service` → `httpbin-service` (auto-selected)
 5. Click **Save**
 
-### 2.2 Test — first five requests succeed
+### 2.2 Test - first five requests succeed
 
 ```bash
 for i in 1 2 3 4 5; do
@@ -167,7 +169,7 @@ done
 **Expected**: Five `200`s. Response headers carry `X-RateLimit-Limit-Minute: 5`
 and `X-RateLimit-Remaining-Minute` counting down.
 
-### 2.3 Test — sixth request is throttled
+### 2.3 Test - sixth request is throttled
 
 ```bash
 curl -i $PROXY_URL/httpbin/get
@@ -175,17 +177,17 @@ curl -i $PROXY_URL/httpbin/get
 
 **Expected**: `429 Too Many Requests` with the configured error message.
 
-### 2.4 Test — httpbun is unaffected
+### 2.4 Test - httpbun is unaffected
 
 ```bash
 curl -i $PROXY_URL/httpbun/get
 ```
 
-**Expected**: `200` — the plugin is scoped only to `httpbin-service`.
+**Expected**: `200` - the plugin is scoped only to `httpbin-service`.
 
 ---
 
-## Step 3 — Proxy Cache
+## Step 3 - Proxy Cache
 
 Cache `GET`/`HEAD` responses from `httpbin-service` for **30 seconds** in
 the data plane's in-memory store.
@@ -203,29 +205,29 @@ the data plane's in-memory store.
 3. **Scope**: `Service` → `httpbin-service`
 4. Click **Save**
 
-### 3.2 Test — cache miss then hit
+### 3.2 Test - cache miss then hit
 
 ```bash
-# First call — X-Cache-Status: Miss
+# First call - X-Cache-Status: Miss
 curl -i $PROXY_URL/httpbin/get | grep -i x-cache-status
 
-# Second call within 30s — X-Cache-Status: Hit
+# Second call within 30s - X-Cache-Status: Hit
 curl -i $PROXY_URL/httpbin/get | grep -i x-cache-status
 ```
 
 **Expected**: First response shows `Miss`, second shows `Hit`.
 
-### 3.3 Test — POST is bypassed
+### 3.3 Test - POST is bypassed
 
 ```bash
 curl -i -X POST $PROXY_URL/httpbin/post -d '{}' | grep -i x-cache-status
 ```
 
-**Expected**: `X-Cache-Status: Bypass` — `POST` is not in the cached methods.
+**Expected**: `X-Cache-Status: Bypass` - `POST` is not in the cached methods.
 
 ---
 
-## Step 4 — Upstream Load Balancing
+## Step 4 - Upstream Load Balancing
 
 Add a fourth service backed by a Kong **Upstream** (logical pool) so you
 can see round-robin balancing across two real backends.
@@ -282,7 +284,7 @@ can see round-robin balancing across two real backends.
    - **Strip Path**: `on`
 3. Click **Save**
 
-### 4.5 Test — round-robin across upstreams
+### 4.5 Test - round-robin across upstreams
 
 ```bash
 curl -s $PROXY_URL/lb | jq .url
@@ -296,13 +298,13 @@ curl -s $PROXY_URL/lb | jq .url
 
 ---
 
-## Step 5 — Key Auth (+ first consumers)
+## Step 5 - Key Auth (+ first consumers)
 
 Lock `httpbin-service` behind an API key, then create two consumers so
 the key check actually identifies *who* is calling.
 
-> **Consumer — quick primer (covered in depth in Step 7):** A **consumer**
-> in Kong is an identity that Kong knows about — typically a person, a
+> **Consumer - quick primer (covered in depth in Step 7):** A **consumer**
+> in Kong is an identity that Kong knows about - typically a person, a
 > service account, or a partner. Credentials (API key, JWT secret, OAuth
 > client) are attached to a consumer, so when Kong validates a credential
 > it can tell you *who* called the route. The two consumers below are
@@ -346,7 +348,7 @@ the key check actually identifies *who* is calling.
    - **Key**: `test-key-456`
 5. Click **Save**
 
-### 5.4 Test — no key is rejected
+### 5.4 Test - no key is rejected
 
 ```bash
 curl -i $PROXY_URL/httpbin/get
@@ -354,7 +356,7 @@ curl -i $PROXY_URL/httpbin/get
 
 **Expected**: `401 Unauthorized`.
 
-### 5.5 Test — key in header
+### 5.5 Test - key in header
 
 ```bash
 curl -i $PROXY_URL/httpbin/get -H "apikey: my-secret-key-123"
@@ -362,15 +364,15 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: my-secret-key-123"
 
 **Expected**: `200`. Upstream sees `X-Consumer-Username: demo-user`.
 
-### 5.6 Test — key in query string
+### 5.6 Test - key in query string
 
 ```bash
 curl -i "$PROXY_URL/httpbin/get?apikey=my-secret-key-123"
 ```
 
-**Expected**: `200` — both header and query are accepted.
+**Expected**: `200` - both header and query are accepted.
 
-### 5.7 Test — wrong key
+### 5.7 Test - wrong key
 
 ```bash
 curl -i $PROXY_URL/httpbin/get -H "apikey: wrong-key"
@@ -378,17 +380,17 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: wrong-key"
 
 **Expected**: `401`.
 
-### 5.8 Test — httpbun is still open
+### 5.8 Test - httpbun is still open
 
 ```bash
 curl -i $PROXY_URL/httpbun/get
 ```
 
-**Expected**: `200` — `key-auth` is scoped to `httpbin-service` only.
+**Expected**: `200` - `key-auth` is scoped to `httpbin-service` only.
 
 ---
 
-## Step 6 — JWT Auth
+## Step 6 - JWT Auth
 
 Protect `httpbun-service` with JWT bearer tokens signed by a shared
 HS256 secret. The plugin verifies `exp` and reads the issuer from `iss`.
@@ -423,7 +425,7 @@ HS256 secret. The plugin verifies `exp` and reads the issuer from `iss`.
 4. Open the consumer → **Credentials** tab → **New JWT Credential**
    - **Algorithm**: `HS256`
    - **Key**: `my-jwt-issuer` (this is the value the plugin will match against the `iss` claim)
-   - **Secret**: `<REPLACE-WITH-RANDOM-SECRET>` — paste the value of `$JWT_SECRET`
+   - **Secret**: `<REPLACE-WITH-RANDOM-SECRET>` - paste the value of `$JWT_SECRET`
      you generated above (`openssl rand -hex 32`). Never reuse the literal placeholder.
 5. Click **Save**
 
@@ -444,7 +446,7 @@ print(token if isinstance(token, str) else token.decode())
 echo $TOKEN
 ```
 
-### 6.4 Test — no token is rejected
+### 6.4 Test - no token is rejected
 
 ```bash
 curl -i $PROXY_URL/httpbun/get
@@ -452,7 +454,7 @@ curl -i $PROXY_URL/httpbun/get
 
 **Expected**: `401 Unauthorized`.
 
-### 6.5 Test — valid JWT is accepted
+### 6.5 Test - valid JWT is accepted
 
 ```bash
 curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"
@@ -460,23 +462,23 @@ curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"
 
 **Expected**: `200`. Upstream sees `X-Consumer-Username: jwt-user`.
 
-### 6.6 Test — expired/invalid token
+### 6.6 Test - expired/invalid token
 
 ```bash
 curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer not-a-real-jwt"
 ```
 
-**Expected**: `401` — JWT parser rejects the malformed token.
+**Expected**: `401` - JWT parser rejects the malformed token.
 
 ---
 
-## Step 7 — Consumers
+## Step 7 - Consumers
 
 Now that you've seen consumers attached to a plugin, create three
 **standalone** consumers that reuse the existing `key-auth` plugin on
 `httpbin-service`. This is the everyday "add a new client" workflow.
 
-> **Prerequisite:** Step 5 must already be in place — the `key-auth`
+> **Prerequisite:** Step 5 must already be in place - the `key-auth`
 > plugin on `httpbin-service` is what gives these new keys meaning.
 
 ### 7.1 Create consumer `alice`
@@ -512,7 +514,7 @@ Now that you've seen consumers attached to a plugin, create three
    - **Key**: `charlie-api-key`
 5. Click **Save**
 
-### 7.4 Test — each key identifies its consumer
+### 7.4 Test - each key identifies its consumer
 
 ```bash
 curl -s $PROXY_URL/httpbin/get -H "apikey: alice-api-key"   | jq '.headers["X-Consumer-Username"]'
@@ -520,10 +522,10 @@ curl -s $PROXY_URL/httpbin/get -H "apikey: bob-api-key"     | jq '.headers["X-Co
 curl -s $PROXY_URL/httpbin/get -H "apikey: charlie-api-key" | jq '.headers["X-Consumer-Username"]'
 ```
 
-**Expected**: `"alice"`, `"bob"`, `"charlie"` — Kong injects the
+**Expected**: `"alice"`, `"bob"`, `"charlie"` - Kong injects the
 consumer username on every authenticated request.
 
-### 7.5 Test — unknown key still rejected
+### 7.5 Test - unknown key still rejected
 
 ```bash
 curl -i $PROXY_URL/httpbin/get -H "apikey: nobody-knows"
@@ -533,7 +535,7 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: nobody-knows"
 
 ---
 
-## Step 8 — CORS (global)
+## Step 8 - CORS (global)
 
 Allow browser-based clients on three specific origins to call any route
 in the control plane. CORS is applied **globally** (no service/route scope).
@@ -552,7 +554,7 @@ in the control plane. CORS is applied **globally** (no service/route scope).
 4. **Scope**: `Global` (leave service/route blank)
 5. Click **Save**
 
-### 8.2 Test — simple cross-origin request
+### 8.2 Test - simple cross-origin request
 
 ```bash
 curl -i $PROXY_URL/httpbin/get -H "Origin: http://localhost:3000"
@@ -560,7 +562,7 @@ curl -i $PROXY_URL/httpbin/get -H "Origin: http://localhost:3000"
 
 **Expected**: `200` with `Access-Control-Allow-Origin: http://localhost:3000`.
 
-### 8.3 Test — preflight (OPTIONS)
+### 8.3 Test - preflight (OPTIONS)
 
 ```bash
 curl -i -X OPTIONS $PROXY_URL/httpbin/get \
@@ -570,18 +572,18 @@ curl -i -X OPTIONS $PROXY_URL/httpbin/get \
 
 **Expected**: `204` with `Access-Control-Allow-Methods` listing all six methods.
 
-### 8.4 Test — disallowed origin
+### 8.4 Test - disallowed origin
 
 ```bash
 curl -i $PROXY_URL/httpbin/get -H "Origin: https://evil.example.org"
 ```
 
-**Expected**: `200` but no `Access-Control-Allow-Origin` header — the browser
+**Expected**: `200` but no `Access-Control-Allow-Origin` header - the browser
 will block this client-side.
 
 ---
 
-## Step 9 — IP Restriction
+## Step 9 - IP Restriction
 
 Restrict `httpbin-service` so only RFC 1918 private ranges and loopback
 can reach it. Important: when the data plane runs in Docker, your client
@@ -601,15 +603,15 @@ IP arrives as a Docker bridge address in `172.16.0.0/12`.
 4. **Scope**: `Service` → `httpbin-service`
 5. Click **Save**
 
-### 9.2 Test — allowed source
+### 9.2 Test - allowed source
 
 ```bash
 curl -i $PROXY_URL/httpbin/get
 ```
 
-**Expected**: `200` — Docker bridge IP (`172.x.x.x`) is in the allow list.
+**Expected**: `200` - Docker bridge IP (`172.x.x.x`) is in the allow list.
 
-### 9.3 Test — disallowed source
+### 9.3 Test - disallowed source
 
 Temporarily remove `172.16.0.0/12` from the allow list, save, then:
 
@@ -622,7 +624,7 @@ CIDR when you're done to keep the rest of the lab working.
 
 ---
 
-## Step 10 — Correlation ID (global)
+## Step 10 - Correlation ID (global)
 
 Inject a unique `X-Correlation-ID` header on every request so you can
 trace a call end-to-end through your logs.
@@ -638,7 +640,7 @@ trace a call end-to-end through your logs.
 4. **Scope**: `Global`
 5. Click **Save**
 
-### 10.2 Test — header is generated
+### 10.2 Test - header is generated
 
 ```bash
 curl -i $PROXY_URL/httpbin/get | grep -i x-correlation-id
@@ -646,7 +648,7 @@ curl -i $PROXY_URL/httpbin/get | grep -i x-correlation-id
 
 **Expected**: `X-Correlation-ID: <uuid>#1` (the counter increments per request).
 
-### 10.3 Test — upstream sees the same ID
+### 10.3 Test - upstream sees the same ID
 
 ```bash
 curl -s $PROXY_URL/httpbin/headers | jq '.headers["X-Correlation-Id"]'
@@ -654,7 +656,7 @@ curl -s $PROXY_URL/httpbin/headers | jq '.headers["X-Correlation-Id"]'
 
 **Expected**: Same UUID was forwarded to `httpbin.org`.
 
-### 10.4 Test — client-supplied ID is preserved
+### 10.4 Test - client-supplied ID is preserved
 
 ```bash
 curl -i $PROXY_URL/httpbin/get -H "X-Correlation-ID: my-trace-123"
@@ -664,7 +666,7 @@ curl -i $PROXY_URL/httpbin/get -H "X-Correlation-ID: my-trace-123"
 
 ---
 
-## Step 11 — Request Transformer
+## Step 11 - Request Transformer
 
 Add headers and query params to requests as they leave Kong toward
 `httpbin-service`, and rename one incoming header.
@@ -685,7 +687,7 @@ Add headers and query params to requests as they leave Kong toward
 5. **Scope**: `Service` → `httpbin-service`
 6. Click **Save**
 
-### 11.2 Test — added headers reach the upstream
+### 11.2 Test - added headers reach the upstream
 
 ```bash
 curl -s $PROXY_URL/httpbin/headers | jq '.headers'
@@ -694,7 +696,7 @@ curl -s $PROXY_URL/httpbin/headers | jq '.headers'
 **Expected**: Output includes `"X-Added-By": "Kong-Gateway"` and
 `"X-Bootcamp": "API-Gateway-Demo"`.
 
-### 11.3 Test — added query params reach the upstream
+### 11.3 Test - added query params reach the upstream
 
 ```bash
 curl -s $PROXY_URL/httpbin/get | jq '.args'
@@ -702,7 +704,7 @@ curl -s $PROXY_URL/httpbin/get | jq '.args'
 
 **Expected**: `{ "source": "kong", "gateway": "true" }`.
 
-### 11.4 Test — header rename
+### 11.4 Test - header rename
 
 ```bash
 curl -s $PROXY_URL/httpbin/headers -H "Accept: application/json" \
@@ -714,7 +716,7 @@ curl -s $PROXY_URL/httpbin/headers -H "Accept: application/json" \
 
 ---
 
-## Step 12 — Response Transformer
+## Step 12 - Response Transformer
 
 Reshape the response on the way back: add three headers, strip two
 upstream-leaked headers (`Server`, `Via`).
@@ -733,7 +735,7 @@ upstream-leaked headers (`Server`, `Via`).
 5. **Scope**: `Service` → `httpbin-service`
 6. Click **Save**
 
-### 12.2 Test — headers added and removed
+### 12.2 Test - headers added and removed
 
 ```bash
 curl -i $PROXY_URL/httpbin/get | grep -iE "^(server|via|x-powered-by|x-bootcamp-demo|x-environment):"
@@ -747,7 +749,7 @@ curl -i $PROXY_URL/httpbin/get | grep -iE "^(server|via|x-powered-by|x-bootcamp-
 
 ---
 
-## Step 13 — HTTP Log
+## Step 13 - HTTP Log
 
 Stream a JSON log entry to an external endpoint after every proxied
 request. The bootcamp uses [webhook.site](https://webhook.site) so you can see
@@ -762,7 +764,7 @@ log lines arrive in your browser in real time.
 1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Logging → HTTP Log**
 2. Configure:
    - **HTTP Endpoint**: `https://webhook.site/<YOUR-UNIQUE-ID>`
-     (paste your real webhook.site URL — do **not** leave the placeholder)
+     (paste your real webhook.site URL - do **not** leave the placeholder)
    - **Method**: `POST`
    - **Content Type**: `application/json`
    - **Timeout**: `10000`
@@ -772,7 +774,7 @@ log lines arrive in your browser in real time.
 3. **Scope**: `Service` → `httpbin-service`
 4. Click **Save**
 
-### 13.2 Test — logs appear at webhook.site
+### 13.2 Test - logs appear at webhook.site
 
 ```bash
 curl -s $PROXY_URL/httpbin/get > /dev/null
@@ -790,14 +792,14 @@ response, latencies, route, service, consumer).
 
 ---
 
-## Step 14 — Consumer Groups + ACL
+## Step 14 - Consumer Groups + ACL
 
 The capstone demo: combine three Kong features to build a tiered API
 access system on `httpbin-service`.
 
-1. **Key Auth** — identifies *who* is calling (authentication)
-2. **ACL (Access Control List)** — decides *if* they're allowed (authorization)
-3. **Consumer Groups** — applies *different rate limits per tier* (policy)
+1. **Key Auth** - identifies *who* is calling (authentication)
+2. **ACL (Access Control List)** - decides *if* they're allowed (authorization)
+3. **Consumer Groups** - applies *different rate limits per tier* (policy)
 
 ```
 Client sends request with API key
@@ -892,7 +894,7 @@ Client sends request with API key
    - **Key**: `blocked-key-789`
 5. Click **Save**
 6. **ACLs** tab → **Add Group**
-   - **Group**: `trial` *(NOT in the ACL allow list — this consumer will get `403`)*
+   - **Group**: `trial` *(NOT in the ACL allow list - this consumer will get `403`)*
 7. Click **Save**
 
 ### 14.6 Create consumer group `premium-tier`
@@ -934,10 +936,10 @@ In **Consumers** you should see `premium-user`, `standard-user`,
 - `trial-user` → Credentials: `blocked-key-789` · ACLs: `trial` · Groups: *(none)*
 
 In **Consumer Groups**:
-- `premium-tier` — 1 member · rate-limiting `1000/min`
-- `standard-tier` — 1 member · rate-limiting `10/min`
+- `premium-tier` - 1 member · rate-limiting `1000/min`
+- `standard-tier` - 1 member · rate-limiting `10/min`
 
-### 14.9 Test — no key
+### 14.9 Test - no key
 
 ```bash
 curl -i $PROXY_URL/httpbin/get
@@ -945,7 +947,7 @@ curl -i $PROXY_URL/httpbin/get
 
 **Expected**: `401 Unauthorized`.
 
-### 14.10 Test — premium tier (high limit)
+### 14.10 Test - premium tier (high limit)
 
 ```bash
 curl -i $PROXY_URL/httpbin/get -H "apikey: premium-key-123"
@@ -956,7 +958,7 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: premium-key-123"
 - `X-Consumer-Username: premium-user`
 - `X-Consumer-Groups: premium-tier`
 
-### 14.11 Test — standard tier (low limit)
+### 14.11 Test - standard tier (low limit)
 
 ```bash
 curl -i $PROXY_URL/httpbin/get -H "apikey: standard-key-456"
@@ -967,7 +969,7 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: standard-key-456"
 - `X-Consumer-Username: standard-user`
 - `X-Consumer-Groups: standard-tier`
 
-### 14.12 Test — trial tier (authenticated but blocked)
+### 14.12 Test - trial tier (authenticated but blocked)
 
 ```bash
 curl -i $PROXY_URL/httpbin/get -H "apikey: blocked-key-789"
@@ -976,7 +978,7 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: blocked-key-789"
 **Expected**: `403` with body `{"message":"You cannot consume this service"}` —
 key-auth passes (the key is valid), but ACL blocks the `trial` group.
 
-### 14.13 Test — standard tier exceeds its limit
+### 14.13 Test - standard tier exceeds its limit
 
 ```bash
 for i in $(seq 1 12); do
@@ -989,13 +991,13 @@ done
 **Expected**: First 10 → `200`, then `429` as the consumer-group rate
 limit kicks in. (Reset the counter by waiting 60 seconds.)
 
-### 14.14 Test — httpbun still open
+### 14.14 Test - httpbun still open
 
 ```bash
 curl -i $PROXY_URL/httpbun/get
 ```
 
-**Expected**: `200` — all the Step 14 plugins are scoped to `httpbin-service`.
+**Expected**: `200` - all the Step 14 plugins are scoped to `httpbin-service`.
 
 #### Real-world mapping
 
@@ -1012,19 +1014,185 @@ consumers and credentials are auto-provisioned when users subscribe to a plan.
 
 ---
 
+## Step 15 - Kong Identity (Konnect-native M2M)
+
+Steps 5 (key-auth) and 6 (JWT) used credentials Kong stores itself. The next
+step up is delegating identity to an **OAuth2 / OpenID Connect** provider - and
+the simplest place to start is **Kong Identity**
+([developer.konghq.com/identity](https://developer.konghq.com/identity/)), a
+**regional OAuth2 / OIDC authorization server hosted inside Konnect**. You get
+machine-to-machine auth **without running any IdP**: create the auth server and
+client in the Konnect UI, and the same OpenID Connect plugin validates the
+tokens it issues. (Step 16 then swaps in a full external IdP, Keycloak, for
+browser SSO.)
+
+| | Kong Identity (this step) | Keycloak (Step 16) |
+|---|---|---|
+| Where the IdP runs | Konnect-hosted, regional | You host it |
+| Best for | Service-to-service (M2M) tokens | Browser SSO + user login |
+
+### 15.1 Create the auth server
+
+1. Go to **Konnect → Identity → Auth Servers**
+2. Click **New Auth Server**, pick your **region**, Save
+3. Copy the **Issuer URL** shown on the auth server's page
+
+### 15.2 Create a client
+
+1. **Konnect → Identity → Clients → New Client**
+2. Configure:
+   - **Grant type**: `client_credentials`
+   - **Scopes**: add one, e.g. `api:read`
+3. Save and copy the **Client ID** and **Client Secret**
+
+### 15.3 Add the OpenID Connect plugin (validating Kong Identity)
+
+1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Authentication → OpenID Connect**
+2. Configure:
+   - **Issuer**: *(the Kong Identity Issuer URL from 15.1)*
+   - **Client ID** / **Client Secret**: *(from 15.2)*
+   - **Auth Methods**: `bearer`, `client_credentials`
+   - **Scopes**: `openid`
+3. **Scope**: `Service` → `httpbin-service`
+4. Click **Save**
+
+### 15.4 Test - the M2M flow
+
+```bash
+ISSUER=<your-kong-identity-issuer-url>
+CID=<your-client-id>
+CSECRET=<your-client-secret>
+
+# 1. Service mints a token from Kong Identity
+TOKEN=$(curl -s -X POST "$ISSUER/oauth2/token" \
+  -d 'grant_type=client_credentials' \
+  -d "client_id=$CID" -d "client_secret=$CSECRET" | jq -r .access_token)
+
+# 2. Call Kong with that token → 200
+curl -i $PROXY_URL/httpbin/get -H "Authorization: Bearer $TOKEN"
+
+# 3. No token → 401
+curl -i $PROXY_URL/httpbin/get
+```
+
+**Expected**: `200` with a token, `401` without. Confirm the exact token
+endpoint from `<issuer>/.well-known/openid-configuration` → `token_endpoint`.
+
+> **Clean up:** delete the OpenID Connect plugin from `httpbin-service`.
+
+---
+
+## Step 16 - OpenID Connect with Keycloak (AuthN / AuthZ)
+
+Kong Identity (Step 15) is Konnect-hosted. When you instead need to integrate
+your **own corporate IdP** - Okta, Entra ID, Auth0, Ping, or Keycloak - you point
+the same **OpenID Connect** plugin at that external provider. Here you protect
+`httpbun-service` with a local **Keycloak**, which also unlocks the **browser SSO
+(Authorization Code)** flow with real users.
+
+> Mirrors the enterprise OIDC lab from
+> [learn-kong-gateway / module-07-enterprise](https://github.com/Kong-Grajesh-SE/learn-kong-gateway/tree/main/module-07-enterprise).
+
+> ⚠️ **Issuer must match - one hostname for host *and* container.** A Docker DP
+> can only reach Keycloak at `host.docker.internal:8080`, so that's the issuer
+> Kong validates against. OpenID Connect rejects a token whose `iss` doesn't
+> equal the issuer, so mint tokens against the **same** host. Make your host
+> resolve it (one-time): `echo "127.0.0.1 host.docker.internal" | sudo tee -a /etc/hosts`.
+> (Serverless avoids this - the issuer is a single public ngrok URL.)
+
+### 16.1 Start Keycloak locally
+
+```bash
+cd keycloak && docker compose up -d && cd -
+
+# Confirm the issuer is live (via the shared host):
+curl -s http://host.docker.internal:8080/realms/bootcamp/.well-known/openid-configuration | jq .issuer
+# → "http://host.docker.internal:8080/realms/bootcamp"
+```
+
+Admin Console: http://localhost:8080 (`admin` / `admin`). The realm
+`bootcamp` is auto-imported with:
+
+| Username | Password | Role | Group |
+|---|---|---|---|
+| `alice` | `alice-password` | `user` | `travel-users` |
+| `bob-admin` | `bob-password` | `admin` | `platform-engineers` |
+
+Client `kong` (confidential) - secret `kong-bootcamp-client-secret-replace-in-prod`.
+
+> A **serverless** DP can't reach `host.docker.internal` either - expose Keycloak
+> with `ngrok http 8080` and use the public HTTPS URL as the issuer below.
+
+### 16.2 Add the OpenID Connect plugin
+
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Authentication → OpenID Connect**
+2. Configure:
+   - **Issuer**: `http://host.docker.internal:8080/realms/bootcamp`
+     (Docker DP) - for serverless, your ngrok realm URL
+   - **Client ID**: `kong`
+   - **Client Secret**: `kong-bootcamp-client-secret-replace-in-prod`
+   - **Auth Methods**: `password`, `bearer`, `client_credentials`
+   - **Scopes**: `openid`, `profile`, `email`
+   - **Login Action**: `response`
+3. **Scope**: `Service` → `httpbun-service`
+4. Click **Save**
+
+### 16.3 Test - no token is rejected
+
+```bash
+curl -i $PROXY_URL/httpbun/get
+```
+
+**Expected**: `401 Unauthorized`.
+
+### 16.4 Test - valid bearer token is accepted
+
+```bash
+TOKEN=$(curl -s -X POST \
+  -d 'grant_type=password' \
+  -d 'client_id=kong' \
+  -d 'client_secret=kong-bootcamp-client-secret-replace-in-prod' \
+  -d 'username=alice' -d 'password=alice-password' \
+  -d 'scope=openid profile email' \
+  http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token \
+  | jq -r .access_token)
+
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"
+```
+
+**Expected**: `200` - the OIDC plugin validated the token against Keycloak's JWKS.
+
+### 16.5 (optional) Full browser login
+
+Edit the plugin: set **Auth Methods** to `authorization_code`, `bearer`,
+`session` and **Login Action** to `redirect`, Save. Open
+`http://localhost:8000/httpbun/get` in a browser → you're redirected to the
+Keycloak login page → sign in as **alice / alice-password** → redirected back
+with a session cookie and the upstream `200`.
+
+> **Authorization (role-based):** Keycloak puts `alice`'s realm role (`user`)
+> and `bob-admin`'s (`admin`) in the token's `realm_access.roles` claim. To
+> enforce it, add a **scopes/claims** condition or chain an **ACL** / request
+> policy that checks the claim - that's the AuthN → AuthZ progression.
+
+> **Clean up:** delete the OpenID Connect plugin from `httpbun-service`, then
+> `cd keycloak && docker compose down -v`.
+
+---
+
 ## Cleanup
 
 To reset back to the base topology of Step 1 (three services + three routes):
 
-1. **Gateway Manager → `<your-control-plane>` → Plugins** — delete each plugin
+1. **Gateway Manager → `<your-control-plane>` → Plugins** - delete each plugin
    you added (`rate-limiting`, `proxy-cache`, `key-auth`, `jwt`, `cors`,
    `ip-restriction`, `correlation-id`, `request-transformer`,
-   `response-transformer`, `http-log`, `acl`)
-2. **Consumers** — delete `demo-user`, `test-user`, `jwt-user`, `alice`,
+   `response-transformer`, `http-log`, `acl`, `openid-connect`)
+2. **Consumers** - delete `demo-user`, `test-user`, `jwt-user`, `alice`,
    `bob`, `charlie`, `premium-user`, `standard-user`, `trial-user`
-3. **Consumer Groups** — delete `premium-tier`, `standard-tier`
-4. **Upstreams** — delete `demo-upstream`
-5. **Gateway Services** — delete `loadbalanced-service` (cascades to its route)
+3. **Consumer Groups** - delete `premium-tier`, `standard-tier`
+4. **Upstreams** - delete `demo-upstream`
+5. **Gateway Services** - delete `loadbalanced-service` (cascades to its route)
 6. Leave `httpbin-service`, `httpbun-service`, `konghq-service` in place if
    you want to keep the base topology; otherwise delete those too.
 
@@ -1045,11 +1213,11 @@ deck gateway reset \
 | Symptom | Fix |
 |---------|-----|
 | `401` after adding consumers | Confirm the credential is attached to the right consumer and the `apikey` header value matches exactly |
-| `403 Your IP address is not allowed` | Add `172.16.0.0/12` to IP Restriction allow list — Docker DPs see the client as a bridge IP |
-| `429` immediately on first request | Step 2 (per-IP) and Step 14 (per-consumer-group) limits stack — disable one when testing the other |
-| `X-Cache-Status: Bypass` on a `GET` | Method/content-type must be in the Proxy Cache config — check `request_method` and `content_type` |
-| `403 You cannot consume this service` with a valid key | ACL plugin allow list doesn't include the consumer's ACL group — re-check Step 14.2 |
-| HTTP Log shows nothing at webhook.site | The endpoint URL still has `<YOUR-UNIQUE-ID>` — paste your real webhook.site URL into the plugin |
+| `403 Your IP address is not allowed` | Add `172.16.0.0/12` to IP Restriction allow list - Docker DPs see the client as a bridge IP |
+| `429` immediately on first request | Step 2 (per-IP) and Step 14 (per-consumer-group) limits stack - disable one when testing the other |
+| `X-Cache-Status: Bypass` on a `GET` | Method/content-type must be in the Proxy Cache config - check `request_method` and `content_type` |
+| `403 You cannot consume this service` with a valid key | ACL plugin allow list doesn't include the consumer's ACL group - re-check Step 14.2 |
+| HTTP Log shows nothing at webhook.site | The endpoint URL still has `<YOUR-UNIQUE-ID>` - paste your real webhook.site URL into the plugin |
 | Round-robin not alternating | Send 4+ requests; check `.url` field to confirm the upstream actually changes |
 | Plugin not visible in UI | Confirm Kong Gateway data plane is 3.7+; some plugin names differ slightly across versions |
 | `no Route matched` after a UI save | Wait ~5 seconds for config to propagate to the data plane, then retry |

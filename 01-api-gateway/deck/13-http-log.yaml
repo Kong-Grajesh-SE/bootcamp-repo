@@ -3,7 +3,7 @@ plugins:
 - name: http-log
   service: httpbin-service
   config:
-    # Replace with your own webhook.site URL — go to https://webhook.site to get one
+    # Replace with your own webhook.site URL - go to https://webhook.site to get one
     http_endpoint: https://webhook.site/<YOUR-UNIQUE-ID>
     method: POST
     content_type: application/json

@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 03 — + Prompt Guard (regex)
+# Step 03 - + Prompt Guard (regex)
 # Blocks prompt injection attacks with regex deny patterns.
 # =============================================================================
 _format_version: "3.0"

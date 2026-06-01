@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 04 — + Semantic Cache (Redis Stack + Mistral Embeddings)
+# Step 04 - + Semantic Cache (Redis Stack + Mistral Embeddings)
 # Caches semantically similar responses in Redis vector store.
 # Requires: docker compose up -d redis
 # =============================================================================

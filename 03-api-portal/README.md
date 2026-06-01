@@ -1,21 +1,21 @@
-# Kong Developer Portal Bootcamp — Bookstore API
+# Kong Developer Portal Bootcamp - Bookstore API
 
 > **Story:** You built a Bookstore API spec in the APIOps bootcamp. Now you'll
 > convert it to Kong Gateway config, deploy it, publish it on a Developer Portal,
-> and walk through the full developer self-service experience — from registration
+> and walk through the full developer self-service experience - from registration
 > to making authenticated API calls.
 
 > **CLI ↔ UI:** This guide is **dual-track by step**. Every Konnect API call
 > below is paired with its **"Via Konnect UI"** block, so you can choose
 > click-by-click navigation or the curl/API path at each step. There is no
-> separate `README-UI.md` — the UI walkthrough lives inline here.
+> separate `README-UI.md` - the UI walkthrough lives inline here.
 
 > **What you bring forward from the previous modules:** The
 > `openapi/bookstore-api.yaml` here is the **same file** you used in apiops
-> — that's deliberate. The `deck file openapi2kong`, `deck file patch`, and
+> - that's deliberate. The `deck file openapi2kong`, `deck file patch`, and
 > `deck file add-plugins` commands all come back. New here are the Konnect
 > **Catalog** and **Dev Portal** concepts (API product, version, publication,
-> auth strategy, application) — the table after the "Part 2" heading
+> auth strategy, application) - the table after the "Part 2" heading
 > defines each before they're first used.
 
 ---
@@ -92,10 +92,10 @@ api-portal/
 
 ---
 
-# Part 1 — Deploy the Bookstore API to Gateway
+# Part 1 - Deploy the Bookstore API to Gateway
 
 > You start with an OpenAPI spec. Using decK's APIOps commands, you'll convert it
-> to Kong config, add CORS, and deploy — all without writing YAML by hand.
+> to Kong config, add CORS, and deploy - all without writing YAML by hand.
 >
 > **Important:** Do NOT add a `key-auth` plugin via decK when using portal auth
 > strategies. Konnect auto-creates a `konnect-application-auth` plugin when you
@@ -104,7 +104,7 @@ api-portal/
 
 ---
 
-## Step 1 — Convert OpenAPI to Kong Config
+## Step 1 - Convert OpenAPI to Kong Config
 
 > **What it does:** `deck file openapi2kong` reads your OpenAPI spec and generates
 > Kong services and routes automatically. The `servers` URL becomes the upstream,
@@ -127,7 +127,7 @@ with routes for `/books`, `/books/{bookId}`, `/authors`, `/authors/{authorId}`, 
 
 > **Why we need one small patch:** The Bookstore spec is shared with the APIOps
 > bootcamp, where the upstream is `https://httpbin.org` (clean and product-y).
-> But httpbin.org itself doesn't have `/books`, `/authors`, etc. — only its
+> But httpbin.org itself doesn't have `/books`, `/authors`, etc. - only its
 > `/anything` endpoint echoes arbitrary paths back as JSON. So we use
 > `deck file patch` (same command from APIOps Step 14) to set the service's
 > `path` to `/anything` without editing the spec:
@@ -141,15 +141,15 @@ deck file patch \
 ```
 
 Now every request through Kong is rewritten to `https://httpbin.org/anything/<route>`,
-which httpbin will echo back as JSON — perfect for demonstrating the gateway and
+which httpbin will echo back as JSON - perfect for demonstrating the gateway and
 auth flow without standing up a real Bookstore backend.
 
 ---
 
-## Step 2 — Add CORS Plugin
+## Step 2 - Add CORS Plugin
 
 > **What it does:** `deck file add-plugins` layers the CORS plugin onto the generated
-> config — no manual YAML editing needed. This is the APIOps way.
+> config - no manual YAML editing needed. This is the APIOps way.
 > CORS is required for the Dev Portal's "Try It" feature to make cross-origin
 > requests to your Kong proxy.
 >
@@ -173,7 +173,7 @@ grep "name: cors" deck/bookstore-final.yaml
 
 ---
 
-## Step 3 — Validate Before Deploying
+## Step 3 - Validate Before Deploying
 
 ```bash
 # Offline validation
@@ -187,7 +187,7 @@ deck gateway validate deck/bookstore-final.yaml \
 
 ---
 
-## Step 4 — Preview Changes (diff)
+## Step 4 - Preview Changes (diff)
 
 ```bash
 deck gateway diff deck/bookstore-final.yaml \
@@ -199,7 +199,7 @@ You'll see the services, routes, and CORS plugin that will be created.
 
 ---
 
-## Step 5 — Deploy to Gateway (sync)
+## Step 5 - Deploy to Gateway (sync)
 
 ```bash
 deck gateway sync deck/bookstore-final.yaml \
@@ -212,7 +212,7 @@ deck gateway sync deck/bookstore-final.yaml \
 ```bash
 # No auth yet → request reaches upstream (httpbin echoes back the request as JSON)
 curl -i $PROXY_URL/books
-# → 200 from httpbin.org/anything (via Kong) — the route is working
+# → 200 from httpbin.org/anything (via Kong) - the route is working
 # Auth will be enforced after attaching the portal auth strategy in Step 12
 ```
 
@@ -227,7 +227,7 @@ curl -i $PROXY_URL/books
 
 ---
 
-## Step 5b — Verify in Konnect UI (Step-by-Step)
+## Step 5b - Verify in Konnect UI (Step-by-Step)
 
 ```
 1. Log in to cloud.konghq.com
@@ -243,17 +243,17 @@ curl -i $PROXY_URL/books
 
 ---
 
-# Part 2 — Create the Developer Portal & Publish the API
+# Part 2 - Create the Developer Portal & Publish the API
 
 > Now that the Bookstore API is running on the gateway with CORS enabled,
 > you need a way for external developers to discover it, register, and get API keys.
 > Auth will be enforced automatically when you attach an auth strategy to the publication.
 
-### Concepts you'll meet in Part 2 — read this once
+### Concepts you'll meet in Part 2 - read this once
 
 Part 1 was familiar territory (OpenAPI → decK → gateway). Part 2 introduces
 Konnect's API Catalog and Dev Portal model. The same concepts come back over
-and over — keep this table handy.
+and over - keep this table handy.
 
 | Concept | What it is | Where it appears |
 |---|---|---|
@@ -266,7 +266,7 @@ and over — keep this table handy.
 | **Auth Strategy** | The contract for how registered apps authenticate (key-auth, OIDC). Attached to a publication. | Step 11 creates one; Step 12 attaches it. |
 | **Application** | A developer-owned "client" that gets credentials issued against an auth strategy. | Step 16 creates one. |
 | **Visibility** | Per-publication: `public` (anyone with the portal URL sees the API listing) vs `private` (login required). | Step 10 sets it. |
-| **`konnect-application-auth`** | The gateway plugin Konnect auto-creates when you attach an auth strategy. *Don't add your own key-auth alongside — it conflicts.* | Created behind the scenes in Step 12. |
+| **`konnect-application-auth`** | The gateway plugin Konnect auto-creates when you attach an auth strategy. *Don't add your own key-auth alongside - it conflicts.* | Created behind the scenes in Step 12. |
 
 > **Mental model:** *Product* is the noun in the catalog. *Publication* is
 > the verb that puts it on a portal. *Implementation* is what makes a call
@@ -274,7 +274,7 @@ and over — keep this table handy.
 
 ---
 
-## Step 6 — Create the Developer Portal
+## Step 6 - Create the Developer Portal
 
 ### Via Konnect UI
 
@@ -324,11 +324,11 @@ echo "Open: https://$PORTAL_URL"
 ```
 
 > Open this URL in your browser. You'll see a clean, empty portal with the Konnect default
-> theme. No APIs listed yet — that's what we'll fix next.
+> theme. No APIs listed yet - that's what we'll fix next.
 
 ---
 
-## Step 7 — Create an API Product
+## Step 7 - Create an API Product
 
 An API Product is the catalog entry developers see. It wraps your spec, version, and
 gateway link into one publishable unit.
@@ -364,7 +364,7 @@ echo "API Product ID: $BOOKSTORE_API_ID"
 
 ---
 
-## Step 8 — Upload the OpenAPI Spec as a Version
+## Step 8 - Upload the OpenAPI Spec as a Version
 
 ### Via Konnect UI
 
@@ -399,7 +399,7 @@ curl -s -H "Authorization: Bearer $KONNECT_PAT" \
 
 ---
 
-## Step 9 — Link to Gateway Service (Implementation)
+## Step 9 - Link to Gateway Service (Implementation)
 
 This connects the API product to the actual running service on your control plane.
 Without this, the portal's "Try It" feature won't know where to send requests.
@@ -430,14 +430,14 @@ curl -s -H "Authorization: Bearer $KONNECT_PAT" \
 
 ```bash
 # Capture the bookstore service ID. The service name comes from your OpenAPI
-# `info.title` (slugified by openapi2kong) — adjust the filter below if you
+# `info.title` (slugified by openapi2kong) - adjust the filter below if you
 # renamed the spec. Filtering by name (instead of `.data[0]`) is important
 # when the control plane already has services from earlier bootcamps.
 export BOOKSTORE_SVC_ID=$(curl -s -H "Authorization: Bearer $KONNECT_PAT" \
   "$KONNECT_API/v2/control-planes/$CP_ID/core-entities/services" | \
   jq -r '.data[] | select(.name | test("bookstore")) | .id' | head -n1)
 echo "Service ID: $BOOKSTORE_SVC_ID"
-[ -z "$BOOKSTORE_SVC_ID" ] && echo "ERROR: bookstore service not found — did Step 8 sync run?" && return 1 2>/dev/null
+[ -z "$BOOKSTORE_SVC_ID" ] && echo "ERROR: bookstore service not found - did Step 8 sync run?" && return 1 2>/dev/null
 ```
 
 ```bash
@@ -466,7 +466,7 @@ curl -s -H "Authorization: Bearer $KONNECT_PAT" \
 
 ---
 
-## Step 10 — Publish API to the Portal
+## Step 10 - Publish API to the Portal
 
 ### Via Konnect UI
 
@@ -490,7 +490,7 @@ curl -s -X POST "$KONNECT_API/v3/apis/$BOOKSTORE_API_ID/publications" \
   }" | jq '{id, visibility}'
 ```
 
-**Checkpoint — Browse the portal again:**
+**Checkpoint - Browse the portal again:**
 
 ```bash
 PORTAL_URL=$(curl -s -H "Authorization: Bearer $KONNECT_PAT" \
@@ -499,19 +499,19 @@ echo "Open: https://$PORTAL_URL"
 ```
 
 > Open in browser. Now you should see the **Bookstore API** card in the catalog.
-> Click into it — the full OpenAPI spec renders with interactive docs showing
+> Click into it - the full OpenAPI spec renders with interactive docs showing
 > all endpoints: `/books`, `/authors`, `/reviews`.
 
 ---
 
-# Part 3 — Configure Auth & Developer Self-Service
+# Part 3 - Configure Auth & Developer Self-Service
 
 > The API is published but developers can't get credentials yet.
 > You need an auth strategy and self-service configuration.
 
 ---
 
-## Step 11 — Create a Key Auth Strategy
+## Step 11 - Create a Key Auth Strategy
 
 ### Via Konnect UI
 
@@ -553,7 +553,7 @@ echo "Auth Strategy: $AUTH_STRATEGY_ID"
 
 ---
 
-## Step 12 — Attach Auth Strategy to the Publication
+## Step 12 - Attach Auth Strategy to the Publication
 
 ### Via Konnect UI
 
@@ -580,7 +580,7 @@ curl -s -X PATCH "$KONNECT_API/v3/apis/$BOOKSTORE_API_ID/publications/$PUB_ID" \
 
 ---
 
-## Step 13 — Enable Developer Auto-Approve (Lab Environment)
+## Step 13 - Enable Developer Auto-Approve (Lab Environment)
 
 ### Via Konnect UI
 
@@ -614,7 +614,7 @@ curl -s -X PATCH "$KONNECT_API/v3/portals/$PORTAL_ID" \
 
 ---
 
-## Step 13b — Register Proxy URL (Required for Portal "Try It")
+## Step 13b - Register Proxy URL (Required for Portal "Try It")
 
 The portal's "Try It" panel runs in the browser and needs to know where your
 data plane proxy is. Set the proxy URL on your control plane:
@@ -672,19 +672,19 @@ curl -s -X PATCH "$KONNECT_API/v2/control-planes/$CP_ID" \
 > - Use a cloud-hosted data plane with a public URL
 > - Use Konnect Cloud Gateway (managed DP with built-in public URL)
 >
-> **For the bootcamp:** Test via `curl` in Step 18 — this always works regardless
+> **For the bootcamp:** Test via `curl` in Step 18 - this always works regardless
 > of proxy visibility.
 
 ---
 
-# Part 4 — The Developer Experience (End-to-End)
+# Part 4 - The Developer Experience (End-to-End)
 
-> Now switch hats — you're an external developer discovering the Bookstore API
+> Now switch hats - you're an external developer discovering the Bookstore API
 > for the first time.
 
 ---
 
-## Step 14 — Browse the Portal as a Visitor
+## Step 14 - Browse the Portal as a Visitor
 
 ```bash
 PORTAL_URL=$(curl -s -H "Authorization: Bearer $KONNECT_PAT" \
@@ -694,12 +694,12 @@ echo "Open in incognito: https://$PORTAL_URL"
 
 1. Open the URL in an **incognito/private browser window**
 2. You see the **Bookstore API** in the catalog
-3. Click into it — you can read the full API docs
-4. But you can't use "Try It" or get credentials — you need to register
+3. Click into it - you can read the full API docs
+4. But you can't use "Try It" or get credentials - you need to register
 
 ---
 
-## Step 15 — Register as a Developer
+## Step 15 - Register as a Developer
 
 ```
 1. Click Sign Up (or Register)
@@ -713,7 +713,7 @@ echo "Open in incognito: https://$PORTAL_URL"
 
 ---
 
-## Step 16 — Create an Application
+## Step 16 - Create an Application
 
 ```
 1. Click My Apps (or user menu → Applications)
@@ -726,24 +726,24 @@ echo "Open in incognito: https://$PORTAL_URL"
 
 ---
 
-## Step 17 — Register for the Bookstore API
+## Step 17 - Register for the Bookstore API
 
 ```
 1. Go to the API Catalog → click Bookstore API
 2. Click Register (or Request Access)
 3. Select your application: bookstore-reading-app
 4. With auto-approve enabled → access is granted immediately
-5. An API key is generated — copy it!
+5. An API key is generated - copy it!
 ```
 
 > **What just happened behind the scenes:**
 > - Konnect created a **credential** for this application via the `konnect-application-auth` plugin
-> - The API key is managed by Konnect's auth strategy — no manual consumer/credential creation needed
+> - The API key is managed by Konnect's auth strategy - no manual consumer/credential creation needed
 > - The `konnect-application-auth` plugin (auto-created in Step 12) validates the key at the gateway
 
 ---
 
-## Step 18 — Make Authenticated API Calls
+## Step 18 - Make Authenticated API Calls
 
 ```bash
 # Replace <PASTE-API-KEY-FROM-STEP-17> with the key the portal displayed
@@ -777,12 +777,12 @@ httpbin.org/anything (showing method, URL, headers, origin). Requests without a 
 or with a wrong key return **401 Unauthorized**. The portal auth strategy is working end-to-end.
 
 > **Why httpbin.org/anything?** It echoes back every request as a JSON object —
-> method, URL, headers, query params — making it easy to verify that auth passed
+> method, URL, headers, query params - making it easy to verify that auth passed
 > and the request was proxied correctly through Kong.
 
 ---
 
-## Step 19 — View as Admin (Back in Konnect)
+## Step 19 - View as Admin (Back in Konnect)
 
 ### Via Konnect UI
 
@@ -812,14 +812,14 @@ curl -s -H "Authorization: Bearer $KONNECT_PAT" \
 
 ---
 
-# Part 5 — Customize the Portal
+# Part 5 - Customize the Portal
 
 > The default portal works, but it looks generic. Let's customize it with
 > branding, documentation pages, and a support snippet.
 
 ---
 
-## Step 20 — Customize Appearance
+## Step 20 - Customize Appearance
 
 ### Via Konnect UI
 
@@ -828,7 +828,7 @@ curl -s -H "Authorization: Bearer $KONNECT_PAT" \
 2. Update:
    - Theme Mode: Dark
    - Primary Color: #8B4513 (bookstore brown)
-3. Upload a logo (optional — any PNG/SVG)
+3. Upload a logo (optional - any PNG/SVG)
 4. Under Spec Renderer, enable:
    - Try It UI: ✅
    - Open in Insomnia: ✅
@@ -860,13 +860,13 @@ curl -s -X PUT "$KONNECT_API/v3/portals/$PORTAL_ID/customization" \
   }' | jq '{theme, spec_renderer}'
 ```
 
-> **Refresh the portal** in your browser — you'll see the dark theme with bookstore brown accent.
+> **Refresh the portal** in your browser - you'll see the dark theme with bookstore brown accent.
 
 ---
 
-## Step 21 — Add Portal Pages
+## Step 21 - Add Portal Pages
 
-Portal Pages are Markdown documents that appear alongside your API catalog — guides,
+Portal Pages are Markdown documents that appear alongside your API catalog - guides,
 terms, changelogs. The content is in the `pages/` folder.
 
 ### 21a. Getting Started page
@@ -931,7 +931,7 @@ curl -s -H "Authorization: Bearer $KONNECT_PAT" \
 
 ---
 
-## Step 22 — Add API-Level Documentation
+## Step 22 - Add API-Level Documentation
 
 API Documents attach directly to an API product (not the portal). They appear as
 tabs alongside the OpenAPI spec.
@@ -957,7 +957,7 @@ curl -s -X POST "$KONNECT_API/v3/apis/$BOOKSTORE_API_ID/documents" \
 
 ---
 
-## Step 23 — Add a Support Snippet
+## Step 23 - Add a Support Snippet
 
 Snippets are reusable content blocks shown in portal locations (banners, headers, footers).
 
@@ -976,9 +976,9 @@ curl -s -X POST "$KONNECT_API/v3/portals/$PORTAL_ID/snippets" \
 
 ---
 
-## Step 24 — Final Review
+## Step 24 - Final Review
 
-### Via Konnect UI — Complete Walkthrough
+### Via Konnect UI - Complete Walkthrough
 
 ```
 1. Dev Portal → bookstore-portal → Overview
@@ -1010,7 +1010,7 @@ curl -s -X POST "$KONNECT_API/v3/portals/$PORTAL_ID/snippets" \
    → konnect-application-auth (managed by Konnect, do not edit)
 ```
 
-### Via API — Summary Script
+### Via API - Summary Script
 
 ```bash
 echo "=== Portal ==="
@@ -1205,7 +1205,7 @@ api-portal/
 | "Try It" returns errors | Missing implementation | Link the API product to the gateway service |
 | "Try It" says "Failed to fetch" | Proxy URL not set or not reachable | Set proxy URL on CP (Step 13b). If local DP, use ngrok or test via curl |
 | Developer can't get credentials | No auth strategy on publication | Attach auth strategy to the publication |
-| 401 with portal-issued key | Manual `key-auth` plugin conflicts with `konnect-application-auth` | Remove the manual `key-auth` plugin from decK config — Konnect manages auth via the portal auth strategy |
+| 401 with portal-issued key | Manual `key-auth` plugin conflicts with `konnect-application-auth` | Remove the manual `key-auth` plugin from decK config - Konnect manages auth via the portal auth strategy |
 | 401 with portal-issued key | Auth strategy not attached to publication | Attach auth strategy in Step 12 |
 | Portal shows but no APIs | API product exists but no publication | Create a publication |
 | Upstream returns 404 (not 200) | The `deck file patch` step in Step 1 didn't run | Verify the service has `path: /anything` set (the patch step adds it); without it, `httpbin.org/books` returns 404 because httpbin doesn't have those paths |

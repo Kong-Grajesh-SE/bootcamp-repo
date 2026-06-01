@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 01 — MCP Passthrough Listener
+# Step 01 - MCP Passthrough Listener
 # Creates the MCP backend service + passthrough route.
 # The ai-mcp-proxy plugin in passthrough-listener mode forwards native MCP
 # JSON-RPC traffic unchanged to the backend.

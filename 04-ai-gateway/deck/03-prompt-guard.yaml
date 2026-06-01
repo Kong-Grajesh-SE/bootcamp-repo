@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 03 — Prompt Guard (plugin-only)
+# Step 03 - Prompt Guard (plugin-only)
 # Blocks prompt injection attacks with regex deny patterns.
 # Apply: deck file add-plugins -s <state> deck/03-prompt-guard.yaml | deck gateway sync -s -
 # =============================================================================

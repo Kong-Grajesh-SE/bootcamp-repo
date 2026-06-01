@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 02 — Prompt Decorator (plugin-only)
+# Step 02 - Prompt Decorator (plugin-only)
 # Injects a system prompt into every request automatically.
 # Apply: deck file add-plugins -s <state> deck/02-prompt-decorator.yaml | deck gateway sync -s -
 # =============================================================================

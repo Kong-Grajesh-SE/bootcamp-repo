@@ -16,7 +16,7 @@ plugins:
     - standard
     hide_groups_header: false
 consumers:
-# Premium consumer — allowed, high rate limit
+# Premium consumer - allowed, high rate limit
 - username: premium-user
   custom_id: premium-001
   groups:
@@ -25,7 +25,7 @@ consumers:
   - key: premium-key-123
   acls:
   - group: premium
-# Standard consumer — allowed, low rate limit
+# Standard consumer - allowed, low rate limit
 - username: standard-user
   custom_id: standard-002
   groups:
@@ -34,7 +34,7 @@ consumers:
   - key: standard-key-456
   acls:
   - group: standard
-# Trial consumer — NOT in allow list, will get 403
+# Trial consumer - NOT in allow list, will get 403
 - username: trial-user
   custom_id: trial-003
   keyauth_credentials:

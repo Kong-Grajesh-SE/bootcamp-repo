@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 08 — AI Rate Limiting Advanced (plugin-only)
+# Step 08 - AI Rate Limiting Advanced (plugin-only)
 # Token-aware rate limits with per-model policies for multi-provider setup.
 # Apply: deck file add-plugins -s <state> deck/08-ai-rate-limiting.yaml | deck gateway sync -s -
 # =============================================================================

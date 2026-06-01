@@ -1,4 +1,4 @@
-# Kong API Gateway Bootcamp — Konnect Serverless
+# Kong API Gateway Bootcamp - Konnect Serverless
 
 > **Deployment:** Konnect Control Plane + Konnect Serverless Data Plane
 > No Docker required. All infrastructure managed by Kong.
@@ -61,12 +61,17 @@ api-gateway/
 │   ├── 11-request-transformer.yaml   ← Request Transformer (httpbin)
 │   ├── 12-response-transformer.yaml  ← Response Transformer (httpbin)
 │   ├── 13-http-log.yaml              ← HTTP Log (httpbin)
-│   └── 14-consumer-groups-acl.yaml   ← Consumer Groups + ACL
+│   ├── 14-consumer-groups-acl.yaml   ← Consumer Groups + ACL
+│   ├── 15-kong-identity.yaml         ← Kong Identity (Konnect-native M2M auth)
+│   └── 16-oidc-keycloak.yaml         ← OpenID Connect via Keycloak (AuthN/AuthZ)
 ├── insomnia/
 │   └── kong-gateway-bootcamp.json    ← Full Insomnia collection
 ├── README-serverless.md              ← This file
 └── README-hybrid.md                  ← Docker hybrid deployment guide
 ```
+
+> **Keycloak for step 16 is shared** across all bootcamp modules - it lives at
+> the repo root in [`../../keycloak/`](../../keycloak/) (realm `bootcamp`).
 
 ## Backends
 
@@ -84,24 +89,24 @@ api-gateway/
 | httpbun-route | `/httpbun/*` | httpbun.com/* |
 | konghq-route | `/konghq/*` | httpbin.konghq.com/* |
 
-All routes use `strip_path: true` — the prefix is removed before forwarding.
+All routes use `strip_path: true` - the prefix is removed before forwarding.
 
 ---
 
 ## Quick Start
 
-### Step 1 — Verify Serverless DP is Active
+### Step 1 - Verify Serverless DP is Active
 
 ```bash
 # Check your proxy URL is reachable
 curl -s $PROXY_URL | jq .message
-# → "no Route matched with those values" (expected — no routes configured yet)
+# → "no Route matched with those values" (expected - no routes configured yet)
 ```
 
 > If you don't have a serverless DP, create one in Konnect:
 > **Gateway Manager → New Control Plane → Serverless**
 
-### Step 2 — Apply Base Services & Routes
+### Step 2 - Apply Base Services & Routes
 
 ```bash
 deck gateway sync \
@@ -110,7 +115,7 @@ deck gateway sync \
   --konnect-control-plane-name "$CP_NAME"
 ```
 
-### Step 3 — Verify
+### Step 3 - Verify
 
 ```bash
 curl -s $PROXY_URL/httpbin/get | jq .origin
@@ -118,7 +123,7 @@ curl -s $PROXY_URL/httpbun/get | jq .url
 curl -s $PROXY_URL/konghq/get | jq .origin
 ```
 
-### Step 4 — Import Insomnia Collection
+### Step 4 - Import Insomnia Collection
 
 Open Insomnia → Import → select `insomnia/kong-gateway-bootcamp.json`
 Switch environment to **"Konnect Serverless DP"**.
@@ -130,10 +135,10 @@ Switch environment to **"Konnect Serverless DP"**.
 | Topic | Detail |
 |-------|--------|
 | **PROXY_URL** | `https://<id>.us.serverless.gateways.konggateway.com` (HTTPS only) |
-| **No Docker needed** | DP is fully managed by Kong — zero infrastructure |
+| **No Docker needed** | DP is fully managed by Kong - zero infrastructure |
 | **Config propagation** | ~5-10 seconds after `deck gateway apply/sync` |
 | **httpbin.konghq.com** | ⚠️ May be unreachable from serverless DP (DNS/HTTP-only issues). Use httpbin.org or httpbun.com instead |
-| **HTTP Log plugin** | ⚠️ `host.docker.internal` won't work — you need a publicly reachable log endpoint (e.g., webhook.site, requestbin.com, or your own server) |
+| **HTTP Log plugin** | ⚠️ `host.docker.internal` won't work - you need a publicly reachable log endpoint (e.g., webhook.site, requestbin.com, or your own server) |
 | **IP Restriction** | Client IP seen by Kong is the CDN/edge IP, not your local machine IP |
 
 ### HTTP Log Alternative for Serverless
@@ -142,7 +147,7 @@ Replace `host.docker.internal:9999` with a public endpoint:
 
 ```bash
 # Get a free temporary endpoint
-# Visit https://webhook.site — copy your unique URL
+# Visit https://webhook.site - copy your unique URL
 # Update 13-http-log.yaml: http_endpoint → your webhook.site URL
 ```
 
@@ -174,7 +179,7 @@ deck gateway sync \
 
 ## Plugin-by-Plugin Guide
 
-### 02 — Rate Limiting
+### 02 - Rate Limiting
 
 Limits httpbin-service to **5 requests/minute** per IP.
 
@@ -197,7 +202,7 @@ curl -i $PROXY_URL/httpbun/get
 
 ---
 
-### 03 — Proxy Cache
+### 03 - Proxy Cache
 
 Caches GET 200 responses from httpbin-service for **30 seconds** in memory.
 
@@ -219,7 +224,7 @@ curl -i -X POST $PROXY_URL/httpbin/post -d '{}'
 
 ---
 
-### 04 — Upstream / Load Balancing
+### 04 - Upstream / Load Balancing
 
 Round-robin across httpbin.org and httpbun.com via `/lb` route.
 
@@ -229,7 +234,7 @@ deck gateway apply deck/04-upstream.yaml \
 ```
 
 ```bash
-# Run multiple times — observe different backends
+# Run multiple times - observe different backends
 curl -s $PROXY_URL/lb | jq .url
 curl -s $PROXY_URL/lb | jq .url
 curl -s $PROXY_URL/lb | jq .url
@@ -237,12 +242,12 @@ curl -s $PROXY_URL/lb | jq .url
 
 ---
 
-### 05 — Key Auth
+### 05 - Key Auth
 
 Protects httpbin-service with API key authentication.
 
-> **Consumer — quick primer (covered in depth in Step 07):** A **consumer**
-> in Kong is an identity that Kong knows about — typically a person, a
+> **Consumer - quick primer (covered in depth in Step 07):** A **consumer**
+> in Kong is an identity that Kong knows about - typically a person, a
 > service account, or a partner. Credentials (API key, JWT secret, OAuth
 > client) are attached to a consumer, so when Kong validates a credential
 > it can tell you *who* called the route. The decK file below creates two
@@ -276,7 +281,7 @@ curl -i $PROXY_URL/httpbun/get
 
 ---
 
-### 06 — JWT Auth
+### 06 - JWT Auth
 
 Protects httpbun-service with JWT token authentication.
 
@@ -322,7 +327,7 @@ curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"
 
 ---
 
-### 07 — Consumers
+### 07 - Consumers
 
 Creates multiple consumers with API keys. **Requires key-auth plugin** (apply 05 first).
 
@@ -341,9 +346,9 @@ curl -s $PROXY_URL/httpbin/get -H "apikey: charlie-api-key" # X-Consumer-Usernam
 
 ---
 
-### 08 — CORS
+### 08 - CORS
 
-Global CORS plugin — allows cross-origin requests from specified origins.
+Global CORS plugin - allows cross-origin requests from specified origins.
 
 ```bash
 deck gateway apply deck/08-cors.yaml \
@@ -363,7 +368,7 @@ curl -i -X OPTIONS $PROXY_URL/httpbin/get \
 
 ---
 
-### 09 — IP Restriction
+### 09 - IP Restriction
 
 Allows only specified IPs to access httpbin-service.
 
@@ -380,7 +385,7 @@ curl -i $PROXY_URL/httpbin/get
 
 ---
 
-### 10 — Correlation ID
+### 10 - Correlation ID
 
 Adds a unique `X-Correlation-ID` header to every request (global).
 
@@ -403,7 +408,7 @@ curl -i $PROXY_URL/httpbin/get -H "X-Correlation-ID: my-trace-123"
 
 ---
 
-### 11 — Request Transformer
+### 11 - Request Transformer
 
 Adds headers and query params to requests before they reach httpbin upstream.
 
@@ -424,7 +429,7 @@ curl -s $PROXY_URL/httpbin/get | jq '.args'
 
 ---
 
-### 12 — Response Transformer
+### 12 - Response Transformer
 
 Adds/removes response headers before they reach the client.
 
@@ -441,7 +446,7 @@ curl -i $PROXY_URL/httpbin/get
 
 ---
 
-### 13 — HTTP Log
+### 13 - HTTP Log
 
 Sends request/response logs to an HTTP endpoint.
 
@@ -460,15 +465,15 @@ curl -s $PROXY_URL/httpbin/get
 
 ---
 
-### 14 — Consumer Groups + ACL
+### 14 - Consumer Groups + ACL
 
 This demo combines **three Kong features** to build a tiered API access system:
 
-1. **Key Auth** — identifies _who_ is making the request (authentication)
-2. **ACL (Access Control List)** — decides _if_ they're allowed (authorization)
-3. **Consumer Groups** — applies _different rate limits_ per tier (policy)
+1. **Key Auth** - identifies _who_ is making the request (authentication)
+2. **ACL (Access Control List)** - decides _if_ they're allowed (authorization)
+3. **Consumer Groups** - applies _different rate limits_ per tier (policy)
 
-#### How It Works — Request Flow
+#### How It Works - Request Flow
 
 ```
 Client sends request with API key
@@ -500,8 +505,8 @@ Client sends request with API key
 #### What Gets Created
 
 **Plugins (on httpbin-service):**
-- `key-auth` — requires `apikey` header, hides credential from upstream
-- `acl` — only allows consumers in `premium` or `standard` groups
+- `key-auth` - requires `apikey` header, hides credential from upstream
+- `acl` - only allows consumers in `premium` or `standard` groups
 
 **Consumers:**
 
@@ -509,7 +514,7 @@ Client sends request with API key
 |----------|---------|-----------|----------------|------------|--------|
 | premium-user | `premium-key-123` | premium | premium-tier | 1000/min | ✅ Allowed |
 | standard-user | `standard-key-456` | standard | standard-tier | 10/min | ✅ Allowed |
-| trial-user | `blocked-key-789` | trial | _(none)_ | — | ❌ Denied (403) |
+| trial-user | `blocked-key-789` | trial | _(none)_ | - | ❌ Denied (403) |
 
 > **Key concept:** ACL group ≠ Consumer Group. They serve different purposes:
 > - **ACL group** (e.g., `premium`) → used by the ACL plugin for authorization
@@ -517,8 +522,8 @@ Client sends request with API key
 > - A consumer can belong to both independently
 
 **Consumer Groups:**
-- `premium-tier` — rate-limiting plugin override: 1000 req/min
-- `standard-tier` — rate-limiting plugin override: 10 req/min
+- `premium-tier` - rate-limiting plugin override: 1000 req/min
+- `standard-tier` - rate-limiting plugin override: 10 req/min
 
 #### Apply
 
@@ -575,6 +580,168 @@ Gateway Manager → <your-control-plane> → Consumer Groups
 >   deck/01-services-and-routes.yaml \
 >   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
 > ```
+
+---
+
+### 15 - Kong Identity (Konnect-native M2M)
+
+Steps 05 (key-auth) and 06 (JWT) used credentials Kong stores itself. The next
+step up is delegating identity to an **OAuth2 / OpenID Connect** provider - and
+the simplest place to start (especially on serverless) is **Kong Identity**
+([developer.konghq.com/identity](https://developer.konghq.com/identity/)), a
+**regional OAuth2 / OIDC authorization server hosted inside Konnect**. You get
+machine-to-machine auth **without running (or tunnelling) any IdP at all**:
+create an auth server + client in Konnect, services mint tokens via
+`client_credentials`, and the `openid-connect` plugin validates them. (Step 16
+then swaps in a full external IdP, Keycloak, for browser SSO.)
+
+| | Kong Identity (this step) | Keycloak (step 16) |
+|---|---|---|
+| Where the IdP runs | Konnect-hosted, regional | You host it (+ ngrok for serverless) |
+| Best for | Service-to-service (M2M) tokens | Browser SSO + user login |
+| Serverless friction | None - already in Konnect | Needs a public tunnel |
+
+#### Step 1 - Create the auth server + client in Konnect
+
+```
+Konnect → Identity → Auth Servers → New
+  → pick your region → Save → copy the Issuer URL
+Konnect → Identity → Clients → New
+  → Grant: client_credentials → add a scope (e.g. api:read)
+  → Save → copy client_id + client_secret
+```
+
+#### Step 2 - Fill in and apply the plugin
+
+Edit `deck/15-kong-identity.yaml`, replace the `issuer`, `client_id`, and
+`client_secret` placeholders, then:
+
+```bash
+deck gateway apply deck/15-kong-identity.yaml \
+  --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+```
+
+#### Step 3 - Test the M2M flow
+
+```bash
+ISSUER=<your-kong-identity-issuer-url>
+CID=<your-client-id>
+CSECRET=<your-client-secret>
+
+# 1. Service obtains a token from Kong Identity
+TOKEN=$(curl -s -X POST "$ISSUER/oauth2/token" \
+  -d 'grant_type=client_credentials' \
+  -d "client_id=$CID" -d "client_secret=$CSECRET" \
+  | jq -r .access_token)
+
+# 2. Call Kong with that token → 200
+curl -i $PROXY_URL/httpbin/get -H "Authorization: Bearer $TOKEN"
+
+# 3. No token → 401
+curl -i $PROXY_URL/httpbin/get
+```
+
+> Confirm the exact token endpoint from
+> `<issuer>/.well-known/openid-configuration` → `token_endpoint`.
+
+> **Clean up:** `deck gateway sync deck/01-services-and-routes.yaml …`.
+
+---
+
+### 16 - OIDC with Keycloak (Authentication / Authorization)
+
+Kong Identity (step 15) is Konnect-hosted. When you instead need to integrate
+your **own corporate IdP** - Okta, Entra ID, Auth0, Ping, or Keycloak - you point
+the same **`openid-connect`** plugin at that external provider. Here you protect
+`httpbun-service` with a **Keycloak** instance acting as the OAuth2 / OIDC
+provider, which also unlocks the **browser SSO (Authorization Code)** flow with
+real users.
+
+> Mirrors the enterprise OIDC lab from
+> [learn-kong-gateway / module-07-enterprise](https://github.com/Kong-Grajesh-SE/learn-kong-gateway/tree/main/module-07-enterprise).
+
+**Pre-built realm identities** (`../keycloak/realm-bootcamp.json`):
+
+| Username | Password | Realm role | Group |
+|---|---|---|---|
+| `alice` | `alice-password` | `user` | `travel-users` |
+| `bob-admin` | `bob-password` | `admin` | `platform-engineers` |
+
+| Client | Type | Grants enabled |
+|---|---|---|
+| `kong` | confidential | authorization_code · password · client_credentials |
+| `kong-m2m` | confidential | client_credentials |
+
+> ⚠️ The client secrets in `../keycloak/realm-bootcamp.json` are committed for convenience.
+> **Never** reuse them in production.
+
+#### Serverless needs Keycloak to be *publicly reachable*
+
+A serverless DP runs in Kong's cloud - it **cannot** reach `localhost:8080`.
+Expose your local Keycloak with a tunnel so the DP can fetch discovery + JWKS,
+and so the token `iss` claim matches what the plugin validates.
+
+```bash
+# 1. Start Keycloak locally
+cd ../keycloak && docker compose up -d && cd -
+
+# 2. Expose it publicly (ngrok free tier is fine)
+ngrok http 8080
+# → copy the https URL, e.g. https://abc123.ngrok-free.app
+
+# 3. Point Keycloak's frontendUrl at the ngrok URL so `iss` matches.
+#    (Easiest: set KC_HOSTNAME on the container, or use the admin REST call
+#    in ../keycloak/README.md.) Verify:
+curl -s https://abc123.ngrok-free.app/realms/bootcamp/.well-known/openid-configuration | jq .issuer
+# → "https://abc123.ngrok-free.app/realms/bootcamp"
+```
+
+The realm already pre-approves `https://*.kongcloud.dev/*` and
+`https://*.us.serverless.gateways.konggateway.com/*` as redirect URIs, so the
+browser flow works against your serverless proxy URL without extra Keycloak edits.
+
+#### Apply the plugin (with the ngrok issuer)
+
+Edit `deck/16-oidc-keycloak.yaml` and set `issuer` to your ngrok realm URL, and
+`redirect_uri` to `<your-serverless-proxy-url>/httpbun/auth/callback`, then:
+
+```bash
+deck gateway apply deck/16-oidc-keycloak.yaml \
+  --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+```
+
+#### Test (token via password grant)
+
+```bash
+KC=https://abc123.ngrok-free.app   # your ngrok URL
+
+# 1. No token → 401
+curl -i $PROXY_URL/httpbun/get
+
+# 2. Get an access token for alice
+TOKEN=$(curl -s -X POST \
+  -H 'ngrok-skip-browser-warning: true' \
+  -d 'grant_type=password' \
+  -d 'client_id=kong' \
+  -d 'client_secret=kong-bootcamp-client-secret-replace-in-prod' \
+  -d 'username=alice' -d 'password=alice-password' \
+  -d 'scope=openid profile email' \
+  "$KC/realms/bootcamp/protocol/openid-connect/token" | jq -r .access_token)
+
+# 3. Call Kong with the bearer token → 200
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"
+
+# 4. Garbage token → 401
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer not-a-real-token"
+```
+
+> For the full browser Authorization Code flow, set
+> `auth_methods: [authorization_code, bearer, session]` and
+> `login_action: redirect` in the deck file, re-apply, then open your serverless
+> proxy URL in a browser and sign in as **alice / alice-password**.
+
+> **Clean up:** `deck gateway sync deck/01-services-and-routes.yaml …` removes
+> the plugin; `cd ../keycloak && docker compose down -v` stops Keycloak.
 
 ---
 

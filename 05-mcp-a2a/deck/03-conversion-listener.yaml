@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 03 — Conversion Listener (REST → MCP)
+# Step 03 - Conversion Listener (REST → MCP)
 # Adds a conversion-listener route on httpbin-service that exposes REST
 # endpoints as MCP tools. The httpbin-service and httpbin-route are
 # included in this file so it is fully self-contained.

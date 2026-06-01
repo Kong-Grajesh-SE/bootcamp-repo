@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 05 — Prompt Templates (plugin-only)
+# Step 05 - Prompt Templates (plugin-only)
 # Named templates with variable substitution for standardised LLM interactions.
 # Apply: deck file add-plugins -s <state> deck/05-prompt-template.yaml | deck gateway sync -s -
 # =============================================================================

@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 10 — Semantic Response Guard (plugin-only)
+# Step 10 - Semantic Response Guard (plugin-only)
 # Uses Mistral embeddings + Redis to block LLM responses matching denied topics.
 # Requires: docker compose up -d redis
 # Apply: deck file add-plugins -s <state> deck/10-semantic-response-guard.yaml | deck gateway sync -s -
@@ -35,7 +35,7 @@ plugins:
           host: host.docker.internal
           port: 6379
           timeout: 2000
-          # DB 3 — see deck/04 for the per-plugin DB convention.
+          # DB 3 - see deck/04 for the per-plugin DB convention.
           database: 3
         dimensions: 1024
         distance_metric: cosine

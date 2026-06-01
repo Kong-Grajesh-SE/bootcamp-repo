@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 04 — Semantic Cache (plugin-only)
+# Step 04 - Semantic Cache (plugin-only)
 # Caches semantically similar responses using Mistral embeddings + Redis.
 # Requires: docker compose up -d redis
 # Apply: deck file add-plugins -s <state> deck/04-semantic-cache.yaml | deck gateway sync -s -

@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 06 — + AI Sanitizer (PII Redaction)
+# Step 06 - + AI Sanitizer (PII Redaction)
 # Detects and redacts PII before it reaches the LLM.
 # Requires: docker compose up -d ai-pii-service
 # =============================================================================

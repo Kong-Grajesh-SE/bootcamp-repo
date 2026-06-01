@@ -1,0 +1,71 @@
+_format_version: "3.0"
+# ---------------------------------------------------------------------------
+# OpenID Connect with Keycloak (local external IdP)
+#
+# Protects httpbun-service with the `openid-connect` plugin, delegating
+# authentication to a local Keycloak instance (realm `bootcamp`).
+# Spin Keycloak up first:
+#
+#     cd ../keycloak && docker compose up -d
+#
+# Pre-built users (realm bootcamp):
+#   alice / alice-password         (realm role: user,  group: travel-users)
+#   bob-admin / bob-password       (realm role: admin, group: platform-engineers)
+# Clients:
+#   kong      (confidential - auth code + password + client_credentials)
+#   kong-m2m  (confidential - client_credentials only; see 15-kong-identity.yaml notes)
+#
+# ISSUER depends on your deployment:
+#   • Hybrid (Docker DP): http://host.docker.internal:8080/realms/bootcamp
+#     The DP container reaches Keycloak on the host via host.docker.internal.
+#     A token's `iss` MUST equal this issuer, so mint tokens against the same
+#     host - make your machine resolve it too (one-time):
+#         echo "127.0.0.1 host.docker.internal" | sudo tee -a /etc/hosts
+#     (Docker Desktop already resolves it inside containers.)
+#   • Serverless DP:      https://<your-ngrok-id>.ngrok-free.app/realms/bootcamp
+#     (Keycloak must be publicly reachable - expose it with ngrok, and set
+#      Keycloak's frontendUrl to the ngrok URL so the `iss` claim matches)
+#
+# The default below targets the HYBRID deployment. For serverless, replace the
+# issuer (and redirect_uri host) before applying.
+#
+# auth_methods are set to password + bearer + client_credentials so the demo is
+# testable from curl without a browser. To exercise the real browser login
+# (Keycloak login page → redirect back to Kong), switch to:
+#     auth_methods: [authorization_code, bearer, session]
+#     login_action: redirect
+# ---------------------------------------------------------------------------
+plugins:
+- name: openid-connect
+  service: httpbun-service
+  config:
+    issuer: http://host.docker.internal:8080/realms/bootcamp
+    # Pins the session-cookie encryption salt so repeated `deck sync` runs don't
+    # rotate it. Bootcamp placeholder - regenerate for prod: openssl rand -hex 16
+    cache_tokens_salt: bootcamp-oidc-salt-change-me
+    client_id:
+    - kong
+    client_secret:
+    - kong-bootcamp-client-secret-replace-in-prod
+    auth_methods:
+    - password
+    - bearer
+    - client_credentials
+    scopes:
+    - openid
+    - profile
+    - email
+    # Only used by the authorization_code (browser) flow. Must be a path under
+    # the protected route and pre-approved in the Keycloak client's redirectUris.
+    redirect_uri:
+    - http://localhost:8000/httpbun/auth/callback
+    login_action: response
+    logout_path: /logout
+    # Forward useful identity to the upstream so you can see who authenticated.
+    upstream_access_token_header: authorization
+    upstream_headers_claims:
+    - preferred_username
+    - email
+    upstream_headers_names:
+    - x-authenticated-user
+    - x-authenticated-email

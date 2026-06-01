@@ -1,6 +1,6 @@
 # API Changelog
 
-## 2026-05-28 — Bookstore API v1.0.0
+## 2026-05-28 - Bookstore API v1.0.0
 
 - Initial release
 - **Books:** `GET /books`, `POST /books`, `GET /books/{bookId}`, `PUT /books/{bookId}`, `DELETE /books/{bookId}`

@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 04 — Multi-Team Aggregation (conversion-only + listener)
+# Step 04 - Multi-Team Aggregation (conversion-only + listener)
 # Three team routes each register tools via conversion-only mode (tagged
 # "mcp-agg"). One aggregate route uses listener mode to discover and merge
 # all tagged tools into a single MCP endpoint.

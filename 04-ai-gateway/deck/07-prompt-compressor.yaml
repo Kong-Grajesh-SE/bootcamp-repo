@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 07 — AI Prompt Compressor (plugin-only)
+# Step 07 - AI Prompt Compressor (plugin-only)
 # Compresses long prompts before they reach the LLM to save tokens.
 # Requires: docker compose up -d ai-compress-service
 # Apply: deck file add-plugins -s <state> deck/07-prompt-compressor.yaml | deck gateway sync -s -

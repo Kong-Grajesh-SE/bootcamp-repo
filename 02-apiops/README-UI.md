@@ -1,10 +1,10 @@
-# APIOps Bootcamp — Konnect UI Walkthrough
+# APIOps Bootcamp - Konnect UI Walkthrough
 
 > The UI companion to the CLI-driven apiops bootcamp. Several decK commands
 > (`patch`, `render`, `lint`, `merge`, `add-plugins`, `add-tags`) have **no Konnect
 > UI equivalent** because they're CI-time transformations on YAML files. This
 > guide covers the gateway-side operations (Sync, Dump, Reset) and shows you the
-> UI screens that mirror the decK state — so you can verify by eye after each
+> UI screens that mirror the decK state - so you can verify by eye after each
 > CLI step. If you want a pure-UI bootcamp, see `api-gateway/README-UI.md`.
 
 > **Story:** You're the platform engineer for the **Bookstore API**. The CLI
@@ -18,7 +18,7 @@
 
 1. **Konnect account** at [cloud.konghq.com](https://cloud.konghq.com)
 2. **Control Plane** named `<your-control-plane>` with at least one connected Data Plane
-3. **Proxy URL** — typically `http://localhost:8000` or your DP ingress
+3. **Proxy URL** - typically `http://localhost:8000` or your DP ingress
 
 ```bash
 export PROXY_URL=http://localhost:8000
@@ -26,33 +26,33 @@ export PROXY_URL=http://localhost:8000
 
 > **What this UI walkthrough does NOT replace:** the offline `deck file *`
 > toolchain. Lint rules, JSONPath patches, OpenAPI-to-Kong transforms with
-> templating — those are designed to run in your CI pipeline against YAML on
+> templating - those are designed to run in your CI pipeline against YAML on
 > disk. The Konnect UI is the *runtime* surface; decK file commands are the
 > *build* surface. The "UI-skip" section at the bottom explains why each
 > offline command is still worth keeping in CI.
 
 ---
 
-## Scope Map — CLI Step ↔ UI Equivalent
+## Scope Map - CLI Step ↔ UI Equivalent
 
 | CLI Step (apiops/README.md) | decK Command | UI Equivalent |
 |---|---|---|
-| Step 1 — Test connectivity | `deck gateway ping` | Gateway Manager → Control Plane shows **Connected** badge |
-| Step 2 — Validate YAML | `deck gateway validate` | No direct UI (form validation on Save is the closest) |
-| Step 3 — Deploy base service | `deck gateway sync` | Services → New Service + New Route |
-| Step 4 — Preview changes | `deck gateway diff` | No direct UI (manual entity-count compare) |
-| Step 5 — Add plugins | `deck gateway apply` | Plugins → New Plugin |
-| Step 6 — Export live state | `deck gateway dump` | Control Plane → **Export Configuration** |
-| Step 7 — Add consumers + key-auth | `deck gateway sync` | Consumers → New Consumer + credentials |
-| Step 8 — Nuclear reset | `deck gateway reset` | Manually delete entities, or use Import Configuration with empty YAML |
-| Step 11 — OpenAPI → Kong | `deck file openapi2kong` | **Import OpenAPI Spec** (Gateway Manager only generates the service/routes) |
-| Step 16 — Tag entities | `deck file add-tags` | Service → Edit → **Tags** field |
+| Step 1 - Test connectivity | `deck gateway ping` | Gateway Manager → Control Plane shows **Connected** badge |
+| Step 2 - Validate YAML | `deck gateway validate` | No direct UI (form validation on Save is the closest) |
+| Step 3 - Deploy base service | `deck gateway sync` | Services → New Service + New Route |
+| Step 4 - Preview changes | `deck gateway diff` | No direct UI (manual entity-count compare) |
+| Step 5 - Add plugins | `deck gateway apply` | Plugins → New Plugin |
+| Step 6 - Export live state | `deck gateway dump` | Control Plane → **Export Configuration** |
+| Step 7 - Add consumers + key-auth | `deck gateway sync` | Consumers → New Consumer + credentials |
+| Step 8 - Nuclear reset | `deck gateway reset` | Manually delete entities, or use Import Configuration with empty YAML |
+| Step 11 - OpenAPI → Kong | `deck file openapi2kong` | **Import OpenAPI Spec** (Gateway Manager only generates the service/routes) |
+| Step 16 - Tag entities | `deck file add-tags` | Service → Edit → **Tags** field |
 
 ---
 
-# Part 1 — Gateway Operations with UI Equivalents
+# Part 1 - Gateway Operations with UI Equivalents
 
-## Step 1 — Verify Connectivity (UI ↔ `deck gateway ping`)
+## Step 1 - Verify Connectivity (UI ↔ `deck gateway ping`)
 
 The CLI walkthrough opens with a handshake:
 
@@ -77,8 +77,8 @@ heartbeat timestamp.
 | UI Signal | Equivalent CLI Output |
 |---|---|
 | Green "Connected" badge | `Successfully Konnected to the <org> organization!` |
-| No nodes listed | `connection refused` — DP not running |
-| "Awaiting Ingest" | DP started but no telemetry yet — wait 30s |
+| No nodes listed | `connection refused` - DP not running |
+| "Awaiting Ingest" | DP started but no telemetry yet - wait 30s |
 | 403 on the CP page | Wrong org or token scope (`401 Unauthorized` in CLI) |
 
 > **Why this matters:** Like `ping`, this view doesn't mutate anything. Use it
@@ -86,7 +86,7 @@ heartbeat timestamp.
 
 ---
 
-## Step 2 — Note on Validation (UI ↔ `deck gateway validate`)
+## Step 2 - Note on Validation (UI ↔ `deck gateway validate`)
 
 There is no first-class "Validate Without Applying" button in the Konnect UI.
 The closest equivalents:
@@ -110,7 +110,7 @@ deck gateway validate deck/02-bookstore-plugins.yaml \
 
 ---
 
-## Step 3 — Deploy the Bookstore Service (UI ↔ `deck gateway sync` round 1)
+## Step 3 - Deploy the Bookstore Service (UI ↔ `deck gateway sync` round 1)
 
 This is the UI version of syncing `deck/01-bookstore-base.yaml`.
 
@@ -150,14 +150,14 @@ curl -s $PROXY_URL/bookstore/headers | jq .headers.Host
 
 **Expected:** httpbin echoes the request back, proxied through Kong.
 
-> **Why this matters:** A `sync` is a *full reconciliation* — anything not in
+> **Why this matters:** A `sync` is a *full reconciliation* - anything not in
 > the YAML gets deleted. Clicking through the UI is *additive* by default; the
 > UI counterpart of sync's destructive behavior is **Import Configuration**
 > (Step 6.2) or manual deletion.
 
 ---
 
-## Step 5 — Add Plugins to the Service (UI ↔ `deck gateway apply`)
+## Step 5 - Add Plugins to the Service (UI ↔ `deck gateway apply`)
 
 This is the UI version of applying `deck/02-bookstore-plugins.yaml`.
 
@@ -215,7 +215,7 @@ curl -i $PROXY_URL/bookstore/get 2>&1 | grep -i x-ratelimit
 
 ---
 
-## Step 6 — Export Live State (UI ↔ `deck gateway dump`)
+## Step 6 - Export Live State (UI ↔ `deck gateway dump`)
 
 CLI:
 
@@ -232,11 +232,11 @@ UI version:
 1. Go to **Gateway Manager → `<your-control-plane>`**
 2. Click the **Actions** menu (top-right of the CP page)
 3. Click **Export Configuration**
-4. Choose format: **YAML** (or JSON — mirrors `--format json`)
+4. Choose format: **YAML** (or JSON - mirrors `--format json`)
 5. Click **Download**
 
 You'll get a file containing every service, route, plugin, and consumer
-currently in the control plane — the same shape as `deck gateway dump`
+currently in the control plane - the same shape as `deck gateway dump`
 output, ready to commit to git.
 
 **Verify it matches the CLI dump:**
@@ -258,17 +258,17 @@ diff ~/Downloads/<your-control-plane>-config.yaml /tmp/cli-dump.yaml
 
 ### 6.2 Import Configuration (UI ↔ `deck gateway sync` from a file)
 
-Konnect can also accept the inverse — upload a YAML and have it become the live
+Konnect can also accept the inverse - upload a YAML and have it become the live
 state. This is the UI counterpart of `deck gateway sync`.
 
 1. Go to **Gateway Manager → `<your-control-plane>`**
 2. Click **Actions → Import Configuration**
 3. Upload a decK-format YAML file (e.g., the file you just exported)
-4. Review the preview pane — Konnect shows entities to be **created**, **updated**, or **deleted**
+4. Review the preview pane - Konnect shows entities to be **created**, **updated**, or **deleted**
 5. Click **Apply**
 
 This preview pane is the closest UI analogue to `deck gateway diff`. The Apply
-button is the closest UI analogue to `deck gateway sync` — including the
+button is the closest UI analogue to `deck gateway sync` - including the
 destructive part where unmanaged entities get removed.
 
 > **Why use the CLI version:** Import Configuration is interactive. CI/CD
@@ -277,13 +277,13 @@ destructive part where unmanaged entities get removed.
 
 ---
 
-## Step 7 — Add Consumers and Key-Auth (UI ↔ `deck gateway sync` round 2)
+## Step 7 - Add Consumers and Key-Auth (UI ↔ `deck gateway sync` round 2)
 
 This is the UI version of `deck/03-bookstore-consumers.yaml`.
 
 > **Important pre-step:** The CLI `sync` of the consumers file *deletes* the
 > correlation-id and request-transformer plugins from Step 5 (they're not in
-> the consumers file). The UI version does NOT do this automatically — if you
+> the consumers file). The UI version does NOT do this automatically - if you
 > want to mirror the CLI exactly, delete those two plugins manually first.
 
 ### 7.1 Update the Rate-Limiting Plugin
@@ -352,7 +352,7 @@ curl -i $PROXY_URL/bookstore/get -H "apikey: reader-key-def456" 2>&1 | grep -i x
 
 ---
 
-## Step 8 — Tag Entities (UI ↔ `deck file add-tags` for live entities)
+## Step 8 - Tag Entities (UI ↔ `deck file add-tags` for live entities)
 
 `deck file add-tags` works on YAML files. The UI counterpart edits live
 entities directly.
@@ -387,17 +387,17 @@ entities directly.
 ### 8.4 Verify
 
 Re-export the configuration (Step 6.1) and confirm the YAML now shows tags on
-every entity — matching what `deck/04-bookstore-tagged.yaml` looks like on
+every entity - matching what `deck/04-bookstore-tagged.yaml` looks like on
 disk.
 
 > **Why this matters:** Tags drive `select_tags` scoping in CLI workflows.
 > If you plan to share `<your-control-plane>` across teams, every entity
-> needs a tag — otherwise it'll be invisible to scoped syncs and could get
+> needs a tag - otherwise it'll be invisible to scoped syncs and could get
 > deleted by another team's full `sync`.
 
 ---
 
-## Step 9 — Import OpenAPI Spec (UI ↔ `deck file openapi2kong`)
+## Step 9 - Import OpenAPI Spec (UI ↔ `deck file openapi2kong`)
 
 The CLI command converts an OpenAPI spec into Kong YAML offline:
 
@@ -435,7 +435,7 @@ Catalog → Specs** or via the API product flow):
 
 ---
 
-## Step 10 — Reset the Control Plane (UI ↔ `deck gateway reset`)
+## Step 10 - Reset the Control Plane (UI ↔ `deck gateway reset`)
 
 CLI:
 
@@ -452,7 +452,7 @@ There is **no single "Reset Everything" button** in the UI. Three workarounds:
 
 1. Go to **Gateway Manager → `<your-control-plane>` → Gateway Services**
 2. Click `bookstore-service` → **Delete**
-3. Confirm — the route and route-scoped plugins cascade
+3. Confirm - the route and route-scoped plugins cascade
 4. Go to **Consumers** → delete each consumer
 5. Go to **Plugins** (global) → delete any remaining ones
 
@@ -469,7 +469,7 @@ There is **no single "Reset Everything" button** in the UI. Three workarounds:
 4. The preview shows everything to be **deleted**
 5. Click **Apply**
 
-This is the closest UI analogue to a full reset — it forces the live state to
+This is the closest UI analogue to a full reset - it forces the live state to
 match the empty YAML, deleting every entity.
 
 ### 10.3 Verify
@@ -479,14 +479,14 @@ curl -s $PROXY_URL/bookstore/get
 # → {"message":"no Route matched with those values"}
 ```
 
-Refresh the UI — Services, Routes, Plugins, and Consumers tabs should all be empty.
+Refresh the UI - Services, Routes, Plugins, and Consumers tabs should all be empty.
 
 > **Why use the CLI version:** `deck gateway reset --force` is one command
 > in a teardown script. The UI version is interactive and easy to get wrong.
 
 ---
 
-# Part 2 — Commands With No UI Equivalent (the "UI-skip" list)
+# Part 2 - Commands With No UI Equivalent (the "UI-skip" list)
 
 These decK commands operate on YAML files and have no counterpart in the
 Konnect UI. They live in your CI pipeline, not in the browser. Each is worth
@@ -494,29 +494,29 @@ keeping even if you do most of your work in the UI:
 
 | decK Command | What It Does | Why You Still Want It in CI |
 |---|---|---|
-| `deck file validate` | Offline schema/syntax check on YAML | Catches typos in PRs before they reach Konnect — fast, no network |
-| `deck file lint -s <file> ruleset.yaml` | Custom governance rules (naming, tags, timeouts) | The UI can't enforce "every service must have tags" — only your linter can block the PR |
-| `deck file render --populate-env-vars` | Substitutes `${{ env "VAR" }}` placeholders | One templated YAML, many environments — the UI has no concept of templates |
-| `deck file merge a.yaml b.yaml` | Combines partial team-owned files | Lets multiple teams each own a YAML file; CI merges them — the UI is a single shared canvas |
+| `deck file validate` | Offline schema/syntax check on YAML | Catches typos in PRs before they reach Konnect - fast, no network |
+| `deck file lint -s <file> ruleset.yaml` | Custom governance rules (naming, tags, timeouts) | The UI can't enforce "every service must have tags" - only your linter can block the PR |
+| `deck file render --populate-env-vars` | Substitutes `${{ env "VAR" }}` placeholders | One templated YAML, many environments - the UI has no concept of templates |
+| `deck file merge a.yaml b.yaml` | Combines partial team-owned files | Lets multiple teams each own a YAML file; CI merges them - the UI is a single shared canvas |
 | `deck file patch -s <file> patch.json` | JSONPath bulk updates (e.g., bump every timeout) | "Set retries to 5 on every service" is one command; the UI would take 50 clicks |
-| `deck file add-plugins -s <file> plugin.yaml` | Layers standard plugins onto any config | The platform team auto-attaches CORS/observability plugins in CI — no manual UI edits per API |
+| `deck file add-plugins -s <file> plugin.yaml` | Layers standard plugins onto any config | The platform team auto-attaches CORS/observability plugins in CI - no manual UI edits per API |
 | `deck file add-tags <file> team:X env:Y` | Adds tags to every entity in a file | UI tagging is per-entity click-through; `add-tags` does the whole file at once |
-| `deck file list-tags <file>` | Audits tag coverage in a YAML file | UI has no "show me all tags used" view — useful before enabling `select_tags` scoping |
+| `deck file list-tags <file>` | Audits tag coverage in a YAML file | UI has no "show me all tags used" view - useful before enabling `select_tags` scoping |
 | `deck file remove-tags <file> env:old` | Bulk-strips tags from entities | Promotion from staging → prod swaps tags; bulk is faster than per-entity edits |
-| `deck gateway validate <file>` | Validates YAML against live Kong schema | Returns a non-zero exit on bad config — wires cleanly into PR checks; the UI's red form fields don't fail CI |
+| `deck gateway validate <file>` | Validates YAML against live Kong schema | Returns a non-zero exit on bad config - wires cleanly into PR checks; the UI's red form fields don't fail CI |
 | `deck gateway diff <file>` | Preview what `sync` would do | Import Configuration shows a preview, but the CLI version is scriptable and PR-attachable |
 
 ### A note on `templates with env vars`
 
 `deck/05-bookstore-templated.yaml` uses `${{ env "DECK_UPSTREAM_URL" }}` and
-similar placeholders. The Konnect UI has no equivalent — you'd need to
+similar placeholders. The Konnect UI has no equivalent - you'd need to
 maintain one set of UI configurations per environment (dev, staging, prod) and
 keep them in sync by hand. The templating + `render` workflow exists precisely
 to avoid that drift.
 
 ---
 
-# Part 3 — When to Click vs. When to Commit
+# Part 3 - When to Click vs. When to Commit
 
 | Situation | Use the UI | Use decK CLI |
 |---|---|---|
@@ -556,12 +556,12 @@ deck gateway reset \
 | Symptom | Fix |
 |---|---|
 | Data Plane shows "Disconnected" | Restart the DP container; check `KONG_CLUSTER_CONTROL_PLANE` env var |
-| Save button greyed out on plugin form | A required field is empty or invalid — scroll for red highlights |
+| Save button greyed out on plugin form | A required field is empty or invalid - scroll for red highlights |
 | Export Configuration produces empty YAML | The CP has no entities, or your role lacks read scope on this CP |
-| Import Configuration preview shows surprise deletions | Your uploaded YAML is incomplete — use `deck file merge` to combine partials before upload |
+| Import Configuration preview shows surprise deletions | Your uploaded YAML is incomplete - use `deck file merge` to combine partials before upload |
 | Consumer's key-auth credential not accepted | Verify the `apikey` header name matches the Key Authentication plugin's **Key Names** field |
 | Tags missing from exported YAML | Tags must be added per-entity; bulk tagging requires `deck file add-tags` in CI |
-| OpenAPI Import doesn't show all paths | Konnect ignores paths that lack `operationId` — add one per operation in the spec |
+| OpenAPI Import doesn't show all paths | Konnect ignores paths that lack `operationId` - add one per operation in the spec |
 
 ---
 

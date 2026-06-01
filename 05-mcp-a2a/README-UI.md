@@ -1,11 +1,11 @@
-# Agentic AI Bootcamp — Konnect UI Walkthrough
+# Agentic AI Bootcamp - Konnect UI Walkthrough
 
 > 6-step hands-on lab using the Konnect web console. Each step adds one
 > self-contained slice of MCP / A2A configuration. Steps are independent —
 > test each one before moving on.
 
 > **What you bring forward from the previous modules:** Kong's job in MCP
-> and A2A is the *same* job it had in api-gateway — route, authenticate,
+> and A2A is the *same* job it had in api-gateway - route, authenticate,
 > rate-limit, observe. There is no "agent gateway"; there are standard
 > gateway plugins (`key-auth`, `rate-limiting`) paired with two MCP-aware
 > plugins (`ai-mcp-proxy`, `ai-mcp-oauth2`). If you understood Step 05 of
@@ -15,7 +15,7 @@
 
 ---
 
-## Concepts — Read This First
+## Concepts - Read This First
 
 This bootcamp introduces four ideas that aren't covered in the earlier
 api-gateway / apiops / ai-gateway modules. Skim these definitions before
@@ -24,7 +24,7 @@ clicking into the Konnect console.
 ### MCP (Model Context Protocol)
 
 MCP is the open protocol AI assistants (Claude Desktop, GitHub Copilot,
-Cursor) use to discover and call **tools** — small, well-described functions
+Cursor) use to discover and call **tools** - small, well-described functions
 the LLM can invoke. Instead of every assistant inventing its own plugin
 format, MCP standardises:
 
@@ -51,7 +51,7 @@ shapes. Pick one per route:
 |---|---|---|---|
 | `passthrough-listener` | MCP JSON-RPC | MCP JSON-RPC (unchanged) | Upstream is already an MCP server. |
 | `conversion-listener` | MCP JSON-RPC | REST HTTP | You have a REST API and want it usable from MCP clients. |
-| `conversion-only` | — (no listener) | — (just declares tools) | Per-team REST APIs that will be aggregated elsewhere. |
+| `conversion-only` | - (no listener) | - (just declares tools) | Per-team REST APIs that will be aggregated elsewhere. |
 | `listener` (aggregate) | MCP JSON-RPC | Multiple upstreams via tagged `conversion-only` plugins | Multi-team catalog: one MCP endpoint, many backends. |
 
 Steps 1–4 walk through each in turn. Steps 5–6 layer auth on top.
@@ -77,7 +77,7 @@ each piece.
 ### A2A (Agent-to-Agent)
 
 A2A is the emerging convention for **agents calling other agents**. An
-orchestrator agent doesn't pick one model and shell out — it routes work to
+orchestrator agent doesn't pick one model and shell out - it routes work to
 specialised sub-agents (a flights agent, a hotels agent, a weather agent)
 and merges their answers. The wire format mirrors MCP enough that JSON-RPC
 clients can talk to it, with one addition: an **Agent Card** served from
@@ -85,7 +85,7 @@ clients can talk to it, with one addition: an **Agent Card** served from
 how to reach them.
 
 Kong's role in A2A is exactly its role in any API: route, authenticate,
-rate-limit, observe. No special A2A plugin — Step 6 wires up sub-agents
+rate-limit, observe. No special A2A plugin - Step 6 wires up sub-agents
 using the standard `key-auth` and `rate-limiting` plugins you've already
 seen in api-gateway.
 
@@ -99,7 +99,7 @@ The six steps escalate auth deliberately:
 | 2 | `key-auth` + `rate-limiting` | Server-to-server callers; same model as api-gateway Step 05. |
 | 3 | None | Focus on REST→MCP conversion, not auth. |
 | 4 | None | Focus on multi-team aggregation, not auth. |
-| 5 | `ai-mcp-oauth2` (JWT bearer) | Real MCP clients (VS Code, Claude Desktop) — `client_credentials` for backends, PKCE for desktops. |
+| 5 | `ai-mcp-oauth2` (JWT bearer) | Real MCP clients (VS Code, Claude Desktop) - `client_credentials` for backends, PKCE for desktops. |
 | 6 | Per-sub-agent (key-auth on some, open on others) | Trust isolation between sibling agents. |
 
 Each step's "Why this auth?" callout assumes you've read the table above.
@@ -110,7 +110,7 @@ Each step's "Why this auth?" callout assumes you've read the table above.
 
 1. **Konnect account** at [cloud.konghq.com](https://cloud.konghq.com)
 2. **Control Plane** `<your-control-plane>` with a connected Data Plane
-3. **Proxy URL** — typically `http://localhost:8000` or your DP ingress
+3. **Proxy URL** - typically `http://localhost:8000` or your DP ingress
 
 ```bash
 export PROXY_URL=http://localhost:8000
@@ -120,18 +120,23 @@ export PROXY_URL=http://localhost:8000
 
 ```bash
 cd mcp-a2a
-docker compose up -d --build
+docker compose up -d --build          # MCP backend only
+
+# Step 5 (OAuth2/PKCE) also needs the shared Keycloak - start it once:
+cd ../keycloak && docker compose up -d && cd ../mcp-a2a
 ```
 
 This starts:
-- **MCP Backend** (`localhost:3001`) — travel tools: flights, hotels, weather
-- **Keycloak** (`localhost:8080`) — OIDC provider for Step 5
+- **MCP Backend** (`localhost:3001`) - travel tools: flights, hotels, weather
+- **Keycloak** (`localhost:8080`) - shared bootcamp OIDC provider, realm
+  `bootcamp` (from `../keycloak/`; only required for Step 5)
 
 ### Connect Kong DP to the backend network
 
-Kong DP runs on Docker's default `bridge` network. The MCP backend and
-Keycloak run on `mcp-a2a_kong-net`. Connect Kong so it can resolve
-container hostnames:
+Kong DP runs on Docker's default `bridge` network. The MCP backend runs on
+`mcp-a2a_kong-net`. Connect Kong so it can resolve the `mcp-backend` hostname
+(Keycloak is reached separately via `host.docker.internal:8080`, so it needs no
+network connection):
 
 ```bash
 # Find your Kong DP container name
@@ -141,7 +146,7 @@ docker ps --format '{{.Names}}\t{{.Image}}' | grep kong-gateway
 docker network connect mcp-a2a_kong-net <kong-dp-container-name>
 ```
 
-**Fix Kong DNS** — If you get `name resolution failed` errors:
+**Fix Kong DNS** - If you get `name resolution failed` errors:
 
 ```bash
 docker exec <kong-dp-container-name> sh -c \
@@ -152,7 +157,7 @@ docker exec <kong-dp-container-name> sh -c \
 
 ```bash
 curl -s http://localhost:3001/health | jq '.'                # MCP Backend
-curl -s http://localhost:8080/realms/workshop | jq '.realm'  # Keycloak
+curl -s http://localhost:8080/realms/bootcamp | jq '.realm'  # Keycloak
 ```
 
 ### Reset Gateway
@@ -162,11 +167,11 @@ Before starting, delete any pre-existing services in
 
 ---
 
-## Step 1 — MCP Passthrough Listener
+## Step 1 - MCP Passthrough Listener
 
 Client sends native MCP JSON-RPC → Kong forwards it unchanged → MCP backend
 processes it. The upstream already speaks MCP, so the `ai-mcp-proxy` plugin
-only has to enforce the protocol shape — no translation.
+only has to enforce the protocol shape - no translation.
 
 ### 1.1 Create the Service
 
@@ -200,7 +205,7 @@ only has to enforce the protocol shape — no translation.
    - **Mode**: `passthrough-listener`
 4. Click **Save**
 
-### 1.4 Test — List tools
+### 1.4 Test - List tools
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp/tools \
@@ -212,7 +217,7 @@ curl -s -X POST $PROXY_URL/mcp/tools \
 
 **Expected:** `["search_flights","book_flight","get_weather","search_hotels","book_hotel"]`
 
-### 1.5 Test — Call a tool
+### 1.5 Test - Call a tool
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp/tools \
@@ -229,10 +234,10 @@ curl -s -X POST $PROXY_URL/mcp/tools \
 
 ---
 
-## Step 2 — Key-Auth + Rate-Limiting
+## Step 2 - Key-Auth + Rate-Limiting
 
 Protect the passthrough route with API key authentication and a 30 req/min
-rate limit. This is the same pattern you used in api-gateway Step 05 — MCP
+rate limit. This is the same pattern you used in api-gateway Step 05 - MCP
 adds nothing new to auth here.
 
 ### 2.1 Create the Consumer
@@ -267,7 +272,7 @@ adds nothing new to auth here.
    - **Policy**: `local`
 4. Click **Save**
 
-### 2.4 Test — No key → 401
+### 2.4 Test - No key → 401
 
 ```bash
 curl -si -X POST $PROXY_URL/mcp/tools \
@@ -278,7 +283,7 @@ curl -si -X POST $PROXY_URL/mcp/tools \
 
 **Expected:** `HTTP/1.1 401 Unauthorized`
 
-### 2.5 Test — With key → 200 + rate-limit headers
+### 2.5 Test - With key → 200 + rate-limit headers
 
 ```bash
 curl -si -X POST $PROXY_URL/mcp/tools \
@@ -298,10 +303,10 @@ X-RateLimit-Remaining-Minute: 29
 
 ---
 
-## Step 3 — Conversion Listener (REST → MCP)
+## Step 3 - Conversion Listener (REST → MCP)
 
 Expose a plain REST API (httpbin) as MCP tools. Kong converts MCP JSON-RPC
-tool calls into standard HTTP requests — no changes to the backend required.
+tool calls into standard HTTP requests - no changes to the backend required.
 
 > **Note:** This step uses httpbin instead of the travel backend to
 > demonstrate that conversion mode works with *any* existing REST API, not
@@ -351,28 +356,28 @@ tool calls into standard HTTP requests — no changes to the backend required.
    - **Server → Timeout**: `60000`
 4. Add **Tools** (click **+ Add Tool** for each):
 
-   **Tool 1 — get_ip**
+   **Tool 1 - get_ip**
    - **Name**: `get_ip`
    - **Description**: `Get the origin IP address of the caller`
    - **Method**: `GET`
    - **Path**: `/httpbin/ip`
    - **Annotations → Title**: `Get IP`
 
-   **Tool 2 — get_headers**
+   **Tool 2 - get_headers**
    - **Name**: `get_headers`
    - **Description**: `Get the request headers as seen by the server`
    - **Method**: `GET`
    - **Path**: `/httpbin/headers`
    - **Annotations → Title**: `Get Headers`
 
-   **Tool 3 — get_user_agent**
+   **Tool 3 - get_user_agent**
    - **Name**: `get_user_agent`
    - **Description**: `Get the User-Agent string of the caller`
    - **Method**: `GET`
    - **Path**: `/httpbin/user-agent`
    - **Annotations → Title**: `Get User Agent`
 
-   **Tool 4 — echo_anything**
+   **Tool 4 - echo_anything**
    - **Name**: `echo_anything`
    - **Description**: `Echo back any data sent to the server`
    - **Method**: `POST`
@@ -388,7 +393,7 @@ tool calls into standard HTTP requests — no changes to the backend required.
      }
      ```
 
-   **Tool 5 — check_status**
+   **Tool 5 - check_status**
    - **Name**: `check_status`
    - **Description**: `Get an HTTP response with the specified status code`
    - **Method**: `GET`
@@ -403,7 +408,7 @@ tool calls into standard HTTP requests — no changes to the backend required.
 
 5. Click **Save**
 
-### 3.5 Test — Initialize session
+### 3.5 Test - Initialize session
 
 Conversion mode uses MCP Streamable HTTP (SSE). Initialize a session first:
 
@@ -416,7 +421,7 @@ SESSION_ID=$(curl -si -X POST $PROXY_URL/mcp/convert \
 echo "Session: $SESSION_ID"
 ```
 
-### 3.6 Test — List converted tools
+### 3.6 Test - List converted tools
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp/convert \
@@ -429,7 +434,7 @@ curl -s -X POST $PROXY_URL/mcp/convert \
 
 **Expected:** `["check_status","echo_anything","get_headers","get_ip","get_user_agent"]`
 
-### 3.7 Test — Call get_ip (Kong converts to GET /httpbin/ip)
+### 3.7 Test - Call get_ip (Kong converts to GET /httpbin/ip)
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp/convert \
@@ -442,7 +447,7 @@ curl -s -X POST $PROXY_URL/mcp/convert \
 
 **Expected:** JSON string containing `"origin": "<your-ip>"`
 
-### 3.8 Test — Call echo_anything (Kong converts to POST /httpbin/anything)
+### 3.8 Test - Call echo_anything (Kong converts to POST /httpbin/anything)
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp/convert \
@@ -457,7 +462,7 @@ curl -s -X POST $PROXY_URL/mcp/convert \
 
 ---
 
-## Step 4 — Multi-Team Aggregation
+## Step 4 - Multi-Team Aggregation
 
 Three teams each own different tools. One aggregate endpoint merges them
 all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
@@ -465,7 +470,7 @@ all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
 
 > **Why httpbin?** Steps 3-4 demonstrate how Kong converts *any* REST API
 > into MCP tools. The travel backend from steps 1-2 already speaks MCP
-> natively — here we show Kong making a plain REST API (httpbin) available
+> natively - here we show Kong making a plain REST API (httpbin) available
 > to MCP clients without any code changes.
 
 ```
@@ -495,10 +500,10 @@ all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
 2. Click **New Plugin → AI → AI MCP Proxy**
 3. Configure:
    - **Mode**: `conversion-only`
-   - **Tags**: `mcp-agg` *(critical — the listener discovers tools by this tag)*
+   - **Tags**: `mcp-agg` *(critical - the listener discovers tools by this tag)*
 4. Add **Tools**:
-   - **get_ip** — `GET /httpbin/ip` — *Get origin IP address*
-   - **get_headers** — `GET /httpbin/headers` — *Get all HTTP request headers*
+   - **get_ip** - `GET /httpbin/ip` - *Get origin IP address*
+   - **get_headers** - `GET /httpbin/headers` - *Get all HTTP request headers*
 5. Click **Save**
 
 ### 4.3 Create the team-beta Route + Plugin
@@ -513,8 +518,8 @@ all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
    - **Mode**: `conversion-only`
    - **Tags**: `mcp-agg`
    - **Tools**:
-     - **get_user_agent** — `GET /httpbin/user-agent` — *Get User-Agent string*
-     - **echo_anything** — `POST /httpbin/anything` — *Echo back anything sent*
+     - **get_user_agent** - `GET /httpbin/user-agent` - *Get User-Agent string*
+     - **echo_anything** - `POST /httpbin/anything` - *Echo back anything sent*
 3. Click **Save**
 
 ### 4.4 Create the team-gamma Route + Plugin
@@ -529,7 +534,7 @@ all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
    - **Mode**: `conversion-only`
    - **Tags**: `mcp-agg`
    - **Tools**:
-     - **check_status** — `GET /httpbin/status/{code}` — *Get HTTP response with given status code*
+     - **check_status** - `GET /httpbin/status/{code}` - *Get HTTP response with given status code*
        - **Parameters → code**: `in: path`, `required: on`, `schema.type: integer`
 3. Click **Save**
 
@@ -543,10 +548,10 @@ all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
    - **Tags**: `aggregation`
 2. Click **Save**, then add **New Plugin → AI → AI MCP Proxy**:
    - **Mode**: `listener`
-   - **Server → Tag**: `mcp-agg` *(this is the magic — Kong discovers every `conversion-only` plugin tagged `mcp-agg`)*
+   - **Server → Tag**: `mcp-agg` *(this is the magic - Kong discovers every `conversion-only` plugin tagged `mcp-agg`)*
 3. Click **Save**
 
-### 4.6 Test — Initialize + list all tools
+### 4.6 Test - Initialize + list all tools
 
 ```bash
 # Initialize
@@ -567,9 +572,9 @@ curl -s -X POST $PROXY_URL/mcp/aggregate \
   | grep "^data:" | sed 's/^data: //' | jq '[.result.tools[].name]'
 ```
 
-**Expected:** `["check_status","echo_anything","get_headers","get_ip","get_user_agent"]` — all 5 tools from 3 teams.
+**Expected:** `["check_status","echo_anything","get_headers","get_ip","get_user_agent"]` - all 5 tools from 3 teams.
 
-### 4.7 Test — Call tools from different teams
+### 4.7 Test - Call tools from different teams
 
 ```bash
 # get_ip (from team-alpha)
@@ -593,9 +598,9 @@ curl -s -X POST $PROXY_URL/mcp/aggregate \
 
 ---
 
-## Step 5 — MCP + OAuth2 (two flows)
+## Step 5 - MCP + OAuth2 (two flows)
 
-API keys work for demos. Real MCP clients need OAuth2 — and the *right*
+API keys work for demos. Real MCP clients need OAuth2 - and the *right*
 OAuth2 flow depends on **who the client is**:
 
 | Caller | Flow | Why |
@@ -604,12 +609,12 @@ OAuth2 flow depends on **who the client is**:
 | Desktop / CLI / IDE (VS Code, Claude Desktop) | `authorization_code` + **PKCE** | No safe way to ship a client secret in a binary that ships to every laptop. PKCE replaces the secret with a one-time, per-request proof. |
 
 This step demonstrates **both**. The `ai-mcp-oauth2` plugin validates the
-issued JWT either way — Kong doesn't care which OAuth2 flow produced the token.
+issued JWT either way - Kong doesn't care which OAuth2 flow produced the token.
 
-> **Rule:** `ai-mcp-oauth2` MUST pair with `passthrough-listener` — never with `conversion-listener`.
+> **Rule:** `ai-mcp-oauth2` MUST pair with `passthrough-listener` - never with `conversion-listener`.
 
 ```
-                       ┌───────── Keycloak (realm: workshop) ─────────┐
+                       ┌───────── Keycloak (realm: bootcamp) ─────────┐
                        │  mcp-service-client  (confidential, secret)  │
                        │  mcp-pkce-client     (public, PKCE-only)     │
                        └──────────────────────────────────────────────┘
@@ -655,13 +660,13 @@ issued JWT either way — Kong doesn't care which OAuth2 flow produced the token
 2. Click **New Plugin → AI → AI MCP OAuth2**
 3. Configure:
    - **Resource**: `http://localhost:8000/mcp-oauth/tools`
-   - **Authorization Servers** (add one entry): `http://localhost:8080/realms/workshop`
-   - **JWKS Endpoint**: `http://keycloak:8080/realms/workshop/protocol/openid-connect/certs`
+   - **Authorization Servers** (add one entry): `http://localhost:8080/realms/bootcamp`
+   - **JWKS Endpoint**: `http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/certs`
      *(Kong fetches JWKS from inside its container, so use the docker-compose hostname `keycloak`, not `localhost`.)*
    - **Insecure Relaxed Audience Validation**: `on`
-     *(DEMO ONLY — relaxes RFC 8707 audience binding so a token issued without an explicit `audience` claim still validates. Do NOT ship this to production.)*
+     *(DEMO ONLY - relaxes RFC 8707 audience binding so a token issued without an explicit `audience` claim still validates. Do NOT ship this to production.)*
    - **SSL Verify**: `off`
-     *(DEMO ONLY — Keycloak runs over plain HTTP on localhost.)*
+     *(DEMO ONLY - Keycloak runs over plain HTTP on localhost.)*
    - **Claim to Header** (add two entries):
      - **Claim**: `sub` → **Header**: `X-User-Id`
      - **Claim**: `preferred_username` → **Header**: `X-User-Name`
@@ -675,7 +680,7 @@ issued JWT either way — Kong doesn't care which OAuth2 flow produced the token
    - **Mode**: `passthrough-listener`
 4. Click **Save**
 
-### 5.5 Test — No token → 401
+### 5.5 Test - No token → 401
 
 ```bash
 curl -si -X POST $PROXY_URL/mcp-oauth/tools \
@@ -686,7 +691,7 @@ curl -si -X POST $PROXY_URL/mcp-oauth/tools \
 
 **Expected:** `HTTP/1.1 401 Unauthorized`
 
-### 5.6 Flow A — `client_credentials` (server-to-server)
+### 5.6 Flow A - `client_credentials` (server-to-server)
 
 Uses the **confidential** Keycloak client `mcp-service-client`
 (secret: `mcp-service-secret`). The client holds a secret; Keycloak returns
@@ -694,7 +699,7 @@ an access token directly. No browser, no user.
 
 ```bash
 TOKEN=$(curl -s -X POST \
-  http://localhost:8080/realms/workshop/protocol/openid-connect/token \
+  http://localhost:8080/realms/bootcamp/protocol/openid-connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=client_credentials" \
   -d "client_id=mcp-service-client" \
@@ -716,13 +721,13 @@ curl -s -X POST $PROXY_URL/mcp-oauth/tools \
 > against the IdP and call MCP tools without any user interaction. The
 > secret never leaves your infrastructure.
 
-### 5.7 Flow B — `authorization_code` + PKCE (by hand)
+### 5.7 Flow B - `authorization_code` + PKCE (by hand)
 
 Uses the **public** Keycloak client `mcp-pkce-client` (no secret). The
 client generates a random `code_verifier`, hashes it to a `code_challenge`,
 sends the challenge with the auth request, and proves possession of the
 verifier when exchanging the code for a token. This is what VS Code and
-Claude Desktop do automatically — here we do it step by step so you can see it.
+Claude Desktop do automatically - here we do it step by step so you can see it.
 
 ```bash
 # 1. Generate a PKCE code_verifier (43-128 chars, URL-safe) and its S256 challenge
@@ -734,7 +739,7 @@ echo "challenge: $CHALLENGE"
 
 # 2. Open this URL in a browser, sign in as agent-user / agent123,
 #    and paste back the `code=...` value from the redirect URL.
-echo "http://localhost:8080/realms/workshop/protocol/openid-connect/auth?\
+echo "http://localhost:8080/realms/bootcamp/protocol/openid-connect/auth?\
 client_id=mcp-pkce-client&\
 response_type=code&\
 scope=openid+profile+mcp-tools&\
@@ -746,7 +751,7 @@ read -p "Paste the code from the redirect URL: " CODE
 
 # 3. Exchange the code + verifier for a token (no client_secret).
 TOKEN=$(curl -s -X POST \
-  http://localhost:8080/realms/workshop/protocol/openid-connect/token \
+  http://localhost:8080/realms/bootcamp/protocol/openid-connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=authorization_code" \
   -d "client_id=mcp-pkce-client" \
@@ -766,7 +771,7 @@ curl -s -X POST $PROXY_URL/mcp-oauth/tools \
 ```
 
 **Expected:** same five tool names as Flow A. The difference is *who the
-token is bound to* — Flow A's `sub` is the service account; Flow B's `sub`
+token is bound to* - Flow A's `sub` is the service account; Flow B's `sub`
 is `agent-user`. Inspect the token at [jwt.io](https://jwt.io) to compare.
 
 > **What you just proved:** A desktop app with no secret can still get a
@@ -786,8 +791,8 @@ VS Code does PKCE for you. Create `.vscode/mcp.json`:
       "headers": { "Content-Type": "application/json" },
       "auth": {
         "type": "oauth2",
-        "authorizationUrl": "http://localhost:8080/realms/workshop/protocol/openid-connect/auth",
-        "tokenUrl": "http://localhost:8080/realms/workshop/protocol/openid-connect/token",
+        "authorizationUrl": "http://localhost:8080/realms/bootcamp/protocol/openid-connect/auth",
+        "tokenUrl": "http://localhost:8080/realms/bootcamp/protocol/openid-connect/token",
         "clientId": "mcp-pkce-client",
         "scopes": ["openid", "profile", "mcp-tools"],
         "pkce": true
@@ -812,8 +817,8 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
       "url": "http://localhost:8000/mcp-oauth/tools",
       "oauth": {
         "clientId": "mcp-pkce-client",
-        "authorizationUrl": "http://localhost:8080/realms/workshop/protocol/openid-connect/auth",
-        "tokenUrl": "http://localhost:8080/realms/workshop/protocol/openid-connect/token",
+        "authorizationUrl": "http://localhost:8080/realms/bootcamp/protocol/openid-connect/auth",
+        "tokenUrl": "http://localhost:8080/realms/bootcamp/protocol/openid-connect/token",
         "scopes": ["openid", "mcp-tools"],
         "pkce": true
       }
@@ -826,23 +831,23 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 Keycloak is fine for a lab, but introduces a second piece of infrastructure
 to run, patch, back up, and SSO into. **Kong Identity** is Konnect's
-built-in identity service — it lets you issue OIDC tokens (including PKCE
+built-in identity service - it lets you issue OIDC tokens (including PKCE
 flows) without standing up a separate IdP. The `ai-mcp-oauth2` plugin
-doesn't care who issued the JWT, so the swap is mechanical — re-edit the
+doesn't care who issued the JWT, so the swap is mechanical - re-edit the
 plugin from 5.3 and change these fields:
 
 | What changes | Keycloak | Kong Identity |
 |---|---|---|
-| **Authorization Servers** | `http://localhost:8080/realms/workshop` | `https://<your-org>.id.konghq.com` (issuer URL from the Kong Identity console) |
-| **JWKS Endpoint** | `http://keycloak:8080/.../certs` | `https://<your-org>.id.konghq.com/.well-known/jwks.json` |
+| **Authorization Servers** | `http://localhost:8080/realms/bootcamp` | `https://<your-org>.id.konghq.com` (issuer URL from the Kong Identity console) |
+| **JWKS Endpoint** | `http://host.docker.internal:8080/.../certs` | `https://<your-org>.id.konghq.com/.well-known/jwks.json` |
 | Where you create the clients | Keycloak admin UI / realm JSON | **Konnect → Identity → Applications** |
-| **Insecure Relaxed Audience Validation** | `on` (demo) | `off` — Kong Identity issues RFC-8707-compliant `aud` claims, so strict validation works out of the box |
+| **Insecure Relaxed Audience Validation** | `on` (demo) | `off` - Kong Identity issues RFC-8707-compliant `aud` claims, so strict validation works out of the box |
 | **SSL Verify** | `off` (HTTP localhost) | `on` (Konnect endpoints are TLS) |
 
 When to actually use Kong Identity:
 - Single pane of glass for *all* Konnect product auth (Dev Portal, Gateway, AI Gateway, MCP, Mesh).
 - No second IdP to operate, patch, or back up.
-- Identity scope tied to your Konnect org and RBAC — same teams, same audit trail.
+- Identity scope tied to your Konnect org and RBAC - same teams, same audit trail.
 
 When to stick with Keycloak (or your existing IdP):
 - You already federate workforce identity through Okta / Azure AD / Ping and
@@ -850,16 +855,16 @@ When to stick with Keycloak (or your existing IdP):
 - You need protocols Kong Identity doesn't expose yet (e.g., raw SAML).
 
 This bootcamp keeps Keycloak so the lab is fully self-contained on a
-laptop — but in a customer engagement, **the first question to ask is "do
+laptop - but in a customer engagement, **the first question to ask is "do
 you have an IdP already, and if not, do you want Konnect to be it?"**
 before designing around either.
 
 ---
 
-## Step 6 — A2A Agent Routing
+## Step 6 - A2A Agent Routing
 
 Kong routes agent-to-agent traffic. Each sub-agent gets its own route,
-auth, and rate limit. No special A2A plugin — standard Kong plugins handle
+auth, and rate limit. No special A2A plugin - standard Kong plugins handle
 everything.
 
 ```
@@ -903,7 +908,7 @@ Orchestrator Agent
    - **Method(s)**: `GET`
    - **Strip Path**: `off`
    - **Tags**: `a2a`
-3. Click **Save** *(no plugins — this route is intentionally public so any
+3. Click **Save** *(no plugins - this route is intentionally public so any
    client can discover what skills the orchestrator offers)*
 
 ### 6.4 Create the Flights Sub-Agent Route + Plugins
@@ -949,9 +954,9 @@ Orchestrator Agent
 2. Click **Save**, then add **New Plugin → Traffic Control → Rate Limiting**:
    - **Minute**: `60`
    - **Policy**: `local`
-3. Click **Save** *(no key-auth — weather is a low-trust, high-volume read)*
+3. Click **Save** *(no key-auth - weather is a low-trust, high-volume read)*
 
-### 6.7 Test — Agent Card discovery
+### 6.7 Test - Agent Card discovery
 
 ```bash
 curl -s $PROXY_URL/.well-known/agent.json | jq '{name: .name, skills: [.skills[].id]}'
@@ -959,7 +964,7 @@ curl -s $PROXY_URL/.well-known/agent.json | jq '{name: .name, skills: [.skills[]
 
 **Expected:** `{"name": "TravelOrchestratorAgent", "skills": ["flight-search","hotel-booking","weather-check"]}`
 
-### 6.8 Test — No key → 401
+### 6.8 Test - No key → 401
 
 ```bash
 curl -si -X POST $PROXY_URL/a2a/flights \
@@ -970,7 +975,7 @@ curl -si -X POST $PROXY_URL/a2a/flights \
 
 **Expected:** `HTTP/1.1 401 Unauthorized`
 
-### 6.9 Test — With key → 200
+### 6.9 Test - With key → 200
 
 ```bash
 curl -s -X POST $PROXY_URL/a2a/flights \
@@ -982,7 +987,7 @@ curl -s -X POST $PROXY_URL/a2a/flights \
 
 **Expected:** Flight object with `airline`, `price`, `departure`.
 
-### 6.10 Test — Weather (no auth, different rate limit)
+### 6.10 Test - Weather (no auth, different rate limit)
 
 ```bash
 curl -si -X POST $PROXY_URL/a2a/weather \
@@ -997,7 +1002,7 @@ HTTP/1.1 200 OK
 X-RateLimit-Limit-Minute: 60
 ```
 
-### 6.11 Test — Full A2A delegation
+### 6.11 Test - Full A2A delegation
 
 ```bash
 # Flights
@@ -1007,7 +1012,7 @@ curl -s -X POST $PROXY_URL/a2a/flights \
   -d '{"id":"task-001","message":{"role":"user","parts":[{"type":"text","text":"Round-trip SFO to LHR June 15-22"}]}}' \
   | jq '.result.parts[0].text | fromjson | .[0]'
 
-# Hotels (use airport code LHR — backend matches on 3-letter codes)
+# Hotels (use airport code LHR - backend matches on 3-letter codes)
 curl -s -X POST $PROXY_URL/a2a/hotels \
   -H "X-Agent-Key: orchestrator-key-xyz" \
   -H "Content-Type: application/json" \
@@ -1037,8 +1042,10 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 4. Stop the Docker services:
    ```bash
    cd mcp-a2a
-   docker compose down -v
+   docker compose down -v        # stops the MCP backend only
    ```
+   > The shared Keycloak lives in `../keycloak/`. Stop it separately when you're
+   > done with the whole bootcamp: `cd ../keycloak && docker compose down -v`.
 
 ---
 
@@ -1047,10 +1054,10 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 | Symptom | Fix |
 |---------|-----|
 | `name resolution failed` for mcp-backend | `docker network connect mcp-a2a_kong-net <kong-dp>` and fix DNS resolver |
-| `already exists in network` | Safe to ignore — Kong is already connected |
+| `already exists in network` | Safe to ignore - Kong is already connected |
 | Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbin/ip` → `httpbin-route`) |
 | Step 4 aggregate sees 0 tools | Each `conversion-only` plugin must carry the **plugin-level** tag `mcp-agg`, not just the route tag |
-| OAuth2 returns 401 with valid token | Check **JWKS Endpoint** uses Docker hostname (`keycloak:8080`), not `localhost` |
+| OAuth2 returns 401 with valid token | Check **JWKS Endpoint** uses Docker hostname (`host.docker.internal:8080`), not `localhost` |
 | OAuth2 returns 401 with audience error | Confirm **Insecure Relaxed Audience Validation** is `on` for the lab |
-| A2A hotels returns empty results | Use 3-letter airport codes (LHR, CDG) — backend matches on `location === code` |
+| A2A hotels returns empty results | Use 3-letter airport codes (LHR, CDG) - backend matches on `location === code` |
 | Plugin not visible in UI | Ensure your Kong Gateway version is 3.14+ with AI plugins enabled |

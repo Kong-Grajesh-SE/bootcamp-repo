@@ -362,7 +362,7 @@ If you're a developer making changes to the service, follow these steps:
 
 To publish a new version of the service, follow these steps:
 
-1. Create a new Git tag that follows [Semantic Versioning](https://semver.org/) — format: `v*.*.*`.
+1. Create a new Git tag that follows [Semantic Versioning](https://semver.org/) - format: `v*.*.*`.
    - Example: `v1.2.0`
 2. Push the tag to the remote repository.
 3. This will trigger the release pipeline, which:

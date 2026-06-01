@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 02 — + Prompt Decorator
+# Step 02 - + Prompt Decorator
 # Injects a system prompt into every request automatically.
 # =============================================================================
 _format_version: "3.0"

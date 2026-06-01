@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 06 — A2A Agent Routing
+# Step 06 - A2A Agent Routing
 # Creates an A2A backend service with:
 #   - Agent Card discovery route (/.well-known/agent.json, public)
 #   - Sub-agent routes: flights + hotels (key-auth, 30/min rate-limit)

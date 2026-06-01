@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 01 — AI Proxy Advanced with Multi-Provider Load Balancing
+# Step 01 - AI Proxy Advanced with Multi-Provider Load Balancing
 # Routes LLM traffic through Kong with Mistral (primary) and Cerebras
 # (secondary) in round-robin. This multi-provider setup carries through
 # every subsequent step.

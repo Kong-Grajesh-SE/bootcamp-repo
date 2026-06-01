@@ -1,5 +1,5 @@
 # =============================================================================
-# Step 09 — + Semantic Prompt Guard (vectordb-backed topic enforcement)
+# Step 09 - + Semantic Prompt Guard (vectordb-backed topic enforcement)
 # Uses Mistral embeddings + Redis to allow on-topic prompts and block
 # off-topic / malicious ones by semantic similarity.
 # Requires: docker compose up -d redis

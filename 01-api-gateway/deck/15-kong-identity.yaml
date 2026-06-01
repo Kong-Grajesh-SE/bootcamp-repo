@@ -1,0 +1,48 @@
+_format_version: "3.0"
+# ---------------------------------------------------------------------------
+# Kong Identity - machine-to-machine (M2M) auth, no external IdP
+#
+# Kong Identity (https://developer.konghq.com/identity/) is a Konnect-native,
+# regional OAuth 2.0 / OpenID Connect authorization server. Instead of running
+# Keycloak (16-oidc-keycloak.yaml), you create an Auth Server + Client directly
+# in Konnect, and the `openid-connect` plugin validates the tokens it issues.
+#
+# Flow:
+#   1. A service obtains an access token from the Kong Identity auth server
+#      using the client_credentials grant (its client_id + client_secret).
+#   2. It calls Kong with `Authorization: Bearer <token>`.
+#   3. This plugin validates the token's signature against the auth server's
+#      JWKS (discovered from the issuer's .well-known/openid-configuration).
+#
+# SETUP IN KONNECT (one-time, before applying this file):
+#   Konnect → Identity → Auth Servers → create a regional auth server
+#     → copy its Issuer URL (looks like https://<id>.<region>.identity.konghq.com)
+#   Konnect → Identity → Clients → create a client (client_credentials)
+#     → copy client_id + client_secret, define a scope (e.g. `api:read`)
+#
+# Replace the placeholders below with the values from your auth server/client.
+# ---------------------------------------------------------------------------
+plugins:
+- name: openid-connect
+  service: httpbin-service
+  config:
+    # Copy this from your Kong Identity auth server's "Issuer" field in Konnect.
+    issuer: <REPLACE-WITH-KONG-IDENTITY-ISSUER-URL>
+    # Pins the session-cookie encryption salt so repeated `deck sync` runs don't
+    # rotate it. Bootcamp placeholder - regenerate for prod: openssl rand -hex 16
+    cache_tokens_salt: bootcamp-identity-salt-change-me
+    # Credentials of the Kong Identity client (used for token introspection and
+    # discovery auth). The calling service uses the SAME client_id/secret to mint
+    # its token from the auth server's /token endpoint.
+    client_id:
+    - <REPLACE-WITH-KONG-IDENTITY-CLIENT-ID>
+    client_secret:
+    - <REPLACE-WITH-KONG-IDENTITY-CLIENT-SECRET>
+    # M2M: callers present a token they already obtained - validate it as a
+    # bearer token. (client_credentials lets the plugin also mint one itself
+    # when proxying, e.g. for upstream-oauth style scenarios.)
+    auth_methods:
+    - bearer
+    - client_credentials
+    scopes:
+    - openid
