@@ -1056,6 +1056,13 @@ Use **"Docker DP (localhost:8000)"** environment (selected by default).
 
 For JWT tests: generate a token, then set `jwt_token` in the Insomnia environment.
 
+The collection also has folders **15 – Kong Identity**, **16 – Keycloak OIDC**,
+and **17 – Upstream OAuth**. Their "POST get token" requests auto-store the token
+in an environment variable (`keycloak_token` / `kong_identity_token`) via an
+after-response script, so you can run the bearer/introspect requests next. Fill
+the `kong_identity_*` placeholders in the Base Environment with values from your
+Konnect Kong Identity auth server.
+
 ---
 
 ## Full Reset

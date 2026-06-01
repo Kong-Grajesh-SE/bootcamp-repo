@@ -865,6 +865,13 @@ Switch to **"Konnect Serverless DP"** environment → sets `base_url` to your se
 
 For JWT tests: generate a token, then set `jwt_token` in the Insomnia environment.
 
+The collection also has folders **15 – Kong Identity**, **16 – Keycloak OIDC**,
+and **17 – Upstream OAuth**. Their "POST get token" requests auto-store the token
+in an environment variable (`keycloak_token` / `kong_identity_token`). On
+serverless, point `keycloak_issuer` (and the upstream-oauth token endpoint) at
+your public ngrok URL, and fill the `kong_identity_*` placeholders from your
+Konnect Kong Identity auth server.
+
 ---
 
 ## Full Reset

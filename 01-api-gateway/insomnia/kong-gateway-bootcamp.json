@@ -25,7 +25,15 @@
         "api_key_premium": "premium-key-123",
         "api_key_standard": "standard-key-456",
         "api_key_blocked": "blocked-key-789",
-        "jwt_token": ""
+        "jwt_token": "",
+        "keycloak_issuer": "http://host.docker.internal:8080/realms/bootcamp",
+        "keycloak_client_id": "kong",
+        "keycloak_client_secret": "kong-bootcamp-client-secret-replace-in-prod",
+        "keycloak_token": "",
+        "kong_identity_issuer": "<your-kong-identity-issuer-url>",
+        "kong_identity_client_id": "<your-kong-identity-client-id>",
+        "kong_identity_client_secret": "<your-kong-identity-client-secret>",
+        "kong_identity_token": ""
       },
       "isPrivate": false
     },
@@ -49,7 +57,6 @@
       },
       "isPrivate": false
     },
-
     {
       "_id": "fld_01",
       "_type": "request_group",
@@ -78,7 +85,10 @@
       "method": "POST",
       "url": "{{ _.base_url }}/httpbin/post",
       "headers": [
-        { "name": "Content-Type", "value": "application/json" }
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
       ],
       "body": {
         "mimeType": "application/json",
@@ -95,7 +105,10 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/headers",
       "headers": [
-        { "name": "X-Test-Header", "value": "bootcamp" }
+        {
+          "name": "X-Test-Header",
+          "value": "bootcamp"
+        }
       ],
       "body": {},
       "metaSortKey": -80,
@@ -145,7 +158,10 @@
       "method": "POST",
       "url": "{{ _.base_url }}/httpbun/post",
       "headers": [
-        { "name": "Content-Type", "value": "application/json" }
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
       ],
       "body": {
         "mimeType": "application/json",
@@ -166,7 +182,6 @@
       "metaSortKey": -30,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Status is 200', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});"
     },
-
     {
       "_id": "fld_02",
       "_type": "request_group",
@@ -199,7 +214,6 @@
       "metaSortKey": -90,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Status is 200 (no rate limit on this service)', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});\ninsomnia.test('No rate limit headers', () => {\n  insomnia.expect(resp.headers).to.not.have.property('x-ratelimit-limit-minute');\n});"
     },
-
     {
       "_id": "fld_03",
       "_type": "request_group",
@@ -240,7 +254,10 @@
       "method": "POST",
       "url": "{{ _.base_url }}/httpbin/post",
       "headers": [
-        { "name": "Content-Type", "value": "application/json" }
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
       ],
       "body": {
         "mimeType": "application/json",
@@ -249,7 +266,6 @@
       "metaSortKey": -80,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Status is 200', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});\ninsomnia.test('POST not cached (Bypass)', () => {\n  insomnia.expect(resp.headers['x-cache-status']).to.equal('Bypass');\n});"
     },
-
     {
       "_id": "fld_04",
       "_type": "request_group",
@@ -294,7 +310,6 @@
       "metaSortKey": -80,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Status is 200', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});"
     },
-
     {
       "_id": "fld_05",
       "_type": "request_group",
@@ -323,7 +338,10 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "apikey", "value": "wrong-key" }
+        {
+          "name": "apikey",
+          "value": "wrong-key"
+        }
       ],
       "body": {},
       "metaSortKey": -90,
@@ -337,7 +355,10 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "apikey", "value": "{{ _.api_key }}" }
+        {
+          "name": "apikey",
+          "value": "{{ _.api_key }}"
+        }
       ],
       "body": {},
       "metaSortKey": -80,
@@ -363,13 +384,15 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "apikey", "value": "{{ _.api_key_test }}" }
+        {
+          "name": "apikey",
+          "value": "{{ _.api_key_test }}"
+        }
       ],
       "body": {},
       "metaSortKey": -60,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Returns 200 for test-user', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});"
     },
-
     {
       "_id": "fld_06",
       "_type": "request_group",
@@ -399,13 +422,15 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbun/get",
       "headers": [
-        { "name": "Authorization", "value": "Bearer {{ _.jwt_token }}" }
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.jwt_token }}"
+        }
       ],
       "body": {},
       "metaSortKey": -90,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Returns 200 with valid JWT', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});"
     },
-
     {
       "_id": "fld_07",
       "_type": "request_group",
@@ -422,7 +447,10 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "Origin", "value": "http://localhost:3000" }
+        {
+          "name": "Origin",
+          "value": "http://localhost:3000"
+        }
       ],
       "body": {},
       "metaSortKey": -100,
@@ -436,9 +464,18 @@
       "method": "OPTIONS",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "Origin", "value": "http://localhost:3000" },
-        { "name": "Access-Control-Request-Method", "value": "POST" },
-        { "name": "Access-Control-Request-Headers", "value": "Content-Type, apikey" }
+        {
+          "name": "Origin",
+          "value": "http://localhost:3000"
+        },
+        {
+          "name": "Access-Control-Request-Method",
+          "value": "POST"
+        },
+        {
+          "name": "Access-Control-Request-Headers",
+          "value": "Content-Type, apikey"
+        }
       ],
       "body": {},
       "metaSortKey": -90,
@@ -452,13 +489,15 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "Origin", "value": "https://malicious-site.com" }
+        {
+          "name": "Origin",
+          "value": "https://malicious-site.com"
+        }
       ],
       "body": {},
       "metaSortKey": -80,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('No CORS header for disallowed origin', () => {\n  const allowOrigin = resp.headers['access-control-allow-origin'];\n  insomnia.expect(allowOrigin).to.not.equal('https://malicious-site.com');\n});"
     },
-
     {
       "_id": "fld_08",
       "_type": "request_group",
@@ -488,13 +527,15 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "X-Forwarded-For", "value": "203.0.113.50" }
+        {
+          "name": "X-Forwarded-For",
+          "value": "203.0.113.50"
+        }
       ],
       "body": {},
       "metaSortKey": -90,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Observe response (may be 200 or 403 depending on trusted_ips)', () => {\n  insomnia.expect([200, 403]).to.include(resp.status);\n});"
     },
-
     {
       "_id": "fld_09",
       "_type": "request_group",
@@ -535,13 +576,15 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "X-Correlation-ID", "value": "my-custom-trace-id-12345" }
+        {
+          "name": "X-Correlation-ID",
+          "value": "my-custom-trace-id-12345"
+        }
       ],
       "body": {},
       "metaSortKey": -80,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Custom Correlation ID preserved', () => {\n  insomnia.expect(resp.headers['x-correlation-id']).to.equal('my-custom-trace-id-12345');\n});"
     },
-
     {
       "_id": "fld_10",
       "_type": "request_group",
@@ -574,7 +617,6 @@
       "metaSortKey": -90,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Added query params visible', () => {\n  const body = resp.json();\n  insomnia.expect(body.args.source).to.equal('kong');\n  insomnia.expect(body.args.gateway).to.equal('true');\n  insomnia.expect(body.args.user).to.equal('bootcamp');\n});"
     },
-
     {
       "_id": "fld_11",
       "_type": "request_group",
@@ -595,7 +637,6 @@
       "metaSortKey": -100,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('X-Powered-By header added', () => {\n  insomnia.expect(resp.headers['x-powered-by']).to.equal('Kong-Gateway');\n});\ninsomnia.test('X-Bootcamp-Demo header added', () => {\n  insomnia.expect(resp.headers['x-bootcamp-demo']).to.equal('true');\n});\ninsomnia.test('Server header removed', () => {\n  insomnia.expect(resp.headers).to.not.have.property('server');\n});"
     },
-
     {
       "_id": "fld_12",
       "_type": "request_group",
@@ -625,7 +666,10 @@
       "method": "POST",
       "url": "{{ _.base_url }}/httpbin/post",
       "headers": [
-        { "name": "Content-Type", "value": "application/json" }
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
       ],
       "body": {
         "mimeType": "application/json",
@@ -634,7 +678,6 @@
       "metaSortKey": -90,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('POST request logged', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});"
     },
-
     {
       "_id": "fld_13",
       "_type": "request_group",
@@ -663,7 +706,10 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "apikey", "value": "{{ _.api_key_premium }}" }
+        {
+          "name": "apikey",
+          "value": "{{ _.api_key_premium }}"
+        }
       ],
       "body": {},
       "metaSortKey": -90,
@@ -677,7 +723,10 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "apikey", "value": "{{ _.api_key_standard }}" }
+        {
+          "name": "apikey",
+          "value": "{{ _.api_key_standard }}"
+        }
       ],
       "body": {},
       "metaSortKey": -80,
@@ -691,11 +740,204 @@
       "method": "GET",
       "url": "{{ _.base_url }}/httpbin/get",
       "headers": [
-        { "name": "apikey", "value": "{{ _.api_key_blocked }}" }
+        {
+          "name": "apikey",
+          "value": "{{ _.api_key_blocked }}"
+        }
       ],
       "body": {},
       "metaSortKey": -70,
       "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Trial user blocked by ACL (403)', () => {\n  insomnia.expect(resp.status).to.equal(403);\n});\ninsomnia.test('Error message about group', () => {\n  insomnia.expect(resp.json().message).to.contain('cannot consume this service');\n});"
+    },
+    {
+      "_id": "fld_15",
+      "_type": "request_group",
+      "parentId": "wrk_bootcamp",
+      "name": "15 - Kong Identity (M2M)",
+      "description": "Konnect-native OAuth2 (client_credentials). Create an Auth Server + Client in Konnect → Identity, then set kong_identity_* env vars. Apply deck/15-kong-identity.yaml (httpbin-service).",
+      "metaSortKey": -150
+    },
+    {
+      "_id": "req_15_token",
+      "_type": "request",
+      "parentId": "fld_15",
+      "name": "POST get token (Kong Identity, client_credentials)",
+      "description": "Mints an M2M token from the Kong Identity auth server and stores it in the kong_identity_token env var. Confirm the exact token path from <issuer>/.well-known/openid-configuration.",
+      "method": "POST",
+      "url": "{{ _.kong_identity_issuer }}/oauth2/token",
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          {
+            "name": "grant_type",
+            "value": "client_credentials"
+          },
+          {
+            "name": "client_id",
+            "value": "{{ _.kong_identity_client_id }}"
+          },
+          {
+            "name": "client_secret",
+            "value": "{{ _.kong_identity_client_secret }}"
+          }
+        ]
+      },
+      "metaSortKey": -150,
+      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Got a token', () => {\n  insomnia.expect(resp.status).to.equal(200);\n  insomnia.expect(resp.json().access_token).to.be.a('string');\n});\nif (resp.code === 200) { insomnia.environment.set('kong_identity_token', resp.json().access_token); }"
+    },
+    {
+      "_id": "req_15_no_token",
+      "_type": "request",
+      "parentId": "fld_15",
+      "name": "GET httpbin/get (no token - 401)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbin/get",
+      "headers": [],
+      "body": {},
+      "metaSortKey": -140,
+      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Rejected without a token', () => {\n  insomnia.expect(resp.status).to.equal(401);\n});"
+    },
+    {
+      "_id": "req_15_bearer",
+      "_type": "request",
+      "parentId": "fld_15",
+      "name": "GET httpbin/get (with bearer - 200)",
+      "description": "Run 'POST get token' first to populate kong_identity_token.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbin/get",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.kong_identity_token }}"
+        }
+      ],
+      "body": {},
+      "metaSortKey": -130,
+      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Accepted with a valid M2M token', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});"
+    },
+    {
+      "_id": "fld_16",
+      "_type": "request_group",
+      "parentId": "wrk_bootcamp",
+      "name": "16 - Keycloak OIDC",
+      "description": "OpenID Connect via the shared Keycloak (realm bootcamp). Start it: cd ../keycloak && docker compose up -d. Add 127.0.0.1 host.docker.internal to /etc/hosts so the issuer matches. Apply deck/16-oidc-keycloak.yaml (httpbun-service).",
+      "metaSortKey": -140
+    },
+    {
+      "_id": "req_16_token",
+      "_type": "request",
+      "parentId": "fld_16",
+      "name": "POST get token (alice, password grant)",
+      "description": "Mints alice's access token from Keycloak and stores it in keycloak_token. Mint against host.docker.internal so the iss matches the issuer Kong validates.",
+      "method": "POST",
+      "url": "{{ _.keycloak_issuer }}/protocol/openid-connect/token",
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          {
+            "name": "grant_type",
+            "value": "password"
+          },
+          {
+            "name": "client_id",
+            "value": "{{ _.keycloak_client_id }}"
+          },
+          {
+            "name": "client_secret",
+            "value": "{{ _.keycloak_client_secret }}"
+          },
+          {
+            "name": "username",
+            "value": "alice"
+          },
+          {
+            "name": "password",
+            "value": "alice-password"
+          },
+          {
+            "name": "scope",
+            "value": "openid profile email"
+          }
+        ]
+      },
+      "metaSortKey": -160,
+      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Got a token', () => {\n  insomnia.expect(resp.status).to.equal(200);\n  insomnia.expect(resp.json().access_token).to.be.a('string');\n});\nif (resp.code === 200) { insomnia.environment.set('keycloak_token', resp.json().access_token); }"
+    },
+    {
+      "_id": "req_16_no_token",
+      "_type": "request",
+      "parentId": "fld_16",
+      "name": "GET httpbun/get (no token - 401)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/get",
+      "headers": [],
+      "body": {},
+      "metaSortKey": -150,
+      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Rejected without a token', () => {\n  insomnia.expect(resp.status).to.equal(401);\n});"
+    },
+    {
+      "_id": "req_16_bearer",
+      "_type": "request",
+      "parentId": "fld_16",
+      "name": "GET httpbun/get (with bearer - 200)",
+      "description": "Run 'POST get token' first to populate keycloak_token.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/get",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.keycloak_token }}"
+        }
+      ],
+      "body": {},
+      "metaSortKey": -140,
+      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Accepted with alice token', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});"
+    },
+    {
+      "_id": "req_16_introspect",
+      "_type": "request",
+      "parentId": "fld_16",
+      "name": "POST introspect token (active: true)",
+      "description": "RFC 7662 introspection. Returns {active:true,...} for a live token; after the user logs out in Keycloak it returns active:false.",
+      "method": "POST",
+      "url": "{{ _.keycloak_issuer }}/protocol/openid-connect/token/introspect",
+      "authentication": {
+        "type": "basic",
+        "username": "{{ _.keycloak_client_id }}",
+        "password": "{{ _.keycloak_client_secret }}"
+      },
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          {
+            "name": "token",
+            "value": "{{ _.keycloak_token }}"
+          }
+        ]
+      },
+      "metaSortKey": -130,
+      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Introspection responded', () => {\n  insomnia.expect(resp.status).to.equal(200);\n  insomnia.expect(resp.json()).to.have.property('active');\n});"
+    },
+    {
+      "_id": "fld_17",
+      "_type": "request_group",
+      "parentId": "wrk_bootcamp",
+      "name": "17 - Upstream OAuth",
+      "description": "Kong is the OAuth client: it fetches an M2M token (kong-m2m) and injects it on the UPSTREAM call. Apply deck/17-upstream-oauth.yaml (httpbin-service). The client below sends NO auth.",
+      "metaSortKey": -130
+    },
+    {
+      "_id": "req_17_headers",
+      "_type": "request",
+      "parentId": "fld_17",
+      "name": "GET httpbin/headers (see Kong-injected Bearer)",
+      "description": "The client sends no Authorization header. The echoed response should show an Authorization: Bearer token that Kong obtained from Keycloak using kong-m2m.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbin/headers",
+      "headers": [],
+      "body": {},
+      "metaSortKey": -150,
+      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Status is 200', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});\ninsomnia.test('Upstream received a Bearer token Kong injected', () => {\n  const h = resp.json().headers;\n  const auth = h.Authorization || h.authorization;\n  insomnia.expect(auth).to.be.a('string');\n  insomnia.expect(auth.indexOf('Bearer ')).to.equal(0);\n});"
     }
   ]
 }
