@@ -1,10 +1,11 @@
 # Kong API Gateway Bootcamp - Konnect UI Walkthrough
 
-> 16-step hands-on lab using the Konnect web console. Each step adds one
+> 17-step hands-on lab using the Konnect web console. Each step adds one
 > plugin (or one entity set) to a base of three upstream services so you
 > can see exactly what each policy does without leaving the browser.
-> Steps 15–16 introduce Konnect-native (Kong Identity) and external-IdP
-> (Keycloak) OAuth2 / OpenID Connect.
+> Steps 15–17 introduce Konnect-native (Kong Identity) and external-IdP
+> (Keycloak) OAuth2 / OpenID Connect, plus Upstream OAuth (Kong as the
+> OAuth client to the backend).
 
 > **What you bring forward from the previous module:** the decK-driven
 > `README-hybrid.md` (and `README-serverless.md`) walks you through the
@@ -1036,6 +1037,9 @@ browser SSO.)
 1. Go to **Konnect → Identity → Auth Servers**
 2. Click **New Auth Server**, pick your **region**, Save
 3. Copy the **Issuer URL** shown on the auth server's page
+   - It follows the pattern `https://<id>.<region>.identity.konghq.com/auth`
+   - Confirm it works: `curl -s <issuer-url>/.well-known/openid-configuration | jq .issuer`
+   - Note the `/auth` suffix - the discovery doc lives at `<issuer>/auth/.well-known/openid-configuration`, **not** at the bare hostname
 
 ### 15.2 Create a client
 
@@ -1059,14 +1063,19 @@ browser SSO.)
 ### 15.4 Test - the M2M flow
 
 ```bash
-ISSUER=<your-kong-identity-issuer-url>
+ISSUER=<your-kong-identity-issuer-url>   # e.g. https://<id>.<region>.identity.konghq.com/auth
 CID=<your-client-id>
 CSECRET=<your-client-secret>
 
+# 0. Discover the token endpoint (one-time)
+curl -s "$ISSUER/.well-known/openid-configuration" | jq .token_endpoint
+# → should print something like https://<id>.<region>.identity.konghq.com/auth/oauth/token
+
 # 1. Service mints a token from Kong Identity
-TOKEN=$(curl -s -X POST "$ISSUER/oauth2/token" \
+TOKEN=$(curl -s -X POST "$ISSUER/oauth/token" \
   -d 'grant_type=client_credentials' \
   -d "client_id=$CID" -d "client_secret=$CSECRET" | jq -r .access_token)
+echo $TOKEN   # sanity-check: should be a long JWT string, not "null"
 
 # 2. Call Kong with that token → 200
 curl -i $PROXY_URL/httpbin/get -H "Authorization: Bearer $TOKEN"
@@ -1075,8 +1084,11 @@ curl -i $PROXY_URL/httpbin/get -H "Authorization: Bearer $TOKEN"
 curl -i $PROXY_URL/httpbin/get
 ```
 
-**Expected**: `200` with a token, `401` without. Confirm the exact token
-endpoint from `<issuer>/.well-known/openid-configuration` → `token_endpoint`.
+> **Common pitfall:** the token endpoint is `/auth/oauth/token` (not
+> `/auth/oauth2/token`). If you get a `404`, confirm the path from the
+> discovery document.
+
+**Expected**: `200` with a token, `401` without.
 
 > **Clean up:** delete the OpenID Connect plugin from `httpbin-service`.
 
@@ -1089,9 +1101,6 @@ your **own corporate IdP** - Okta, Entra ID, Auth0, Ping, or Keycloak - you poin
 the same **OpenID Connect** plugin at that external provider. Here you protect
 `httpbun-service` with a local **Keycloak**, which also unlocks the **browser SSO
 (Authorization Code)** flow with real users.
-
-> Mirrors the enterprise OIDC lab from
-> [learn-kong-gateway / module-07-enterprise](https://github.com/Kong-Grajesh-SE/learn-kong-gateway/tree/main/module-07-enterprise).
 
 > ⚠️ **Issuer must match - one hostname for host *and* container.** A Docker DP
 > can only reach Keycloak at `host.docker.internal:8080`, so that's the issuer
@@ -1175,8 +1184,121 @@ with a session cookie and the upstream `200`.
 > enforce it, add a **scopes/claims** condition or chain an **ACL** / request
 > policy that checks the claim - that's the AuthN → AuthZ progression.
 
+### 16.6 (optional) Token introspection - real-time revocation
+
+So far Kong validates the JWT **offline** against Keycloak's JWKS - fast, no
+per-request call to the IdP, but a token stays valid until it expires even after
+logout. **Introspection** ([RFC 7662](https://www.rfc-editor.org/rfc/rfc7662))
+makes Kong call Keycloak's introspect endpoint on every request to ask "is this
+token still active?", so revocation takes effect immediately (and it works for
+opaque, non-JWT tokens too).
+
+| | Local JWKS validation (default) | Introspection |
+|---|---|---|
+| Per-request cost | None (verifies signature locally) | One call to Keycloak |
+| Revocation honoured | Only at token expiry | Immediately |
+| Works with opaque tokens | No (JWT only) | Yes |
+
+**See it directly** (reuse `$TOKEN` from 16.4):
+
+```bash
+curl -s -u kong:kong-bootcamp-client-secret-replace-in-prod \
+  -d "token=$TOKEN" \
+  http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token/introspect | jq
+# → { "active": true, "username": "alice", ... }
+```
+
+**Switch the plugin to introspection** - edit the OpenID Connect plugin on
+`httpbun-service` and set:
+
+- **Introspection Endpoint**: `http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token/introspect`
+- **Introspect JWT Tokens**: `on` (introspect even JWT access tokens)
+- **Introspection Endpoint Auth Method**: `client_secret_basic`
+- **Cache Introspection**: `off` (demo - so revocation is instant)
+
+Save. (Client ID/Secret are already set, and Keycloak reuses them to authenticate
+the introspection call.)
+
+**Test real-time revocation:**
+
+```bash
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"   # → 200
+```
+
+Then in the Keycloak Admin Console (http://localhost:8080) go to
+**realm `bootcamp` → Users → alice → Sessions → Logout** (or **Sessions →
+Sign out all active sessions**). Re-run:
+
+```bash
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"   # → 401
+```
+
+With the **default** (offline JWKS) config that call would still return `200`
+until the token expired - that's the difference introspection makes.
+
 > **Clean up:** delete the OpenID Connect plugin from `httpbun-service`, then
 > `cd keycloak && docker compose down -v`.
+
+---
+
+## Step 17 - Upstream OAuth (Kong as the OAuth client)
+
+Steps 15 and 16 made Kong **validate** tokens coming *from* callers.
+[Upstream OAuth](https://developer.konghq.com/plugins/upstream-oauth/) is the
+**mirror image**: Kong fetches a `client_credentials` token from the IdP and
+injects it as `Authorization: Bearer …` on the **upstream** request - so a
+protected backend gets a valid machine-to-machine token while the caller sends
+no auth at all.
+
+You'll scope it to `httpbin-service`, whose `/headers` echoes what the upstream
+received, using the shared Keycloak's `kong-m2m` client.
+
+> **No `iss` matching here** - Kong is the OAuth *client*, not the validator, so
+> it just forwards the token. You only need the token endpoint reachable from the
+> DP (`host.docker.internal:8080` for a Docker DP; the public ngrok URL for
+> serverless). No `/etc/hosts` entry needed.
+
+### 17.1 Add the Upstream OAuth plugin
+
+1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Upstream OAuth**
+2. Configure (under **Config → Oauth**):
+   - **Token Endpoint**: `http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token`
+   - **Client ID**: `kong-m2m`
+   - **Client Secret**: `kong-m2m-client-secret-replace-in-prod`
+   - **Grant Type**: `client_credentials`
+   - **Scopes**: `openid`
+3. Under **Config → Client**:
+   - **Auth Method**: `client_secret_post`
+4. Under **Config → Behavior**:
+   - **Upstream Access Token Header Name**: `Authorization`
+   - **Purge Token On Upstream Status Codes**: `401`
+5. Under **Config → Cache**:
+   - **Strategy**: `memory`
+   - **Default TTL**: `3600`
+6. **Scope**: `Service` → `httpbin-service`
+7. Click **Save**
+
+### 17.2 Test - the caller sends nothing, the upstream sees a token
+
+```bash
+# Client sends NO Authorization header
+curl -s $PROXY_URL/httpbin/headers | jq '.headers.Authorization'
+```
+
+**Expected**: `"Bearer eyJhbGciOi..."` - Kong obtained this from Keycloak using
+`kong-m2m` and attached it to the upstream call.
+
+```bash
+# Decode it to prove it's a real M2M token minted for kong-m2m
+curl -s $PROXY_URL/httpbin/headers | jq -r '.headers.Authorization' \
+  | cut -d' ' -f2 | cut -d. -f2 | base64 -d 2>/dev/null | jq '{iss, azp, typ}'
+```
+
+**Expected**: `azp: "kong-m2m"`, `iss` = your Keycloak realm URL. Kong caches the
+token (Default TTL) and auto-refreshes near expiry, so it isn't hitting Keycloak
+on every request.
+
+> **Clean up:** delete the Upstream OAuth plugin from `httpbin-service`.
 
 ---
 
@@ -1187,7 +1309,8 @@ To reset back to the base topology of Step 1 (three services + three routes):
 1. **Gateway Manager → `<your-control-plane>` → Plugins** - delete each plugin
    you added (`rate-limiting`, `proxy-cache`, `key-auth`, `jwt`, `cors`,
    `ip-restriction`, `correlation-id`, `request-transformer`,
-   `response-transformer`, `http-log`, `acl`, `openid-connect`)
+   `response-transformer`, `http-log`, `acl`, `openid-connect`,
+   `upstream-oauth`)
 2. **Consumers** - delete `demo-user`, `test-user`, `jwt-user`, `alice`,
    `bob`, `charlie`, `premium-user`, `standard-user`, `trial-user`
 3. **Consumer Groups** - delete `premium-tier`, `standard-tier`

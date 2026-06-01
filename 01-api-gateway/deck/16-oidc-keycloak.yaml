@@ -69,3 +69,17 @@ plugins:
     upstream_headers_names:
     - x-authenticated-user
     - x-authenticated-email
+    # ── Token introspection (RFC 7662) - OPTIONAL ──────────────────────────
+    # By default Kong validates JWT access tokens OFFLINE against the issuer's
+    # JWKS (fast, no per-request call to Keycloak). Introspection instead asks
+    # Keycloak on EVERY request "is this token still active?" - slower, but it
+    # honours revocation/logout immediately and also works for opaque tokens.
+    # Uncomment to switch this plugin to introspection:
+    #
+    #   introspection_endpoint: http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token/introspect
+    #   introspect_jwt_tokens: true                 # introspect even JWT access tokens (not just opaque)
+    #   introspection_endpoint_auth_method: client_secret_basic   # authenticate with client_id/secret above
+    #   cache_introspection: false                  # demo: disable caching so revocation is instant
+    #
+    # Keycloak's introspect endpoint requires client auth - the `kong` client_id
+    # + client_secret configured above are reused for it.

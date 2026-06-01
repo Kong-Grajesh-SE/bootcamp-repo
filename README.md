@@ -10,7 +10,7 @@ state on the same control plane.
 
 | Module | Description | CLI guide | UI guide |
 |--------|-------------|-----------|----------|
-| [api-gateway](api-gateway/) | Core gateway plugins - rate limiting, caching, auth, CORS, logging, consumer groups - plus Kong Identity (M2M) and OIDC with Keycloak | [serverless](api-gateway/README-serverless.md) · [hybrid](api-gateway/README-hybrid.md) | [README-UI](api-gateway/README-UI.md) |
+| [api-gateway](api-gateway/) | Core gateway plugins - rate limiting, caching, auth, CORS, logging, consumer groups - plus Kong Identity (M2M), OIDC with Keycloak, and Upstream OAuth | [serverless](api-gateway/README-serverless.md) · [hybrid](api-gateway/README-hybrid.md) | [README-UI](api-gateway/README-UI.md) |
 | [apiops](apiops/) | decK CLI mastery - sync, diff, validate, dump, lint, OpenAPI-to-Kong, tags, templates | [README](apiops/README.md) | [README-UI](apiops/README-UI.md) (gateway ops only - see note inside) |
 | [ai-gateway](ai-gateway/) | LLM controls - multi-provider routing, prompt guards, semantic cache, PII sanitization, AI rate limiting | [README-DECK](ai-gateway/README-DECK.md) | [README-UI](ai-gateway/README-UI.md) |
 | [mcp-a2a](mcp-a2a/) | Agentic AI - MCP passthrough & conversion listeners, multi-team aggregation, OAuth2 PKCE, A2A routing | [README-DECK](mcp-a2a/README-DECK.md) | [README-UI](mcp-a2a/README-UI.md) |
@@ -26,7 +26,7 @@ state on the same control plane.
 
 | Folder | Description | Used by |
 |---|---|---|
-| [keycloak](keycloak/) | **One shared Keycloak** (realm `bootcamp`) - external OpenID Connect / OAuth2 provider. Holds every module's clients (`kong`, `kong-m2m`, `mcp-service-client`, `mcp-pkce-client`) and users (`alice`, `bob-admin`, `agent-user`). Start once: `cd keycloak && docker compose up -d`. | api-gateway (step 16), mcp-a2a (step 5) |
+| [keycloak](keycloak/) | **One shared Keycloak** (realm `bootcamp`) - external OpenID Connect / OAuth2 provider. Holds every module's clients (`kong`, `kong-m2m`, `mcp-service-client`, `mcp-pkce-client`) and users (`alice`, `bob-admin`, `agent-user`). Start once: `cd keycloak && docker compose up -d`. | api-gateway (steps 16–17), mcp-a2a (step 5) |
 
 ## Prerequisites
 
@@ -45,7 +45,7 @@ export PROXY_URL=http://localhost:8000   # or your serverless gateway URL
 
 | # | Module | Approx. time | New concepts introduced |
 |---|---|---|---|
-| 1 | **api-gateway** | 2–3 hrs | Services, routes, plugins, consumers, plugin scopes, Kong Identity (M2M), OIDC (Keycloak) |
+| 1 | **api-gateway** | 2–3 hrs | Services, routes, plugins, consumers, plugin scopes, Kong Identity (M2M), OIDC (Keycloak), token introspection, Upstream OAuth |
 | 2 | **apiops** | 2 hrs | `deck gateway` vs `deck file`, partials, tags, OpenAPI→Kong, lint, patch |
 | 3 | **ai-gateway** | 2–3 hrs | AI Proxy multi-provider LB, embeddings, semantic cache, prompt/response guards, PII redaction, token rate limiting |
 | 4 | **mcp-a2a** | 1.5–2 hrs | MCP protocol, listener modes, OAuth2 + PKCE, A2A agent routing |

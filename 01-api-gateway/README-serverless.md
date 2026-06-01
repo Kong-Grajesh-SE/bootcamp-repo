@@ -63,7 +63,8 @@ api-gateway/
 │   ├── 13-http-log.yaml              ← HTTP Log (httpbin)
 │   ├── 14-consumer-groups-acl.yaml   ← Consumer Groups + ACL
 │   ├── 15-kong-identity.yaml         ← Kong Identity (Konnect-native M2M auth)
-│   └── 16-oidc-keycloak.yaml         ← OpenID Connect via Keycloak (AuthN/AuthZ)
+│   ├── 16-oidc-keycloak.yaml         ← OpenID Connect via Keycloak (AuthN/AuthZ)
+│   └── 17-upstream-oauth.yaml        ← Upstream OAuth (Kong → backend M2M token)
 ├── insomnia/
 │   └── kong-gateway-bootcamp.json    ← Full Insomnia collection
 ├── README-serverless.md              ← This file
@@ -740,8 +741,119 @@ curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer not-a-real-token"
 > `login_action: redirect` in the deck file, re-apply, then open your serverless
 > proxy URL in a browser and sign in as **alice / alice-password**.
 
+#### Token introspection (real-time revocation)
+
+By default Kong validates the JWT **offline** against Keycloak's JWKS - fast, no
+per-request call to the IdP, but a token stays valid until it expires even if the
+user is logged out. **Introspection** ([RFC 7662](https://www.rfc-editor.org/rfc/rfc7662))
+makes Kong call Keycloak's introspect endpoint on every request to ask "is this
+token still active?", so revocation/logout takes effect immediately (and it also
+works for opaque, non-JWT tokens).
+
+| | Local JWKS validation (default) | Introspection |
+|---|---|---|
+| Per-request cost | None (verifies signature locally) | One call to Keycloak |
+| Revocation honoured | Only at token expiry | Immediately |
+| Works with opaque tokens | No (JWT only) | Yes |
+
+> On serverless the introspect endpoint must be the **public ngrok URL** (the
+> cloud DP reaches Keycloak over the internet, not `host.docker.internal`).
+
+**See it directly** (reuse `$KC` and `$TOKEN` from the test above):
+
+```bash
+curl -s -u kong:kong-bootcamp-client-secret-replace-in-prod \
+  -H 'ngrok-skip-browser-warning: true' \
+  -d "token=$TOKEN" \
+  "$KC/realms/bootcamp/protocol/openid-connect/token/introspect" | jq
+# → { "active": true, "username": "alice", "scope": "openid profile email", ... }
+```
+
+**Switch the plugin to introspection** - add this block under `config:` in
+`deck/16-oidc-keycloak.yaml` (use your ngrok URL), then re-apply:
+
+```yaml
+    introspection_endpoint: https://abc123.ngrok-free.app/realms/bootcamp/protocol/openid-connect/token/introspect
+    introspect_jwt_tokens: true                # introspect even JWT access tokens
+    introspection_endpoint_auth_method: client_secret_basic
+    cache_introspection: false                 # demo: no caching so revocation is instant
+```
+
+```bash
+deck gateway apply deck/16-oidc-keycloak.yaml \
+  --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+```
+
+**Test real-time revocation:**
+
+```bash
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"   # → 200
+
+# Log alice's sessions out via Keycloak's admin REST API
+ADMIN=$(curl -s -H 'ngrok-skip-browser-warning: true' \
+  -d 'grant_type=password' -d 'client_id=admin-cli' \
+  -d 'username=admin' -d 'password=admin' \
+  "$KC/realms/master/protocol/openid-connect/token" | jq -r .access_token)
+ALICE_ID=$(curl -s -H "Authorization: Bearer $ADMIN" \
+  "$KC/admin/realms/bootcamp/users?username=alice" | jq -r '.[0].id')
+curl -s -X POST -H "Authorization: Bearer $ADMIN" \
+  "$KC/admin/realms/bootcamp/users/$ALICE_ID/logout"
+
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"   # → 401
+```
+
+With the **default** (offline JWKS) config, the last call would still return
+`200` until the token expired - that's the difference introspection makes.
+
 > **Clean up:** `deck gateway sync deck/01-services-and-routes.yaml …` removes
 > the plugin; `cd ../keycloak && docker compose down -v` stops Keycloak.
+
+---
+
+### 17 - Upstream OAuth (Kong as the OAuth client)
+
+Steps 15 and 16 made Kong **validate** tokens coming *from* callers.
+[Upstream OAuth](https://developer.konghq.com/plugins/upstream-oauth/) is the
+**mirror image**: Kong itself fetches a `client_credentials` token from the IdP
+and injects it as `Authorization: Bearer …` on the **upstream** request - so your
+backend gets a valid machine-to-machine token without the caller knowing anything
+about OAuth. Classic use: a public/edge API whose upstream is a protected
+internal service.
+
+Scoped to `httpbin-service`, whose `/headers` echoes what the upstream received.
+Uses the shared Keycloak's `kong-m2m` client.
+
+> **No `iss` matching here.** Kong is the *client*, not the validator - it just
+> forwards the token upstream. You only need the `token_endpoint` reachable from
+> the DP. On serverless that's the **public ngrok URL** (the cloud DP can't reach
+> `host.docker.internal`).
+
+Edit `deck/17-upstream-oauth.yaml` and set `oauth.token_endpoint` to your ngrok
+URL (`https://abc123.ngrok-free.app/realms/bootcamp/protocol/openid-connect/token`),
+then:
+
+```bash
+deck gateway apply deck/17-upstream-oauth.yaml \
+  --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+```
+
+**Test - the caller sends nothing, the upstream sees a token:**
+
+```bash
+# Client sends NO Authorization header
+curl -s $PROXY_URL/httpbin/headers | jq '.headers.Authorization'
+# → "Bearer eyJhbGciOi..."  (Kong obtained this from Keycloak using kong-m2m)
+
+# Decode it to prove it's a real M2M token minted for kong-m2m
+curl -s $PROXY_URL/httpbin/headers | jq -r '.headers.Authorization' \
+  | cut -d' ' -f2 | cut -d. -f2 | base64 -d 2>/dev/null | jq '{iss, azp, typ}'
+# → { "iss": "https://abc123.ngrok-free.app/realms/bootcamp", "azp": "kong-m2m", "typ": "Bearer" }
+```
+
+Kong caches the token (`cache.default_ttl`) so it isn't calling Keycloak on every
+request; it auto-refreshes near expiry.
+
+> **Clean up:** `deck gateway sync deck/01-services-and-routes.yaml …`.
 
 ---
 

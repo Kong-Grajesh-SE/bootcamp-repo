@@ -62,7 +62,8 @@ api-gateway/
 │   ├── 13-http-log.yaml              ← HTTP Log (httpbin)
 │   ├── 14-consumer-groups-acl.yaml   ← Consumer Groups + ACL
 │   ├── 15-kong-identity.yaml         ← Kong Identity (Konnect-native M2M auth)
-│   └── 16-oidc-keycloak.yaml         ← OpenID Connect via local Keycloak (AuthN/AuthZ)
+│   ├── 16-oidc-keycloak.yaml         ← OpenID Connect via local Keycloak (AuthN/AuthZ)
+│   └── 17-upstream-oauth.yaml        ← Upstream OAuth (Kong → backend M2M token)
 ├── insomnia/
 │   └── kong-gateway-bootcamp.json    ← Full Insomnia collection
 ├── README-serverless.md              ← Konnect Serverless guide
@@ -929,8 +930,121 @@ back, Kong sets a session cookie and returns the upstream response.
 > Revert to `login_action: response` and the password/bearer `auth_methods`
 > before re-running the curl tests above.
 
+#### Step 5 (optional) - Token introspection (real-time revocation)
+
+By default Kong validates the JWT **offline** against Keycloak's JWKS - fast, no
+per-request call to the IdP, but a token stays valid until it expires even if you
+log the user out. **Introspection** ([RFC 7662](https://www.rfc-editor.org/rfc/rfc7662))
+flips that: on every request Kong calls Keycloak's introspect endpoint to ask
+"is this token still active?", so revocation/logout takes effect immediately (and
+it also works for opaque, non-JWT tokens).
+
+| | Local JWKS validation (default) | Introspection |
+|---|---|---|
+| Per-request cost | None (verifies signature locally) | One call to Keycloak |
+| Revocation honoured | Only at token expiry | Immediately |
+| Works with opaque tokens | No (JWT only) | Yes |
+
+**See it first - call the introspect endpoint directly:**
+
+```bash
+# (reuse $TOKEN from Step 3 - alice's access token)
+curl -s -u kong:kong-bootcamp-client-secret-replace-in-prod \
+  -d "token=$TOKEN" \
+  http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token/introspect | jq
+# → { "active": true, "username": "alice", "scope": "openid profile email", ... }
+```
+
+**Switch the plugin to introspection** - uncomment this block in
+`deck/16-oidc-keycloak.yaml` (under `config:`) and re-apply:
+
+```yaml
+    introspection_endpoint: http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token/introspect
+    introspect_jwt_tokens: true                # introspect even JWT access tokens
+    introspection_endpoint_auth_method: client_secret_basic
+    cache_introspection: false                 # demo: no caching so revocation is instant
+```
+
+```bash
+deck gateway apply deck/16-oidc-keycloak.yaml \
+  --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+```
+
+**Test real-time revocation:**
+
+```bash
+# 1. Token still works
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"   # → 200
+
+# 2. Revoke it (log alice's sessions out) via Keycloak's admin REST API
+ADMIN=$(curl -s -d 'grant_type=password' -d 'client_id=admin-cli' \
+  -d 'username=admin' -d 'password=admin' \
+  http://host.docker.internal:8080/realms/master/protocol/openid-connect/token | jq -r .access_token)
+ALICE_ID=$(curl -s -H "Authorization: Bearer $ADMIN" \
+  "http://host.docker.internal:8080/admin/realms/bootcamp/users?username=alice" | jq -r '.[0].id')
+curl -s -X POST -H "Authorization: Bearer $ADMIN" \
+  "http://host.docker.internal:8080/admin/realms/bootcamp/users/$ALICE_ID/logout"
+
+# 3. Same token now rejected - introspection reports active:false
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"   # → 401
+```
+
+With the **default** (offline JWKS) config, step 3 would still return `200`
+until the token expired - that's the difference introspection makes.
+
 > **Clean up:** `deck gateway sync deck/01-services-and-routes.yaml …` removes
 > the plugin; `cd ../keycloak && docker compose down -v` stops Keycloak.
+
+---
+
+### 17 - Upstream OAuth (Kong as the OAuth client)
+
+Steps 15 and 16 made Kong **validate** tokens coming *from* callers.
+[Upstream OAuth](https://developer.konghq.com/plugins/upstream-oauth/) is the
+**mirror image**: Kong itself fetches a `client_credentials` token from the IdP
+and injects it as `Authorization: Bearer …` on the **upstream** request - so your
+backend gets a valid machine-to-machine token without the caller knowing anything
+about OAuth. Classic use: a public/edge API whose upstream is a protected
+internal service.
+
+```
+        no auth          Kong fetches M2M token        Bearer <token>
+client ─────────▶ Kong ──────────────────────▶ Keycloak (kong-m2m)
+                   │  ◀── token ────────────────┘
+                   └──────────────── Authorization: Bearer <token> ──▶ upstream
+```
+
+Scoped to `httpbin-service`, whose `/headers` echoes what the upstream received —
+so you can literally see the token Kong added. Uses the shared Keycloak's
+`kong-m2m` client.
+
+> **No `iss` matching here.** Unlike step 16, Kong is the *client*, not the
+> validator - it just forwards the token upstream. You only need the
+> `token_endpoint` reachable **from the DP container** (`host.docker.internal`);
+> no `/etc/hosts` entry is required.
+
+```bash
+deck gateway apply deck/17-upstream-oauth.yaml \
+  --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+```
+
+**Test - the caller sends nothing, the upstream sees a token:**
+
+```bash
+# Client sends NO Authorization header
+curl -s $PROXY_URL/httpbin/headers | jq '.headers.Authorization'
+# → "Bearer eyJhbGciOi..."  (Kong obtained this from Keycloak using kong-m2m)
+
+# Decode it to prove it's a real M2M token minted for kong-m2m
+curl -s $PROXY_URL/httpbin/headers | jq -r '.headers.Authorization' \
+  | cut -d' ' -f2 | cut -d. -f2 | base64 -d 2>/dev/null | jq '{iss, azp, typ}'
+# → { "iss": "http://host.docker.internal:8080/realms/bootcamp", "azp": "kong-m2m", "typ": "Bearer" }
+```
+
+Kong caches the token (`cache.default_ttl`) so it isn't calling Keycloak on every
+request; it auto-refreshes near expiry.
+
+> **Clean up:** `deck gateway sync deck/01-services-and-routes.yaml …`.
 
 ---
 

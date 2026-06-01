@@ -94,7 +94,6 @@
   ],
   "clients": [
     {
-      "_comment": "Module 01 - server-side OIDC client used by the openid-connect plugin (Auth Code / password / client_credentials).",
       "clientId": "kong",
       "name": "Kong OIDC Relying Party",
       "description": "Server-side OIDC client used by the Kong openid-connect plugin (Auth Code Flow).",
@@ -141,7 +140,6 @@
       ]
     },
     {
-      "_comment": "Module 01 - machine-to-machine client (client_credentials), upstream OAuth scenarios.",
       "clientId": "kong-m2m",
       "name": "Kong Upstream OAuth M2M Client",
       "description": "client_credentials grant. Token issued to Kong itself.",
@@ -161,7 +159,6 @@
       }
     },
     {
-      "_comment": "Module 05 - confidential client, server-to-server (client_credentials) for MCP tools.",
       "clientId": "mcp-service-client",
       "name": "MCP Service Client (confidential)",
       "enabled": true,
@@ -174,7 +171,6 @@
       "protocol": "openid-connect"
     },
     {
-      "_comment": "Module 05 - public client, desktop/CLI apps (auth code + PKCE, no secret).",
       "clientId": "mcp-pkce-client",
       "name": "MCP PKCE Client (public)",
       "enabled": true,
