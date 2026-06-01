@@ -18,10 +18,20 @@ plugins:
         port: 6379
         timeout: 2000
       llm_providers:
+        # Per-provider token quotas. Numbers paired positionally: limit[i]
+        # tokens per window_size[i] seconds. Demo values are deliberately
+        # low so a 20-prompt loop trips 429 within the lab.
         - name: mistral
           limit:
-            - 100
-            - 1000
+            - 20
+            - 200
+          window_size:
+            - 60
+            - 3600
+        - name: cerebras
+          limit:
+            - 20
+            - 200
           window_size:
             - 60
             - 3600

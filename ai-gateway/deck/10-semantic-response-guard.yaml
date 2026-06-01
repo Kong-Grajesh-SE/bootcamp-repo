@@ -16,6 +16,8 @@ plugins:
         model:
           provider: mistral
           name: mistral-embed
+          options:
+            upstream_url: https://api.mistral.ai/v1/embeddings
       rules:
         deny_responses:
           - "Detailed exploitation techniques, vulnerability exploitation, or hacking instructions"
@@ -23,6 +25,8 @@ plugins:
           - "Phishing templates, social engineering scripts, or fraud schemes"
           - "Malware code, ransomware instructions, or destructive scripts"
           - "Private personal data such as SSNs, credit cards, or medical records"
+      # NOTE on thresholds: keep `search.threshold` and `vectordb.threshold`
+      # equal unless you intentionally want a different build-time vs match-time cutoff.
       search:
         threshold: 0.5
       vectordb:
@@ -31,7 +35,8 @@ plugins:
           host: host.docker.internal
           port: 6379
           timeout: 2000
-          database: 0
+          # DB 3 — see deck/04 for the per-plugin DB convention.
+          database: 3
         dimensions: 1024
         distance_metric: cosine
-        threshold: 0.7
+        threshold: 0.5

@@ -7,6 +7,9 @@
 | Guide | Focus | Best For |
 |-------|-------|----------|
 | [README-DECK.md](README-DECK.md) | Declarative (decK CLI) | GitOps, repeatable deploys, CI/CD |
+| [README-UI.md](README-UI.md)     | Konnect UI walkthrough | Live demos / customer walkthroughs — click-by-click in Gateway Manager |
+
+Both guides reach the **same end state**: 6 progressive MCP/A2A configurations on the same control plane. Pick one or switch between them.
 
 ## File Structure
 
@@ -110,7 +113,7 @@ deck gateway sync deck/01-mcp-passthrough.yaml \
 | 1-2 | `POST /mcp/tools` | passthrough-listener | key-auth + rate-limit | Native MCP clients |
 | 3 | `POST /mcp/convert` | conversion-listener | — | REST APIs exposed as MCP |
 | 4 | `POST /mcp/aggregate` | listener | — | Multi-team tool aggregation |
-| 5 | `POST /mcp-oauth/tools` | passthrough-listener + ai-mcp-oauth2 | OAuth2 PKCE | VS Code, Claude, Insomnia |
+| 5 | `POST /mcp-oauth/tools` | passthrough-listener + ai-mcp-oauth2 | OAuth2 (`client_credentials` for backends, PKCE for desktop clients) | curl scripts, VS Code, Claude Desktop |
 | 6 | `GET /.well-known/agent.json` | — | — | A2A Agent Card |
 | 6 | `POST /a2a/flights` | — | key-auth, 30/min | Flights sub-agent |
 | 6 | `POST /a2a/hotels` | — | key-auth, 30/min | Hotels sub-agent |

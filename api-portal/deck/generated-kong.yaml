@@ -3,7 +3,6 @@ services:
 - host: httpbin.org
   id: e3a7e2e9-4033-546a-ade0-60bb93193a43
   name: bookstore-api
-  path: /anything
   plugins: []
   port: 443
   protocol: https

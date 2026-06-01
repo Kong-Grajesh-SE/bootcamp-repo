@@ -22,3 +22,4 @@ yarn-error.log
 
 # Docker volumes
 data/
+bootcamp-automation*

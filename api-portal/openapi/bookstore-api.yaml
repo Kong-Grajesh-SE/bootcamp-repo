@@ -9,8 +9,8 @@ info:
     name: Bookstore Team
     email: bookstore@example.com
 servers:
-- url: https://httpbin.org/anything
-  description: Mock backend (httpbin echoes requests back as JSON)
+- url: https://httpbin.org
+  description: Mock backend (httpbin echoes requests)
 paths:
   /books:
     get:
@@ -230,10 +230,3 @@ components:
           type: string
         reviewer:
           type: string
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: apikey
-security:
-  - ApiKeyAuth: []

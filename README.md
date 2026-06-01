@@ -4,13 +4,23 @@ Hands-on labs for Kong Konnect — from API gateway fundamentals to AI-powered a
 
 ## Modules
 
-| Module | Description | Guide |
-|--------|-------------|-------|
-| [api-gateway](api-gateway/) | Core gateway plugins — rate limiting, caching, auth, CORS, logging, consumer groups | [README](api-gateway/README.md) |
-| [ai-gateway](ai-gateway/) | LLM controls — multi-provider routing, prompt guards, semantic cache, PII sanitization, AI rate limiting | [README](ai-gateway/README.md) |
-| [mcp-a2a](mcp-a2a/) | Agentic AI — MCP passthrough & conversion listeners, multi-team aggregation, OAuth2 PKCE, A2A routing | [README](mcp-a2a/README.md) |
-| [apiops](apiops/) | decK CLI mastery — sync, diff, validate, dump, lint, OpenAPI-to-Kong, tags, templates | [README](apiops/README.md) |
-| [api-portal](api-portal/) | Developer Portal — publish APIs, app registration, self-service credentials | [README](api-portal/README.md) |
+Each module ships with both a **decK CLI** walkthrough and a **Konnect UI**
+walkthrough so you can choose your delivery style — both reach the same end
+state on the same control plane.
+
+| Module | Description | CLI guide | UI guide |
+|--------|-------------|-----------|----------|
+| [api-gateway](api-gateway/) | Core gateway plugins — rate limiting, caching, auth, CORS, logging, consumer groups | [serverless](api-gateway/README-serverless.md) · [hybrid](api-gateway/README-hybrid.md) | [README-UI](api-gateway/README-UI.md) |
+| [apiops](apiops/) | decK CLI mastery — sync, diff, validate, dump, lint, OpenAPI-to-Kong, tags, templates | [README](apiops/README.md) | [README-UI](apiops/README-UI.md) (gateway ops only — see note inside) |
+| [ai-gateway](ai-gateway/) | LLM controls — multi-provider routing, prompt guards, semantic cache, PII sanitization, AI rate limiting | [README-DECK](ai-gateway/README-DECK.md) | [README-UI](ai-gateway/README-UI.md) |
+| [mcp-a2a](mcp-a2a/) | Agentic AI — MCP passthrough & conversion listeners, multi-team aggregation, OAuth2 PKCE, A2A routing | [README-DECK](mcp-a2a/README-DECK.md) | [README-UI](mcp-a2a/README-UI.md) |
+| [api-portal](api-portal/) | Developer Portal — publish APIs, app registration, self-service credentials | [README](api-portal/README.md) (dual-track inline) | (same file — UI navigation paired with each API call) |
+
+### Stage Demo (optional)
+
+| Folder | Description | Guide |
+|---|---|---|
+| [bootcamp-automation](bootcamp-automation/) | **AI agent driving the Konnect UI through Kong** — Playwright MCP server gated by `key-auth` + `rate-limiting` + `ai-mcp-proxy`. Showcase that ties every prior module's plugins back together. | [README](bootcamp-automation/README.md) |
 
 ## Prerequisites
 
@@ -27,11 +37,16 @@ export PROXY_URL=http://localhost:8000   # or your serverless gateway URL
 
 ## Recommended Order
 
-1. **api-gateway** — Learn core Kong concepts (services, routes, plugins, consumers)
-2. **apiops** — Master decK workflows (sync, diff, dump, lint, tags)
-3. **ai-gateway** — Add AI/LLM controls on top of gateway fundamentals
-4. **mcp-a2a** — Agentic AI patterns (MCP, A2A) with Kong
-5. **api-portal** — Publish and manage APIs through the Developer Portal
+| # | Module | Approx. time | New concepts introduced |
+|---|---|---|---|
+| 1 | **api-gateway** | 2–3 hrs | Services, routes, plugins, consumers, plugin scopes |
+| 2 | **apiops** | 2 hrs | `deck gateway` vs `deck file`, partials, tags, OpenAPI→Kong, lint, patch |
+| 3 | **ai-gateway** | 2–3 hrs | AI Proxy multi-provider LB, embeddings, semantic cache, prompt/response guards, PII redaction, token rate limiting |
+| 4 | **mcp-a2a** | 1.5–2 hrs | MCP protocol, listener modes, OAuth2 + PKCE, A2A agent routing |
+| 5 | **api-portal** | 2 hrs | Konnect API Catalog, publications, auth strategies, developer self-service |
+
+Each module's README opens with a "What you bring forward" preamble so you
+know which concepts carry through from earlier modules.
 
 ## License
 

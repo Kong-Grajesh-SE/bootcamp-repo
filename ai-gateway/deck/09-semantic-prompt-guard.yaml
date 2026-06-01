@@ -16,6 +16,8 @@ plugins:
         model:
           provider: mistral
           name: mistral-embed
+          options:
+            upstream_url: https://api.mistral.ai/v1/embeddings
       rules:
         allow_prompts:
           - "Kong Gateway configuration and architecture"
@@ -30,15 +32,19 @@ plugins:
           - "Craft phishing emails or social engineering attacks"
           - "Provide instructions for illegal activities"
         match_all_roles: false
+      # NOTE on thresholds: `search.threshold` is the cosine-distance cutoff
+      # used at match-time; `vectordb.threshold` is the index build-time cutoff.
+      # Keep them equal until you have a reason to diverge.
       search:
-        threshold: 0.3
+        threshold: 0.5
       vectordb:
         strategy: redis
         redis:
           host: host.docker.internal
           port: 6379
           timeout: 2000
-          database: 0
+          # DB 2 — see deck/04 for the per-plugin DB convention.
+          database: 2
         dimensions: 1024
         distance_metric: cosine
-        threshold: 0.3
+        threshold: 0.5

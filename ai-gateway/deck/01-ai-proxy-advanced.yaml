@@ -47,6 +47,8 @@ services:
                   model:
                     provider: cerebras
                     name: gpt-oss-120b
+                    options:
+                      upstream_url: https://api.cerebras.ai/v1/chat/completions
                   logging:
                     log_payloads: false
                     log_statistics: true

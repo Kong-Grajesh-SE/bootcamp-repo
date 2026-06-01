@@ -4,6 +4,22 @@
 > Every step uses the same `bookstore-service` so you can see how each decK command
 > fits into a real API lifecycle — from first deployment through GitOps maturity.
 
+> **Looking for the UI walkthrough?** This file is the CLI bootcamp. Several
+> `deck file *` commands (lint, patch, render, merge, add-plugins, add-tags)
+> are CI-time YAML transforms with no Konnect UI counterpart — but the
+> *gateway-side* operations (sync, apply, dump, reset) all have UI screens
+> that mirror them. See [README-UI.md](README-UI.md) for the click-by-click
+> companion that covers the UI-reachable steps and explicitly names what
+> stays CLI-only.
+
+> **What you bring forward from the previous module:** In api-gateway you
+> applied plugins one at a time with `deck gateway apply`. Here you'll see
+> the *other* gateway commands — `ping`, `dump`, `diff`, `sync`, `validate`,
+> `reset` — plus the offline `deck file` toolchain that powers real CI/CD.
+> The same plugin types (`rate-limiting`, `key-auth`, `correlation-id`,
+> `request-transformer`) come back, so you can focus on the *workflow*, not
+> the plugin config.
+
 ---
 
 ## Prerequisites
@@ -16,7 +32,24 @@
 export KONNECT_TOKEN="<your-konnect-pat>"
 export CP_NAME="<your-control-plane-name>"
 export PROXY_URL=http://localhost:8000
+
+# Several steps write transformed YAML into ./output/. Create it once up front.
+mkdir -p output
 ```
+
+> **Three terms used throughout this bootcamp:**
+>
+> - **`_format_version: "3.0"`** at the top of every entity file is decK's
+>   schema version. Quoted because YAML would otherwise parse `3.0` as a
+>   float and lose the trailing zero. Transformer / patch files use the
+>   older `"1.0"` schema — that's intentional, not a typo.
+> - **Partial** = a YAML file that contains a *subset* of entities (just
+>   services, or just plugins). decK doesn't care that a file is incomplete
+>   as long as you `deck file merge` partials together before `deck gateway
+>   sync`. Step 12 demonstrates this.
+> - **Tag** = a free-form string attached to any entity. `select_tags` lets
+>   teams co-own a control plane by syncing only the entities they've
+>   tagged. Steps 16–18 cover tagging end-to-end.
 
 ---
 
@@ -759,11 +792,13 @@ deck file add-plugins \
 > Tags are how decK scopes ownership — `select_tags` lets each team sync only their entities.
 
 ```bash
-# Add team and environment tags to the base file
+# Add team and environment tags to the base file (positional form: file,
+# then one or more tag values). add-tags applies to ALL entities in the
+# file — there is no --selector / --value mode like add-plugins or patch.
 deck file add-tags \
-  --selector '$.services[*]' \
-  --value 'team:bookstore' \
   deck/01-bookstore-base.yaml \
+  team:bookstore \
+  env:staging \
   --output-file output/tagged.yaml
 ```
 
@@ -942,7 +977,8 @@ deck gateway reset \
 # Clean generated output files
 rm -f output/*
 
-# Clean temp files created during the bootcamp
+# Clean temp files created during the bootcamp (some may not exist —
+# the -f flag silences "no such file" messages).
 rm -f /tmp/bad-config.yaml \
       /tmp/broken.yaml \
       /tmp/live.yaml \

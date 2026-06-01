@@ -6,8 +6,13 @@ add-plugins:
   plugins:
   - name: cors
     config:
+      # NOTE: Browsers reject `Access-Control-Allow-Origin: *` together with
+      # `credentials: true`. The portal Try-It widget needs credentials, so we
+      # list explicit origins. Replace the demo entries with your portal's
+      # custom domain once configured.
       origins:
-      - "*"
+      - "https://*.kongportals.com"
+      - "http://localhost:8080"
       methods:
       - GET
       - POST

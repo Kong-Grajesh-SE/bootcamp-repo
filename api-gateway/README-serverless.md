@@ -241,6 +241,15 @@ curl -s $PROXY_URL/lb | jq .url
 
 Protects httpbin-service with API key authentication.
 
+> **Consumer — quick primer (covered in depth in Step 07):** A **consumer**
+> in Kong is an identity that Kong knows about — typically a person, a
+> service account, or a partner. Credentials (API key, JWT secret, OAuth
+> client) are attached to a consumer, so when Kong validates a credential
+> it can tell you *who* called the route. The decK file below creates two
+> consumers (`demo-user`, `test-user`) alongside the plugin so the demo is
+> self-contained; Step 07 unpacks the standalone consumer concept and Step
+> 14 ties it together with consumer groups and ACL.
+
 ```bash
 deck gateway apply deck/05-key-auth.yaml \
   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
@@ -276,19 +285,29 @@ deck gateway apply deck/06-jwt-auth.yaml \
   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
 ```
 
-Generate a JWT token:
+First generate a random HS256 secret and substitute it into `deck/06-jwt-auth.yaml`
+(replace the `<REPLACE-WITH-RANDOM-SECRET>` placeholder), then re-apply the file:
+
+```bash
+JWT_SECRET=$(openssl rand -hex 32)
+sed -i.bak "s|<REPLACE-WITH-RANDOM-SECRET>|$JWT_SECRET|" deck/06-jwt-auth.yaml
+deck gateway apply deck/06-jwt-auth.yaml \
+  --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+```
+
+Generate a JWT token signed with that secret:
 
 ```bash
 pip3 install PyJWT  # one-time
 
 TOKEN=$(python3 -c "
-import jwt, time
+import jwt, time, os
 token = jwt.encode(
     {'iss': 'my-jwt-issuer', 'exp': int(time.time()) + 3600},
-    'my-super-secret-key',
+    os.environ['JWT_SECRET'],
     algorithm='HS256'
 )
-print(token)
+print(token if isinstance(token, str) else token.decode())
 ")
 echo $TOKEN
 ```
@@ -443,26 +462,48 @@ curl -s $PROXY_URL/httpbin/get
 
 ### 14 — Consumer Groups + ACL
 
-Combines **Key Auth** (authentication), **ACL** (authorization), and **Consumer Groups** (tiered rate limiting).
+This demo combines **three Kong features** to build a tiered API access system:
 
-```bash
-deck gateway apply deck/14-consumer-groups-acl.yaml \
-  --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+1. **Key Auth** — identifies _who_ is making the request (authentication)
+2. **ACL (Access Control List)** — decides _if_ they're allowed (authorization)
+3. **Consumer Groups** — applies _different rate limits_ per tier (policy)
+
+#### How It Works — Request Flow
+
+```
+Client sends request with API key
+        │
+        ▼
+┌─────────────────┐
+│  1. Key Auth    │  Looks up the API key → finds the consumer
+│     Plugin      │  No key or wrong key → 401 Unauthorized
+└────────┬────────┘
+         │ Consumer identified (e.g., premium-user)
+         ▼
+┌─────────────────┐
+│  2. ACL Plugin  │  Checks consumer's ACL group against allow list
+│                 │  premium, standard → allowed
+│                 │  trial → 403 Forbidden
+└────────┬────────┘
+         │ Consumer authorized
+         ▼
+┌─────────────────┐
+│  3. Consumer    │  Applies group-specific rate limit
+│     Group       │  premium-tier → 1000 req/min
+│     Rate Limit  │  standard-tier → 10 req/min
+└────────┬────────┘
+         │
+         ▼
+    Request → upstream (httpbin)
 ```
 
-```bash
-# No key → 401
-curl -i $PROXY_URL/httpbin/get
+#### What Gets Created
 
-# Premium → 200, 1000 req/min
-curl -i $PROXY_URL/httpbin/get -H "apikey: premium-key-123"
+**Plugins (on httpbin-service):**
+- `key-auth` — requires `apikey` header, hides credential from upstream
+- `acl` — only allows consumers in `premium` or `standard` groups
 
-# Standard → 200, 10 req/min
-curl -i $PROXY_URL/httpbin/get -H "apikey: standard-key-456"
-
-# Trial → 403 (authenticated but blocked by ACL)
-curl -i $PROXY_URL/httpbin/get -H "apikey: blocked-key-789"
-```
+**Consumers:**
 
 | Consumer | API Key | ACL Group | Consumer Group | Rate Limit | Access |
 |----------|---------|-----------|----------------|------------|--------|
@@ -470,7 +511,70 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: blocked-key-789"
 | standard-user | `standard-key-456` | standard | standard-tier | 10/min | ✅ Allowed |
 | trial-user | `blocked-key-789` | trial | _(none)_ | — | ❌ Denied (403) |
 
-> See [README-hybrid.md](README-hybrid.md#14--consumer-groups--acl) for the full step-by-step walkthrough, request flow diagram, and Konnect UI verification steps.
+> **Key concept:** ACL group ≠ Consumer Group. They serve different purposes:
+> - **ACL group** (e.g., `premium`) → used by the ACL plugin for authorization
+> - **Consumer Group** (e.g., `premium-tier`) → used for group-scoped rate limiting
+> - A consumer can belong to both independently
+
+**Consumer Groups:**
+- `premium-tier` — rate-limiting plugin override: 1000 req/min
+- `standard-tier` — rate-limiting plugin override: 10 req/min
+
+#### Apply
+
+```bash
+deck gateway apply deck/14-consumer-groups-acl.yaml \
+  --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+```
+
+#### Test
+
+```bash
+# 1. No key → 401 Unauthorized
+curl -i $PROXY_URL/httpbin/get
+
+# 2. Premium → 200, 1000 req/min budget
+curl -i $PROXY_URL/httpbin/get -H "apikey: premium-key-123"
+
+# 3. Standard → 200, 10 req/min budget
+curl -i $PROXY_URL/httpbin/get -H "apikey: standard-key-456"
+
+# 4. Trial → 403 (authenticated, but blocked by ACL because `trial` isn't in
+#    the allow list)
+curl -i $PROXY_URL/httpbin/get -H "apikey: blocked-key-789"
+
+# 5. Watch the rate-limit headers on standard to confirm the group-scoped
+#    policy is firing:
+for i in 1 2 3; do
+  curl -si $PROXY_URL/httpbin/get -H "apikey: standard-key-456" \
+    | grep -i x-ratelimit
+done
+```
+
+#### Konnect UI verification
+
+```
+Gateway Manager → <your-control-plane> → Plugins
+  → You should see: key-auth (httpbin-service), acl (httpbin-service)
+
+Gateway Manager → <your-control-plane> → Consumers
+  → 3 consumers listed: premium-user, standard-user, trial-user
+  → Click premium-user → Credentials tab → Key: premium-key-123
+  → Click premium-user → ACL tab → Group: premium
+  → Click premium-user → Groups tab → Consumer Group: premium-tier
+
+Gateway Manager → <your-control-plane> → Consumer Groups
+  → premium-tier → 1 member, rate-limiting: 1000/min
+  → standard-tier → 1 member, rate-limiting: 10/min
+```
+
+> **Clean up:** Reset back to base services & routes (removes all plugins,
+> consumers, and consumer groups created in this step):
+> ```bash
+> deck gateway sync \
+>   deck/01-services-and-routes.yaml \
+>   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+> ```
 
 ---
 

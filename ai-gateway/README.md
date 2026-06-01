@@ -37,15 +37,39 @@ ai-gateway/
 └── README-UI.md                        ← Konnect UI walkthrough
 ```
 
-## Plugin Chain (execution order)
+## Plugin Chain (build order vs runtime order)
+
+This bootcamp adds plugins in the order **01 → 10**: that's the *teaching*
+order. Kong doesn't execute plugins in the order you added them — it runs
+them by **phase** (access / response / log) and within a phase by each
+plugin's built-in priority. You don't configure priorities here; Kong does.
+
+The runtime order you actually get on the request path:
 
 ```
-Request → ai-prompt-template → ai-prompt-decorator → ai-prompt-guard
-        → ai-semantic-prompt-guard → ai-sanitizer → ai-semantic-cache
-        → ai-prompt-compressor → ai-rate-limiting-advanced
-        → ai-proxy-advanced (round-robin: Mistral ↔ Cerebras) → LLM
-        → ai-semantic-response-guard → ai-sanitizer (response) → Client
+Request
+  ├─ ai-prompt-template       (rewrite named templates)        ← Step 05
+  ├─ ai-prompt-decorator      (inject system prompt)           ← Step 02
+  ├─ ai-prompt-guard          (regex deny / allow)             ← Step 03
+  ├─ ai-semantic-prompt-guard (embedding-based deny / allow)   ← Step 09
+  ├─ ai-sanitizer             (PII redaction, request side)    ← Step 06
+  ├─ ai-semantic-cache        (hit → return cached, skip LLM)  ← Step 04
+  ├─ ai-prompt-compressor     (token reduction)                ← Step 07
+  ├─ ai-rate-limiting-advanced(token budget check)             ← Step 08
+  └─ ai-proxy-advanced        (round-robin Mistral ↔ Cerebras) ← Step 01
+                                       │
+                                       ▼  Provider response
+  ├─ ai-semantic-response-guard (block outputs by topic)       ← Step 10
+  └─ ai-sanitizer               (PII redaction, response side) ← Step 06
+                                       │
+                                       ▼
+Client
 ```
+
+Mental model: **the lab teaches plugins one at a time, but at runtime they're
+already chained in this order — so each step you add slots into the chain
+wherever its priority belongs.** If a later test surprises you, check this
+diagram first.
 
 ## AI Providers
 

@@ -5,6 +5,19 @@
 > and walk through the full developer self-service experience — from registration
 > to making authenticated API calls.
 
+> **CLI ↔ UI:** This guide is **dual-track by step**. Every Konnect API call
+> below is paired with its **"Via Konnect UI"** block, so you can choose
+> click-by-click navigation or the curl/API path at each step. There is no
+> separate `README-UI.md` — the UI walkthrough lives inline here.
+
+> **What you bring forward from the previous modules:** The
+> `openapi/bookstore-api.yaml` here is the **same file** you used in apiops
+> — that's deliberate. The `deck file openapi2kong`, `deck file patch`, and
+> `deck file add-plugins` commands all come back. New here are the Konnect
+> **Catalog** and **Dev Portal** concepts (API product, version, publication,
+> auth strategy, application) — the table after the "Part 2" heading
+> defines each before they're first used.
+
 ---
 
 ## The Flow
@@ -109,8 +122,27 @@ deck file openapi2kong \
 cat deck/generated-kong.yaml
 ```
 
-You'll see a Kong service pointing at `https://httpbin.org/anything` (from the spec's `servers` block)
+You'll see a Kong service pointing at `https://httpbin.org` (from the spec's `servers` block)
 with routes for `/books`, `/books/{bookId}`, `/authors`, `/authors/{authorId}`, and `/reviews`.
+
+> **Why we need one small patch:** The Bookstore spec is shared with the APIOps
+> bootcamp, where the upstream is `https://httpbin.org` (clean and product-y).
+> But httpbin.org itself doesn't have `/books`, `/authors`, etc. — only its
+> `/anything` endpoint echoes arbitrary paths back as JSON. So we use
+> `deck file patch` (same command from APIOps Step 14) to set the service's
+> `path` to `/anything` without editing the spec:
+
+```bash
+deck file patch \
+  --selector '$..services[*]' \
+  --value 'path:"/anything"' \
+  -s deck/generated-kong.yaml \
+  --output-file deck/generated-kong.yaml
+```
+
+Now every request through Kong is rewritten to `https://httpbin.org/anything/<route>`,
+which httpbin will echo back as JSON — perfect for demonstrating the gateway and
+auth flow without standing up a real Bookstore backend.
 
 ---
 
@@ -216,6 +248,29 @@ curl -i $PROXY_URL/books
 > Now that the Bookstore API is running on the gateway with CORS enabled,
 > you need a way for external developers to discover it, register, and get API keys.
 > Auth will be enforced automatically when you attach an auth strategy to the publication.
+
+### Concepts you'll meet in Part 2 — read this once
+
+Part 1 was familiar territory (OpenAPI → decK → gateway). Part 2 introduces
+Konnect's API Catalog and Dev Portal model. The same concepts come back over
+and over — keep this table handy.
+
+| Concept | What it is | Where it appears |
+|---|---|---|
+| **API Product** | The umbrella catalog entry for one logical API. Holds versions, specs, and implementations. | Step 7 creates it. |
+| **API Version** | A versioned snapshot of the product (`1.0.0`, `2.0.0`) that owns its own spec. | Step 8 creates one. |
+| **Spec** | The OpenAPI document attached to a version. | Step 8 uploads it. |
+| **Implementation** | The link between an API product and a live gateway service that fulfils requests. | Step 9 creates it. |
+| **Portal** | The developer-facing website (registration, docs, "Try It"). | Step 6 creates it. |
+| **Publication** | The decision to make a specific API product visible on a specific portal, with a visibility level and an auth strategy. | Step 10 creates one. |
+| **Auth Strategy** | The contract for how registered apps authenticate (key-auth, OIDC). Attached to a publication. | Step 11 creates one; Step 12 attaches it. |
+| **Application** | A developer-owned "client" that gets credentials issued against an auth strategy. | Step 16 creates one. |
+| **Visibility** | Per-publication: `public` (anyone with the portal URL sees the API listing) vs `private` (login required). | Step 10 sets it. |
+| **`konnect-application-auth`** | The gateway plugin Konnect auto-creates when you attach an auth strategy. *Don't add your own key-auth alongside — it conflicts.* | Created behind the scenes in Step 12. |
+
+> **Mental model:** *Product* is the noun in the catalog. *Publication* is
+> the verb that puts it on a portal. *Implementation* is what makes a call
+> actually land on Kong. *Auth Strategy* is the lock on the door.
 
 ---
 
@@ -374,11 +429,15 @@ curl -s -H "Authorization: Bearer $KONNECT_PAT" \
 ```
 
 ```bash
-# Capture the bookstore service ID (name may vary based on openapi2kong output)
+# Capture the bookstore service ID. The service name comes from your OpenAPI
+# `info.title` (slugified by openapi2kong) — adjust the filter below if you
+# renamed the spec. Filtering by name (instead of `.data[0]`) is important
+# when the control plane already has services from earlier bootcamps.
 export BOOKSTORE_SVC_ID=$(curl -s -H "Authorization: Bearer $KONNECT_PAT" \
   "$KONNECT_API/v2/control-planes/$CP_ID/core-entities/services" | \
-  jq -r '.data[0].id')
+  jq -r '.data[] | select(.name | test("bookstore")) | .id' | head -n1)
 echo "Service ID: $BOOKSTORE_SVC_ID"
+[ -z "$BOOKSTORE_SVC_ID" ] && echo "ERROR: bookstore service not found — did Step 8 sync run?" && return 1 2>/dev/null
 ```
 
 ```bash
@@ -687,8 +746,9 @@ echo "Open in incognito: https://$PORTAL_URL"
 ## Step 18 — Make Authenticated API Calls
 
 ```bash
-# Replace with your actual API key from Step 17
-export DEV_API_KEY="qpa0MGc5wA2F6wckdQtnFBuoVvtkBIua"
+# Replace <PASTE-API-KEY-FROM-STEP-17> with the key the portal displayed
+# in Step 17 (this is the ONLY time you can see the full value).
+export DEV_API_KEY="<PASTE-API-KEY-FROM-STEP-17>"
 export PROXY_URL=http://localhost:8000
 
 # ✅ With key → proxied to upstream (httpbin echoes back the request as JSON)
@@ -1148,19 +1208,14 @@ api-portal/
 | 401 with portal-issued key | Manual `key-auth` plugin conflicts with `konnect-application-auth` | Remove the manual `key-auth` plugin from decK config — Konnect manages auth via the portal auth strategy |
 | 401 with portal-issued key | Auth strategy not attached to publication | Attach auth strategy in Step 12 |
 | Portal shows but no APIs | API product exists but no publication | Create a publication |
-| Upstream returns unexpected data | Wrong service path or upstream host | Verify the spec `servers` URL is `https://httpbin.org/anything` — httpbin echoes requests as JSON |
+| Upstream returns 404 (not 200) | The `deck file patch` step in Step 1 didn't run | Verify the service has `path: /anything` set (the patch step adds it); without it, `httpbin.org/books` returns 404 because httpbin doesn't have those paths |
 | 404 from gateway | Routes not matching | Check route paths from `openapi2kong` output |
 
 ---
 
 ## Key Concepts
 
-| Concept | What It Is |
-|---------|-----------|
-| **openapi2kong** | Converts an OpenAPI spec into Kong services + routes (APIOps) |
-| **API Product** | Catalog entry in Konnect — wraps versions, specs, implementations |
-| **API Version** | A versioned snapshot with an OpenAPI spec attached |
-| **Implementation** | Links an API product to a live gateway service |
-| **Publication** | Makes an API visible on a specific portal with visibility + auth |
-| **Auth Strategy** | Defines how apps authenticate (key-auth or OIDC) |
-| **Portal** | Developer-facing website for discovery, registration, credentials |
+See the **"Concepts you'll meet in Part 2"** table near the top of this
+file (immediately under the `# Part 2 —` heading) for the full glossary —
+Product, Version, Spec, Implementation, Portal, Publication, Auth Strategy,
+Application, Visibility, and `konnect-application-auth`.

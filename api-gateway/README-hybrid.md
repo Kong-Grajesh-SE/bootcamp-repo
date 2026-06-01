@@ -89,46 +89,9 @@ All routes use `strip_path: true` — the prefix is removed before forwarding.
 
 ## Quick Start
 
-### Step 1 — Get Cluster Certificates from Konnect
 
-In Konnect UI:
+> Replace `<your-control-plane>` with the value you set in `$CP_NAME`.
 
-```
-Gateway Manager → TCS-Bootcamp → Data Plane Nodes → New Data Plane Node → Docker
-```
-
-Download the two certificate files and save them:
-
-```bash
-mkdir -p certs
-# Save the downloaded files as:
-#   certs/tls.crt
-#   certs/tls.key
-```
-
-Note the **Control Plane Endpoint** shown (e.g., `abc123def.us.cp0.konghq.com`).
-
-### Step 2 — Start Docker Data Plane
-
-```bash
-# Replace <CP_ENDPOINT> with your actual endpoint from Step 1
-docker run -d --name upbeat_yonath \
-  -e KONG_ROLE=data_plane \
-  -e KONG_DATABASE=off \
-  -e KONG_CLUSTER_MTLS=pki \
-  -e KONG_CLUSTER_CONTROL_PLANE=<CP_ENDPOINT>:443 \
-  -e KONG_CLUSTER_SERVER_NAME=<CP_ENDPOINT> \
-  -e KONG_CLUSTER_TELEMETRY_ENDPOINT=<CP_ENDPOINT>:443 \
-  -e KONG_CLUSTER_TELEMETRY_SERVER_NAME=<CP_ENDPOINT> \
-  -e KONG_CLUSTER_CERT=/certs/tls.crt \
-  -e KONG_CLUSTER_CERT_KEY=/certs/tls.key \
-  -e KONG_LUA_SSL_TRUSTED_CERTIFICATE=system \
-  -e KONG_PROXY_LISTEN="0.0.0.0:8000, 0.0.0.0:8443 ssl" \
-  -v $(pwd)/certs:/certs \
-  -p 8000:8000 \
-  -p 8443:8443 \
-  kong/kong-gateway:3.9
-```
 
 ### Step 3 — Verify DP is Connected
 
@@ -314,6 +277,15 @@ curl -s $PROXY_URL/lb | jq .url
 
 Protects httpbin-service with API key authentication.
 
+> **Consumer — quick primer (covered in depth in Step 07):** A **consumer**
+> in Kong is an identity that Kong knows about — typically a person, a
+> service account, or a partner. Credentials (API key, JWT secret, OAuth
+> client) are attached to a consumer, so when Kong validates a credential
+> it can tell you *who* called the route. The decK file below creates two
+> consumers (`demo-user`, `test-user`) alongside the plugin so the demo is
+> self-contained; Step 07 unpacks the standalone consumer concept and Step
+> 14 ties it together with consumer groups and ACL.
+
 ```bash
 deck gateway apply deck/05-key-auth.yaml \
   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
@@ -349,19 +321,29 @@ deck gateway apply deck/06-jwt-auth.yaml \
   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
 ```
 
-Generate a JWT token:
+First generate a random HS256 secret and substitute it into `deck/06-jwt-auth.yaml`
+(replace the `<REPLACE-WITH-RANDOM-SECRET>` placeholder), then re-apply the file:
+
+```bash
+JWT_SECRET=$(openssl rand -hex 32)
+sed -i.bak "s|<REPLACE-WITH-RANDOM-SECRET>|$JWT_SECRET|" deck/06-jwt-auth.yaml
+deck gateway apply deck/06-jwt-auth.yaml \
+  --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+```
+
+Generate a JWT token signed with that secret:
 
 ```bash
 pip3 install PyJWT  # one-time
 
 TOKEN=$(python3 -c "
-import jwt, time
+import jwt, time, os
 token = jwt.encode(
     {'iss': 'my-jwt-issuer', 'exp': int(time.time()) + 3600},
-    'my-super-secret-key',
+    os.environ['JWT_SECRET'],
     algorithm='HS256'
 )
-print(token)
+print(token if isinstance(token, str) else token.decode())
 ")
 echo $TOKEN
 ```
@@ -430,12 +412,12 @@ deck gateway apply deck/09-ip-restriction.yaml \
 # From local machine via Docker → 200 (Docker bridge IP is in allow list)
 curl -i $PROXY_URL/httpbin/get
 
-# To test blocking: remove 172.0.0.0/8 from allow list, re-apply, then:
+# To test blocking: remove 172.16.0.0/12 from allow list, re-apply, then:
 curl -i $PROXY_URL/httpbin/get
 # → 403 "Your IP address is not allowed"
 ```
 
-> **Docker note:** Your client IP appears as `172.x.x.x` (Docker bridge), not `127.0.0.1`. The allow list includes `172.0.0.0/8` for this reason.
+> **Docker note:** Your client IP appears as `172.x.x.x` (Docker bridge), not `127.0.0.1`. The allow list includes `172.16.0.0/12` (the RFC 1918 range Docker bridges live in) for this reason.
 
 ---
 
@@ -807,7 +789,7 @@ deck gateway reset --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "
 | DP not showing in Konnect UI | Certs wrong or CP endpoint typo | Check `docker logs upbeat_yonath`, verify certs and endpoint |
 | `no Route matched` after apply | Config not synced yet | Wait 5s and retry, or `docker restart upbeat_yonath` |
 | 503 on `/konghq/*` | httpbin.konghq.com unreachable | Try `/httpbin/*` or `/httpbun/*` instead |
-| IP Restriction blocking everything | Docker bridge IP not in allow list | Add `172.0.0.0/8` to the allow list |
+| IP Restriction blocking everything | Docker bridge IP not in allow list | Add `172.16.0.0/12` (the RFC 1918 range Docker bridges use) to the allow list |
 | HTTP Log not receiving | Python server not running or wrong port | Check `python3` is listening on 9999, check `host.docker.internal` resolves |
 
 ---

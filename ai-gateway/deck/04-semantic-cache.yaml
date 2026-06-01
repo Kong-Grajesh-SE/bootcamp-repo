@@ -23,8 +23,12 @@ plugins:
           host: host.docker.internal
           port: 6379
           timeout: 2000
-          database: 0
+          # NOTE: each semantic plugin gets its own Redis DB to keep vector
+          # indexes isolated. Cache = DB 1, prompt-guard = DB 2, response-guard = DB 3.
+          database: 1
         dimensions: 1024
         distance_metric: cosine
-        threshold: 0.1
-      cache_control: false
+        # 0.2 is loose enough that paraphrased questions hit the cache;
+        # tighten to ~0.1 if you see false positives in your demo.
+        threshold: 0.2
+      cache_control: true

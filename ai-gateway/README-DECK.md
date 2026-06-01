@@ -5,6 +5,15 @@
 > plugin at a time** without redeploying the service or routes — the plugin-only
 > files are merged into the live state using `deck file add-plugins`.
 
+> **What you bring forward from the previous modules:** Everything you
+> learned in api-gateway about services, routes, and the request lifecycle
+> still applies — an LLM provider is just another upstream. The
+> `deck file add-plugins` pattern is the same one from apiops Step 15;
+> here you'll use it to stack ten AI plugins on top of one base service
+> without touching the route. The plugin-chain diagram in
+> [README.md](README.md) shows how build order maps to runtime order —
+> read it before Step 1 if you've never seen Kong plugin priorities.
+
 ## Prerequisites
 
 ```bash
@@ -714,20 +723,28 @@ deck gateway reset \
   --konnect-addr https://us.api.konghq.com \
   --force
 
-# Stop and remove all Docker containers, images, and volumes
+# Stop and remove bootcamp containers (volumes preserved — re-running the
+# bootcamp keeps cached embeddings and Redis indexes).
 docker compose down
-docker rm -f redis 2>/dev/null
 
-# Remove bootcamp images
-docker rmi redis/redis-stack:latest 2>/dev/null
-docker rmi ai-pii-service:local 2>/dev/null
-docker rmi ai-compress-service:local 2>/dev/null
+# If you also want to drop the Redis vector indexes, add -v. WARNING:
+# `docker compose down -v` removes named volumes, so cached semantic
+# embeddings vanish and the first run after will be slower.
+# docker compose down -v
 
-# Remove the Docker network
+# Remove the bootcamp images only when you're truly done with the lab —
+# rebuilding the PII service from scratch can take a few minutes.
+# docker rmi redis/redis-stack:latest 2>/dev/null
+# docker rmi ai-pii-service:local 2>/dev/null
+# docker rmi ai-compress-service:local 2>/dev/null
+
+# Remove the dedicated Docker network (safe — recreated on next `up`).
 docker network rm kong-net 2>/dev/null
 
-# (Optional) Prune unused Docker resources
-docker system prune -f
+# NOTE: `docker system prune -f` is deliberately NOT shown here. It would
+# delete every stopped container, dangling image, and unused volume on
+# your host — including work from OTHER projects you may be running.
+# Only run it if you understand the blast radius.
 ```
 
 ---

@@ -4,12 +4,13 @@
 
 ## Deployment Options
 
-| Guide | Data Plane | PROXY_URL | Best For |
-|-------|-----------|-----------|----------|
-| [README-serverless.md](README-serverless.md) | Konnect Serverless (managed) | `https://<id>.us.serverless.gateways.konggateway.com` | Quick demos, no Docker needed |
-| [README-hybrid.md](README-hybrid.md) | Docker container (self-managed) | `http://localhost:8000` | Full control, HTTP Log, IP Restriction demos |
+| Guide | Style | When to use |
+|---|---|---|
+| [README-serverless.md](README-serverless.md) | decK CLI · Serverless DP | Quick demos, no Docker needed |
+| [README-hybrid.md](README-hybrid.md) | decK CLI · Docker DP | Full control, HTTP Log, IP Restriction demos |
+| [README-UI.md](README-UI.md) | Konnect UI walkthrough | Live demos / customer walkthroughs — click-by-click in Gateway Manager |
 
-Both guides use the **same decK files, same Insomnia collection, and same Konnect control plane**. The only difference is where the data plane runs.
+All three guides reach the **same end state**: 14 plugins on the same control plane. Pick one path or switch between them mid-bootcamp.
 
 ## What's Shared
 

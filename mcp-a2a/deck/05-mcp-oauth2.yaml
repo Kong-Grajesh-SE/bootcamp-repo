@@ -34,8 +34,15 @@ services:
               resource: http://localhost:8000/mcp-oauth/tools
               authorization_servers:
                 - http://localhost:8080/realms/workshop
+              # JWKS is fetched from inside the Kong container, so we use the
+              # docker-compose service hostname `keycloak`, not `localhost`.
               jwks_endpoint: http://keycloak:8080/realms/workshop/protocol/openid-connect/certs
+              # DEMO ONLY — relaxes RFC 8707 audience binding so a token issued
+              # without an explicit `audience` claim still validates. Do NOT
+              # ship this to production: pair the IdP-side resource indicator
+              # with strict validation instead.
               insecure_relaxed_audience_validation: true
+              # DEMO ONLY — Keycloak runs over plain HTTP on localhost.
               ssl_verify: false
               claim_to_header:
                 - claim: sub
