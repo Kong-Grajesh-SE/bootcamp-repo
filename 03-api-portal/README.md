@@ -122,12 +122,12 @@ deck file openapi2kong \
 cat deck/generated-kong.yaml
 ```
 
-You'll see a Kong service pointing at `https://httpbin.org` (from the spec's `servers` block)
+You'll see a Kong service pointing at `https://httpbun.com` (from the spec's `servers` block)
 with routes for `/books`, `/books/{bookId}`, `/authors`, `/authors/{authorId}`, and `/reviews`.
 
 > **Why we need one small patch:** The Bookstore spec is shared with the APIOps
-> bootcamp, where the upstream is `https://httpbin.org` (clean and product-y).
-> But httpbin.org itself doesn't have `/books`, `/authors`, etc. - only its
+> bootcamp, where the upstream is `https://httpbun.com` (clean and product-y).
+> But httpbun.com itself doesn't have `/books`, `/authors`, etc. - only its
 > `/anything` endpoint echoes arbitrary paths back as JSON. So we use
 > `deck file patch` (same command from APIOps Step 14) to set the service's
 > `path` to `/anything` without editing the spec:
@@ -140,8 +140,8 @@ deck file patch \
   --output-file deck/generated-kong.yaml
 ```
 
-Now every request through Kong is rewritten to `https://httpbin.org/anything/<route>`,
-which httpbin will echo back as JSON - perfect for demonstrating the gateway and
+Now every request through Kong is rewritten to `https://httpbun.com/anything/<route>`,
+which httpbun will echo back as JSON - perfect for demonstrating the gateway and
 auth flow without standing up a real Bookstore backend.
 
 ---
@@ -210,9 +210,9 @@ deck gateway sync deck/bookstore-final.yaml \
 **Verify the routes are live:**
 
 ```bash
-# No auth yet → request reaches upstream (httpbin echoes back the request as JSON)
+# No auth yet → request reaches upstream (httpbun echoes back the request as JSON)
 curl -i $PROXY_URL/books
-# → 200 from httpbin.org/anything (via Kong) - the route is working
+# → 200 from httpbun.com/anything (via Kong) - the route is working
 # Auth will be enforced after attaching the portal auth strategy in Step 12
 ```
 
@@ -773,10 +773,10 @@ curl -s -H "apikey: $DEV_API_KEY" $PROXY_URL/books/1 | jq .
 ```
 
 **Checkpoint:** Requests with a valid key return **200 OK** with a JSON echo from
-httpbin.org/anything (showing method, URL, headers, origin). Requests without a key
+httpbun.com/anything (showing method, URL, headers, origin). Requests without a key
 or with a wrong key return **401 Unauthorized**. The portal auth strategy is working end-to-end.
 
-> **Why httpbin.org/anything?** It echoes back every request as a JSON object —
+> **Why httpbun.com/anything?** It echoes back every request as a JSON object —
 > method, URL, headers, query params - making it easy to verify that auth passed
 > and the request was proxied correctly through Kong.
 
@@ -1109,7 +1109,7 @@ Developer Portal (live)
     │ Developer registers → creates app → gets API key
     ▼
 Authenticated API Calls
-    │ curl -H "apikey: KEY" → Kong → httpbin.org
+    │ curl -H "apikey: KEY" → Kong → httpbun.com
     ▼
 200 OK ✅ (or 401 without key ❌)
 ```
@@ -1208,7 +1208,7 @@ api-portal/
 | 401 with portal-issued key | Manual `key-auth` plugin conflicts with `konnect-application-auth` | Remove the manual `key-auth` plugin from decK config - Konnect manages auth via the portal auth strategy |
 | 401 with portal-issued key | Auth strategy not attached to publication | Attach auth strategy in Step 12 |
 | Portal shows but no APIs | API product exists but no publication | Create a publication |
-| Upstream returns 404 (not 200) | The `deck file patch` step in Step 1 didn't run | Verify the service has `path: /anything` set (the patch step adds it); without it, `httpbin.org/books` returns 404 because httpbin doesn't have those paths |
+| Upstream returns 404 (not 200) | The `deck file patch` step in Step 1 didn't run | Verify the service has `path: /anything` set (the patch step adds it); without it, `httpbun.com/books` returns 404 because httpbun doesn't have those paths |
 | 404 from gateway | Routes not matching | Check route paths from `openapi2kong` output |
 
 ---

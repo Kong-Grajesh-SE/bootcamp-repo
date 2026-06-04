@@ -9,8 +9,8 @@ info:
     name: Bookstore Team
     email: bookstore@example.com
 servers:
-- url: https://httpbin.org
-  description: Mock backend (httpbin echoes requests)
+- url: https://httpbun.com
+  description: Mock backend (httpbun echoes requests)
 paths:
   /books:
     get:
