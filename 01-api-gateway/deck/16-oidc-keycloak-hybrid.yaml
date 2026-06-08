@@ -1,0 +1,54 @@
+_format_version: "3.0"
+# ---------------------------------------------------------------------------
+# OpenID Connect with Keycloak — HYBRID (Docker DP) deployment
+#
+# Protects httpbun-service with the `openid-connect` plugin, delegating
+# authentication to a local Keycloak instance.
+#
+# BEFORE APPLYING:
+#   1. Start Keycloak:  cd ../keycloak && docker compose up -d
+#   2. Ensure host.docker.internal resolves on your machine:
+#        echo "127.0.0.1 host.docker.internal" | sudo tee -a /etc/hosts
+#      (Docker Desktop on macOS already handles this inside containers.)
+#
+# ISSUER: http://host.docker.internal:8080/realms/bootcamp
+#   The Docker DP reaches Keycloak on the host via host.docker.internal.
+#   Tokens minted from this issuer have iss=http://host.docker.internal:8080/...
+#   so the plugin validates them correctly.
+#
+# Pre-built users (realm bootcamp):
+#   alice / alice-password         (realm role: user,  group: travel-users)
+#   bob-admin / bob-password       (realm role: admin, group: platform-engineers)
+# Client:
+#   kong  (confidential — authorization_code + password + client_credentials)
+#   secret: kong-bootcamp-client-secret-replace-in-prod
+# ---------------------------------------------------------------------------
+plugins:
+- name: openid-connect
+  service: httpbun-service
+  config:
+    issuer: http://host.docker.internal:8080/realms/bootcamp
+    cache_tokens_salt: bootcamp-oidc-salt-change-me
+    client_id:
+    - kong
+    client_secret:
+    - kong-bootcamp-client-secret-replace-in-prod
+    auth_methods:
+    - password
+    - bearer
+    - client_credentials
+    scopes:
+    - openid
+    - profile
+    - email
+    redirect_uri:
+    - http://localhost:8000/httpbun/auth/callback
+    login_action: response
+    logout_path: /logout
+    upstream_access_token_header: authorization
+    upstream_headers_claims:
+    - preferred_username
+    - email
+    upstream_headers_names:
+    - x-authenticated-user
+    - x-authenticated-email

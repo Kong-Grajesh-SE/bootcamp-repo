@@ -1,0 +1,51 @@
+_format_version: "3.0"
+# ---------------------------------------------------------------------------
+# OpenID Connect with Keycloak — SERVERLESS deployment
+#
+# Protects httpbun-service with the `openid-connect` plugin, delegating
+# authentication to a Keycloak instance exposed via ngrok.
+#
+# BEFORE APPLYING:
+#   1. Start Keycloak:   cd ../keycloak && docker compose up -d
+#   2. Expose via ngrok: ngrok http 8080
+#   3. Replace <NGROK_URL> below with your ngrok https URL
+#   4. Replace <SERVERLESS_PROXY_URL> with your serverless DP proxy URL
+#
+# Pre-built users (realm bootcamp):
+#   alice / alice-password         (realm role: user,  group: travel-users)
+#   bob-admin / bob-password       (realm role: admin, group: platform-engineers)
+# Client:
+#   kong  (confidential — authorization_code + password + client_credentials)
+#   secret: kong-bootcamp-client-secret-replace-in-prod
+# ---------------------------------------------------------------------------
+plugins:
+- name: openid-connect
+  service: httpbun-service
+  config:
+    # ── REPLACE with your ngrok URL ──
+    issuer: https://<NGROK_URL>/realms/bootcamp
+    cache_tokens_salt: bootcamp-oidc-salt-change-me
+    client_id:
+    - kong
+    client_secret:
+    - kong-bootcamp-client-secret-replace-in-prod
+    auth_methods:
+    - password
+    - bearer
+    - client_credentials
+    scopes:
+    - openid
+    - profile
+    - email
+    # ── REPLACE with your serverless proxy URL ──
+    redirect_uri:
+    - https://<SERVERLESS_PROXY_URL>/httpbun/auth/callback
+    login_action: response
+    logout_path: /logout
+    upstream_access_token_header: authorization
+    upstream_headers_claims:
+    - preferred_username
+    - email
+    upstream_headers_names:
+    - x-authenticated-user
+    - x-authenticated-email

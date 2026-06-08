@@ -62,7 +62,11 @@ api-gateway/
 │   ├── 13-http-log.yaml              ← HTTP Log (httpbun)
 │   ├── 14-consumer-groups-acl.yaml   ← Consumer Groups + ACL
 │   ├── 15-kong-identity.yaml         ← Kong Identity (Konnect-native M2M auth)
-│   ├── 16-oidc-keycloak.yaml         ← OpenID Connect via Keycloak (AuthN/AuthZ)
+│   ├── 16-oidc-keycloak.yaml         ← OpenID Connect via Keycloak (generic)
+│   ├── 16-oidc-keycloak-serverless.yaml  ← ↳ Serverless variant (ngrok issuer)
+│   ├── 16-oidc-keycloak-hybrid.yaml      ← ↳ Hybrid variant (host.docker.internal)
+│   ├── 16-oidc-introspection-serverless.yaml ← ↳ + Introspection (serverless)
+│   ├── 16-oidc-introspection-hybrid.yaml     ← ↳ + Introspection (hybrid)
 │   └── 17-upstream-oauth.yaml        ← Upstream OAuth (Kong → backend M2M token)
 ├── insomnia/
 │   └── kong-gateway-bootcamp.json    ← Full Insomnia collection
@@ -647,9 +651,6 @@ the same **`openid-connect`** plugin at that external provider. Here you protect
 provider, which also unlocks the **browser SSO (Authorization Code)** flow with
 real users.
 
-> Mirrors the enterprise OIDC lab from
-> [learn-kong-gateway / module-07-enterprise](https://github.com/Kong-Grajesh-SE/learn-kong-gateway/tree/main/module-07-enterprise).
-
 **Pre-built realm identities** (`../keycloak/realm-bootcamp.json`):
 
 | Username | Password | Realm role | Group |
@@ -692,13 +693,25 @@ browser flow works against your serverless proxy URL without extra Keycloak edit
 
 #### Apply the plugin (with the ngrok issuer)
 
-Edit `deck/16-oidc-keycloak.yaml` and set `issuer` to your ngrok realm URL, and
-`redirect_uri` to `<your-serverless-proxy-url>/httpbun/auth/callback`, then:
+Edit `deck/16-oidc-keycloak-serverless.yaml` — replace `<NGROK_URL>` with your
+ngrok hostname and `<SERVERLESS_PROXY_URL>` with your serverless DP hostname:
 
 ```bash
-deck gateway apply deck/16-oidc-keycloak.yaml \
+# Quick sed replacements (or edit the file manually)
+NGROK=abc123.ngrok-free.app          # your ngrok hostname
+SL_PROXY=95fa62461d.us.serverless.gateways.konggateway.com  # your serverless DP
+
+sed -i.bak \
+  -e "s|<NGROK_URL>|$NGROK|g" \
+  -e "s|<SERVERLESS_PROXY_URL>|$SL_PROXY|g" \
+  deck/16-oidc-keycloak-serverless.yaml
+
+deck gateway apply deck/16-oidc-keycloak-serverless.yaml \
   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
 ```
+
+> **Hybrid deployment?** Use `deck/16-oidc-keycloak-hybrid.yaml` instead — no
+> placeholders to replace, it uses `host.docker.internal:8080` as the issuer.
 
 #### Test (token via password grant)
 
@@ -758,20 +771,31 @@ curl -s -u kong:kong-bootcamp-client-secret-replace-in-prod \
 # → { "active": true, "username": "alice", "scope": "openid profile email", ... }
 ```
 
-**Switch the plugin to introspection** - add this block under `config:` in
-`deck/16-oidc-keycloak.yaml` (use your ngrok URL), then re-apply:
-
-```yaml
-    introspection_endpoint: https://abc123.ngrok-free.app/realms/bootcamp/protocol/openid-connect/token/introspect
-    introspect_jwt_tokens: true                # introspect even JWT access tokens
-    introspection_endpoint_auth_method: client_secret_basic
-    cache_introspection: false                 # demo: no caching so revocation is instant
-```
+**Switch the plugin to introspection** — use the dedicated introspection deck
+file (replace `<NGROK_URL>` and `<SERVERLESS_PROXY_URL>` placeholders first):
 
 ```bash
-deck gateway apply deck/16-oidc-keycloak.yaml \
+sed -i.bak \
+  -e "s|<NGROK_URL>|$NGROK|g" \
+  -e "s|<SERVERLESS_PROXY_URL>|$SL_PROXY|g" \
+  deck/16-oidc-introspection-serverless.yaml
+
+deck gateway apply deck/16-oidc-introspection-serverless.yaml \
   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
 ```
+
+> **Hybrid deployment?** Use `deck/16-oidc-introspection-hybrid.yaml` instead —
+> no placeholders needed.
+
+#### Deck file variants for Step 16
+
+| Deck file | Deployment | Introspection | Issuer |
+|---|---|---|---|
+| `16-oidc-keycloak.yaml` | Generic (comments for both) | No | Placeholder |
+| `16-oidc-keycloak-serverless.yaml` | Serverless | No | `https://<NGROK_URL>/realms/bootcamp` |
+| `16-oidc-keycloak-hybrid.yaml` | Hybrid (Docker) | No | `http://host.docker.internal:8080/realms/bootcamp` |
+| `16-oidc-introspection-serverless.yaml` | Serverless | Yes | `https://<NGROK_URL>/realms/bootcamp` |
+| `16-oidc-introspection-hybrid.yaml` | Hybrid (Docker) | Yes | `http://host.docker.internal:8080/realms/bootcamp` |
 
 **Test real-time revocation:**
 
