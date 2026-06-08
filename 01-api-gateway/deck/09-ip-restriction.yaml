@@ -1,7 +1,7 @@
 _format_version: "3.0"
 plugins:
 - name: ip-restriction
-  service: httpbin-service
+  service: httpbun-service
   config:
     allow:
     - 127.0.0.0/8

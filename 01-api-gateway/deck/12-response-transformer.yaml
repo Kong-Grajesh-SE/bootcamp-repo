@@ -1,7 +1,7 @@
 _format_version: "3.0"
 plugins:
 - name: response-transformer
-  service: httpbin-service
+  service: httpbun-service
   config:
     add:
       headers:

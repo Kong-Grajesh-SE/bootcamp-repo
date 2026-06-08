@@ -1,7 +1,7 @@
 _format_version: "3.0"
 plugins:
 - name: key-auth
-  service: httpbin-service
+  service: httpbun-service
   config:
     key_names:
     - apikey

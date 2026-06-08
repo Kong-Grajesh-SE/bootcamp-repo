@@ -2,14 +2,14 @@ _format_version: "3.0"
 plugins:
 # Key-Auth to identify consumers
 - name: key-auth
-  service: httpbin-service
+  service: httpbun-service
   config:
     key_names:
     - apikey
     hide_credentials: true
 # ACL to authorize by group
 - name: acl
-  service: httpbin-service
+  service: httpbun-service
   config:
     allow:
     - premium

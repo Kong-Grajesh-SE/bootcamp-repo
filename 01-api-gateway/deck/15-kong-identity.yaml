@@ -24,7 +24,7 @@ _format_version: "3.0"
 # ---------------------------------------------------------------------------
 plugins:
 - name: openid-connect
-  service: httpbin-service
+  service: httpbun-service
   config:
     # Copy this from your Kong Identity auth server's "Issuer" field in Konnect.
     issuer: <REPLACE-WITH-KONG-IDENTITY-ISSUER-URL>

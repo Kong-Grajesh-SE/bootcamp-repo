@@ -23,7 +23,7 @@ _format_version: "3.0"
 # ---------------------------------------------------------------------------
 plugins:
 - name: upstream-oauth
-  service: httpbin-service
+  service: httpbun-service
   config:
     oauth:
       token_endpoint: http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token
