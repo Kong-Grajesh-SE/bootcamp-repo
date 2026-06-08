@@ -67,15 +67,18 @@ docker compose logs -f ai-compress-service
 curl -s http://localhost:8085/status | jq .
 ```
 
-> **Docker Desktop note:** The supporting services (Redis, PII, Compressor) run
+> **Docker networking note:** The supporting services (Redis, PII, Compressor) run
 > on the `kong-net` Docker network so they can communicate with each other.
-> However, since the Kong data plane runs **outside** Docker (or on a separate
-> network), plugins must use `host.docker.internal` to reach these services
-> via the Docker Desktop host bridge and their mapped host ports.
+> Since the Kong data plane also runs on this network, plugins use **container
+> names** (e.g. `redis`) to reach services directly. RediSearch vector indexes
+> only work on **database 0** — all semantic plugins share DB 0 (isolation is
+> by index name, not DB number). Set `Cache Control` to **off** for semantic
+> cache since upstream LLM providers (Mistral/Cloudflare) set `Cache-Control`
+> headers that would cause bypass.
 >
 > | Service | Plugin Host | Plugin Port | Container Port → Host Port |
 > |---------|-------------|-------------|---------------------------|
-> | Redis | `host.docker.internal` | `6379` | 6379 → 6379 |
+> | Redis | `redis` | `6379` | 6379 → 6379 |
 > | PII Service | `host.docker.internal` | `8086` | 8080 → 8086 |
 > | Compressor | `http://host.docker.internal:8085` | - | 8080 → 8085 |
 
@@ -197,6 +200,20 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - `(?i)system override`
    - `(?i)jailbreak`
    - `(?i)DAN mode`
+
+   [
+      "(?i)ignore (all )?(previous |your )?instructions?",
+      "(?i)you are now",
+      "(?i)forget your (system prompt|instructions|rules)",
+      "(?i)system override",
+      "(?i)jailbreak",
+      "(?i)DAN mode",
+      "(?i)pretend (you are|you.re) (not an AI|human|unrestricted)",
+      "(?i)(give me|tell me|show me|output|print).{0,50}(api key|secret|password|token)",
+      "(?i)reveal.{0,30}(internal|system|hidden|confidential)",
+      "(?i)sudo.{0,20}(mode|access|admin)"
+    ]
+
 4. Set:
    - **Match All Roles**: `on`
 5. Click **Save**
@@ -250,13 +267,13 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - **Auth Header Value**: `Bearer <your-mistral-api-key>`
 4. Configure **Vector DB**:
    - **Strategy**: `redis`
-   - **Redis Host**: `host.docker.internal`
+   - **Redis Host**: `redis`
    - **Redis Port**: `6379`
-   - **Database**: `1`
+   - **Database**: `0`
    - **Dimensions**: `1024`
    - **Distance Metric**: `cosine`
-   - **Threshold**: `0.1`
-5. Set **Cache Control**: `on`
+   - **Threshold**: `0.2`
+5. Set **Cache Control**: `off`
 6. Click **Save**
 
 ### 4.2 Test - Positive (cache miss → hit)
@@ -471,12 +488,12 @@ done
    - **Auth Header Value**: `Bearer <your-mistral-api-key>`
 4. Configure **Vector DB**:
    - **Strategy**: `redis`
-   - **Redis Host**: `host.docker.internal`
+   - **Redis Host**: `redis`
    - **Redis Port**: `6379`
-   - **Database**: `2`
+   - **Database**: `0`
    - **Dimensions**: `1024`
    - **Distance Metric**: `cosine`
-   - **Threshold**: `0.5`
+   - **Threshold**: `0.15`
 5. Add **Allow Prompts**:
    - `Kong Gateway configuration and architecture`
    - `DevOps automation and CI/CD pipelines`
@@ -540,9 +557,9 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - **Auth Header Value**: `Bearer <your-mistral-api-key>`
 4. Configure **Vector DB**:
    - **Strategy**: `redis`
-   - **Redis Host**: `host.docker.internal`
+   - **Redis Host**: `redis`
    - **Redis Port**: `6379`
-   - **Database**: `3`
+   - **Database**: `0`
    - **Dimensions**: `1024`
    - **Distance Metric**: `cosine`
    - **Threshold**: `0.5`

@@ -140,10 +140,10 @@ docker ps --format '{{.Names}}\t{{.Image}}' | grep kong-gateway
 # e.g. kong-dp
 
 # Connect it to the mcp-a2a network
-docker network connect mcp-a2a_kong-net <kong-dp-container-name>
+docker network connect 05-mcp-a2a_kong-net <kong-dp-container-name>
 ```
 
-**Fix Kong DNS** - If you get `name resolution failed` errors:
+**Fix Kong DNS** - Required if you get `name resolution failed` errors (needed when Kong DP is not running with Docker's embedded DNS by default):
 
 ```bash
 docker exec <kong-dp-container-name> sh -c \
@@ -712,7 +712,7 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 | Symptom | Fix |
 |---------|-----|
 | `name resolution failed` for mcp-backend | `docker network connect mcp-a2a_kong-net <kong-dp>` and fix DNS resolver |
-| `already exists in network` | Safe to ignore - Kong is already connected |
+| `already exists in network` | Safe to ignore - Kong is already connected. Network name is `05-mcp-a2a_kong-net`. |
 | Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbin/ip` → httpbin-route) |
 | OAuth2 returns 401 with valid token | Check `jwks_endpoint` uses Docker hostname (`host.docker.internal:8080`), not `localhost` |
 | A2A hotels returns empty results | Use 3-letter airport codes (LHR, CDG) - backend matches on `location === code` |

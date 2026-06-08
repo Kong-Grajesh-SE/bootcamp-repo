@@ -32,11 +32,12 @@ plugins:
       vectordb:
         strategy: redis
         redis:
-          host: host.docker.internal
+          host: redis
           port: 6379
           timeout: 2000
-          # DB 3 - see deck/04 for the per-plugin DB convention.
-          database: 3
+          # NOTE: RediSearch vector indexes only work on DB 0 in Redis Stack.
+          # All semantic plugins share DB 0 (isolation is by index name).
+          database: 0
         dimensions: 1024
         distance_metric: cosine
         threshold: 0.5

@@ -20,15 +20,15 @@ plugins:
       vectordb:
         strategy: redis
         redis:
-          host: host.docker.internal
+          host: redis
           port: 6379
           timeout: 2000
-          # NOTE: each semantic plugin gets its own Redis DB to keep vector
-          # indexes isolated. Cache = DB 1, prompt-guard = DB 2, response-guard = DB 3.
-          database: 1
+          # NOTE: RediSearch vector indexes only work on DB 0 in Redis Stack.
+          # All semantic plugins must use database: 0 (isolation is by index name, not DB).
+          database: 0
         dimensions: 1024
         distance_metric: cosine
         # 0.2 is loose enough that paraphrased questions hit the cache;
         # tighten to ~0.1 if you see false positives in your demo.
         threshold: 0.2
-      cache_control: true
+      cache_control: false

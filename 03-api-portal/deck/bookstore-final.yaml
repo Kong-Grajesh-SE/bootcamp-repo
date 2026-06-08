@@ -1,0 +1,128 @@
+_format_version: "3.0"
+services:
+- host: httpbun.com
+  id: e3a7e2e9-4033-546a-ade0-60bb93193a43
+  name: bookstore-api
+  path: /anything
+  plugins:
+  - config:
+      credentials: true
+      exposed_headers:
+      - X-Auth-Token
+      - X-Kong-Upstream-Latency
+      - X-Kong-Proxy-Latency
+      headers:
+      - Accept
+      - Accept-Version
+      - Content-Length
+      - Content-Type
+      - Authorization
+      - apikey
+      max_age: 3600
+      methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      - PATCH
+      origins:
+      - https://*.kongportals.com
+      - http://localhost:8080
+      preflight_continue: false
+    name: cors
+  port: 443
+  protocol: https
+  routes:
+  - id: bbb8e642-a558-5e9d-89ec-b588bf7f25fc
+    methods:
+    - GET
+    name: bookstore-api_listauthors
+    paths:
+    - ~/authors$
+    plugins: []
+    regex_priority: 200
+    strip_path: false
+    tags: []
+  - id: 89c76bd8-b68e-501d-87a0-035d078a2859
+    methods:
+    - GET
+    name: bookstore-api_getauthorbyid
+    paths:
+    - ~/authors/(?<authorid>[^#?/]+)$
+    plugins: []
+    regex_priority: 100
+    strip_path: false
+    tags: []
+  - id: d0025404-bca7-5312-bdbf-4dc412249b8c
+    methods:
+    - GET
+    name: bookstore-api_listbooks
+    paths:
+    - ~/books$
+    plugins: []
+    regex_priority: 200
+    strip_path: false
+    tags: []
+  - id: b20b597f-ad84-542a-940f-9dcb3f8c985a
+    methods:
+    - POST
+    name: bookstore-api_createbook
+    paths:
+    - ~/books$
+    plugins: []
+    regex_priority: 200
+    strip_path: false
+    tags: []
+  - id: 257ffd4a-4821-56d8-b92f-0d461250ac00
+    methods:
+    - DELETE
+    name: bookstore-api_deletebook
+    paths:
+    - ~/books/(?<bookid>[^#?/]+)$
+    plugins: []
+    regex_priority: 100
+    strip_path: false
+    tags: []
+  - id: e7c3c99a-9b44-599a-a505-2eac445afdf5
+    methods:
+    - GET
+    name: bookstore-api_getbookbyid
+    paths:
+    - ~/books/(?<bookid>[^#?/]+)$
+    plugins: []
+    regex_priority: 100
+    strip_path: false
+    tags: []
+  - id: 755c31f2-3499-5142-958b-dad615d89739
+    methods:
+    - PUT
+    name: bookstore-api_updatebook
+    paths:
+    - ~/books/(?<bookid>[^#?/]+)$
+    plugins: []
+    regex_priority: 100
+    strip_path: false
+    tags: []
+  - id: aa158218-91ed-5795-9437-5e9503092af6
+    methods:
+    - GET
+    name: bookstore-api_listreviews
+    paths:
+    - ~/reviews$
+    plugins: []
+    regex_priority: 200
+    strip_path: false
+    tags: []
+  - id: cc3e39de-6abe-5b2e-82be-ff8b0c19965d
+    methods:
+    - POST
+    name: bookstore-api_createreview
+    paths:
+    - ~/reviews$
+    plugins: []
+    regex_priority: 200
+    strip_path: false
+    tags: []
+  tags: []
+upstreams: []

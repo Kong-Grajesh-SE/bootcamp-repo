@@ -50,8 +50,8 @@
 - Terminal open in this `api-portal/` directory
 
 ```bash
-export KONNECT_TOKEN="<your-konnect-pat>"
-export CP_NAME="<your-control-plane-name>"
+export KONNECT_TOKEN="kpat_ISnpa4gjZhL3bULJChOfvQ21nQuOZudwrhAWJhHu4vnATHjtp"
+export CP_NAME="PE-Bootcamp"
 export PROXY_URL=http://localhost:8000
 
 export KONNECT_PAT="$KONNECT_TOKEN"

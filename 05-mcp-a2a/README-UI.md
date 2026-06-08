@@ -134,7 +134,7 @@ This starts:
 ### Connect Kong DP to the backend network
 
 Kong DP runs on Docker's default `bridge` network. The MCP backend runs on
-`mcp-a2a_kong-net`. Connect Kong so it can resolve the `mcp-backend` hostname
+`05-mcp-a2a_kong-net`. Connect Kong so it can resolve the `mcp-backend` hostname
 (Keycloak is reached separately via `host.docker.internal:8080`, so it needs no
 network connection):
 
@@ -143,10 +143,10 @@ network connection):
 docker ps --format '{{.Names}}\t{{.Image}}' | grep kong-gateway
 
 # Connect it to the mcp-a2a network
-docker network connect mcp-a2a_kong-net <kong-dp-container-name>
+docker network connect 05-mcp-a2a_kong-net <kong-dp-container-name>
 ```
 
-**Fix Kong DNS** - If you get `name resolution failed` errors:
+**Fix Kong DNS** - Required if you get `name resolution failed` errors (needed when Kong DP is not running with Docker's embedded DNS by default):
 
 ```bash
 docker exec <kong-dp-container-name> sh -c \
@@ -662,7 +662,7 @@ issued JWT either way - Kong doesn't care which OAuth2 flow produced the token.
    - **Resource**: `http://localhost:8000/mcp-oauth/tools`
    - **Authorization Servers** (add one entry): `http://localhost:8080/realms/bootcamp`
    - **JWKS Endpoint**: `http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/certs`
-     *(Kong fetches JWKS from inside its container, so use the docker-compose hostname `keycloak`, not `localhost`.)*
+     *(Kong fetches JWKS from inside its container, which cannot reach `localhost`. Use `host.docker.internal` to reach Keycloak on the host.)*
    - **Insecure Relaxed Audience Validation**: `on`
      *(DEMO ONLY - relaxes RFC 8707 audience binding so a token issued without an explicit `audience` claim still validates. Do NOT ship this to production.)*
    - **SSL Verify**: `off`
@@ -1053,8 +1053,8 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 
 | Symptom | Fix |
 |---------|-----|
-| `name resolution failed` for mcp-backend | `docker network connect mcp-a2a_kong-net <kong-dp>` and fix DNS resolver |
-| `already exists in network` | Safe to ignore - Kong is already connected |
+| `name resolution failed` for mcp-backend | `docker network connect 05-mcp-a2a_kong-net <kong-dp>` and fix DNS resolver |
+| `already exists in network` | Safe to ignore - Kong is already connected. Network name is `05-mcp-a2a_kong-net`. |
 | Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbin/ip` → `httpbin-route`) |
 | Step 4 aggregate sees 0 tools | Each `conversion-only` plugin must carry the **plugin-level** tag `mcp-agg`, not just the route tag |
 | OAuth2 returns 401 with valid token | Check **JWKS Endpoint** uses Docker hostname (`host.docker.internal:8080`), not `localhost` |

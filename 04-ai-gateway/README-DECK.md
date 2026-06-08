@@ -85,14 +85,17 @@ docker compose logs -f ai-compress-service
 curl -s http://localhost:8085/status | jq .
 ```
 
-> **Docker Desktop note:** The supporting services run on the `kong-net` Docker
-> network for inter-service communication. Since the Kong data plane runs
-> **outside** Docker, the deck plugin files use `host.docker.internal` to reach
-> these services via Docker Desktop's host bridge and their mapped host ports.
+> **Docker networking note:** The supporting services run on the `kong-net` Docker
+> network for inter-service communication. Since the Kong data plane also runs
+> on this network, the deck plugin files use **container names** (e.g. `redis`)
+> to reach services directly. RediSearch vector indexes only work on **database
+> 0** — all semantic plugins share DB 0 (isolation is by index name, not DB
+> number). Set `cache_control: false` for semantic cache since upstream LLM
+> providers (Mistral/Cloudflare) set `Cache-Control` headers that cause bypass.
 >
 > | Service | Plugin Host | Plugin Port | Container Port → Host Port |
 > |---------|-------------|-------------|---------------------------|
-> | Redis | `host.docker.internal` | `6379` | 6379 → 6379 |
+> | Redis | `redis` | `6379` | 6379 → 6379 |
 > | PII Service | `host.docker.internal` | `8086` | 8080 → 8086 |
 > | Compressor | `http://host.docker.internal:8085` | - | 8080 → 8085 |
 
