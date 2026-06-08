@@ -1,0 +1,78 @@
+# Full-stack config: Konnect platform + gateway entities in one file
+#
+# kongctl manages the platform resources (portal, APIs, publications)
+# AND orchestrates decK for gateway entities (services, routes, plugins)
+# through the _deck integration on the control plane.
+#
+# Usage:
+#   kongctl diff --mode apply -f config/full-stack.yaml   # preview everything
+#   kongctl apply -f config/full-stack.yaml               # apply everything
+#
+# NOTE: Replace "bootcamp-cp" with your actual control plane name.
+#       The control plane must already exist (use _external to reference it).
+
+# ── Platform resources (managed by kongctl) ──────────────────────
+
+portals:
+  - ref: bootcamp-portal
+    name: "bootcamp-portal"
+    display_name: "Bootcamp Developer Portal"
+    description: "API documentation for bootcamp participants"
+    authentication_enabled: false
+    default_api_visibility: "public"
+    default_page_visibility: "public"
+    kongctl:
+      namespace: platform
+      protected: true
+
+apis:
+  - ref: bookstore-api
+    name: "Bookstore API"
+    description: "CRUD operations for books, authors, and reviews"
+    kongctl:
+      namespace: platform
+
+    versions:
+      - ref: bookstore-v1
+        name: "v1.0.0"
+        spec: !file ../../openapi/bookstore-api.yaml
+
+    publications:
+      - ref: bookstore-pub
+        portal_id: !ref bootcamp-portal
+        visibility: public
+
+# ── Gateway entities (managed by decK, orchestrated by kongctl) ──
+
+control_planes:
+  # Reference an EXISTING control plane (created via UI or decK)
+  - ref: bootcamp-cp
+    _external:
+      selector:
+        matchFields:
+          name: !env CP_NAME    # reads from your $CP_NAME env var
+
+    # decK integration: kongctl runs decK apply/sync for this CP
+    _deck:
+      files:
+        - "../../../deck/01-services-and-routes.yaml"
+      flags:
+        - "--select-tag=kongctl"
+
+    # Reference the gateway service created by decK
+    gateway_services:
+      - ref: httpbun-gw
+        _external:
+          selector:
+            matchFields:
+              name: "httpbun-service"
+
+# ── Link the API to the gateway service (Implementation) ─────────
+
+api_implementations:
+  - ref: bookstore-impl
+    api_id: !ref bookstore-api
+    api_version_id: !ref bookstore-v1
+    service:
+      control_plane_id: !ref bootcamp-cp#id
+      id: !ref httpbun-gw#id

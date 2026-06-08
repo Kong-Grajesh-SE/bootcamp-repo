@@ -3,6 +3,7 @@ plugins:
 - name: request-transformer
   service: httpbun-service
   config:
+    # ADD: inject new headers and query params on every upstream request
     add:
       headers:
       - X-Added-By:Kong-Gateway
@@ -10,9 +11,33 @@ plugins:
       querystring:
       - source:kong
       - gateway:true
+      body: []
+    # RENAME: rename a header the client sends before forwarding upstream
+    # Client sends Accept → upstream sees X-Original-Accept instead
     rename:
       headers:
       - Accept:X-Original-Accept
-    replace: {}
-    remove: {}
-    append: {}
+      querystring: []
+      body: []
+    # REPLACE: overwrite a header value if the header is already present
+    # Client sends X-Env: staging → upstream sees X-Env: production
+    replace:
+      headers:
+      - X-Env:production
+      querystring: []
+      body: []
+    # REMOVE: strip headers and query params before they reach the upstream
+    # Strips X-Remove-Me header and the internal_debug query param
+    remove:
+      headers:
+      - X-Remove-Me
+      querystring:
+      - internal_debug
+      body: []
+    # APPEND: append a value to an existing header (creates it if absent)
+    # Client sends X-Tags: first → upstream sees X-Tags: first,kong-appended
+    append:
+      headers:
+      - X-Tags:kong-appended
+      querystring: []
+      body: []

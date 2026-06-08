@@ -1,0 +1,33 @@
+# Declarative config for the Bootcamp API platform
+# Generated using: kongctl scaffold apis + kongctl scaffold portals
+#
+# Usage:
+#   kongctl diff --mode apply -f config/bootcamp-platform.yaml   # preview
+#   kongctl apply -f config/bootcamp-platform.yaml               # apply
+
+portals:
+  - ref: bootcamp-portal
+    name: "bootcamp-portal"
+    display_name: "Bootcamp Developer Portal"
+    description: "API documentation for bootcamp participants"
+    authentication_enabled: false
+    default_api_visibility: "public"
+    default_page_visibility: "public"
+
+apis:
+  - ref: bookstore-api
+    name: "Bookstore API"
+    description: "CRUD operations for books, authors, and reviews"
+    labels:
+      team: platform
+      module: bootcamp
+
+    versions:
+      - ref: bookstore-v1
+        name: "v1.0.0"
+        spec: !file ../../openapi/bookstore-api.yaml
+
+    publications:
+      - ref: bookstore-publication
+        portal_id: !ref bootcamp-portal
+        visibility: public

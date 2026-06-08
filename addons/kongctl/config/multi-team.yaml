@@ -1,0 +1,55 @@
+# Multi-team namespace isolation example
+#
+# Each team owns their namespace. Running `kongctl sync` with
+# --require-namespace=team-payments only affects payment resources.
+#
+# Usage:
+#   kongctl diff --mode sync -f config/multi-team.yaml --require-namespace=team-payments
+#   kongctl sync -f config/multi-team.yaml --require-namespace=team-payments
+
+_defaults:
+  kongctl:
+    protected: false
+
+apis:
+  # ── Team: Payments ─────────────────────────────────────────────
+  - ref: billing-api
+    name: "Billing API"
+    description: "Payment processing and invoice management"
+    kongctl:
+      namespace: team-payments
+      protected: true    # cannot be accidentally deleted
+
+    versions:
+      - ref: billing-v1
+        name: "v1.0.0"
+
+  # ── Team: Platform ────────────────────────────────────────────
+  - ref: users-api
+    name: "Users API"
+    description: "User registration and profile management"
+    kongctl:
+      namespace: team-platform
+
+    versions:
+      - ref: users-v1
+        name: "v1.0.0"
+
+  - ref: orders-api
+    name: "Orders API"
+    description: "Order placement and tracking"
+    kongctl:
+      namespace: team-platform
+
+    versions:
+      - ref: orders-v1
+        name: "v1.0.0"
+
+portals:
+  - ref: shared-portal
+    name: "shared-portal"
+    display_name: "Company Developer Portal"
+    description: "Shared portal for all teams"
+    kongctl:
+      namespace: team-platform
+      protected: true

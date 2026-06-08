@@ -3,15 +3,37 @@ plugins:
 - name: response-transformer
   service: httpbun-service
   config:
+    # ADD: inject new headers into every response before the client receives it
     add:
       headers:
       - X-Powered-By:Kong-Gateway
       - X-Bootcamp-Demo:true
       - X-Environment:bootcamp
+      json: []
+    # RENAME: rename a response header before it reaches the client
+    # Response Date → X-Response-Date
+    rename:
+      headers:
+      - Date:X-Response-Date
+    # REPLACE: overwrite a response header value if the header is present
+    # Forces Content-Type to include charset on every response
+    replace:
+      headers:
+      - Content-Type:application/json; charset=utf-8
+      json: []
+    # REMOVE: strip upstream response headers before they reach the client
+    # X-Powered-By exposes the upstream tech stack; Alt-Svc leaks infra details
+    # NOTE: Kong's own Server and Via headers cannot be removed by this plugin —
+    # they are injected by Kong core AFTER plugins run. Use `headers = off` in
+    # kong.conf to suppress Kong's Server header (not available on serverless).
     remove:
       headers:
-      - Server
-      - Via
-    replace: {}
-    rename: {}
-    append: {}
+      - X-Powered-By
+      - Alt-Svc
+      json: []
+    # APPEND: append a value to an existing response header (creates if absent)
+    # Builds X-Cache-Tags: kong-gateway on every response
+    append:
+      headers:
+      - X-Cache-Tags:kong-gateway
+      json: []

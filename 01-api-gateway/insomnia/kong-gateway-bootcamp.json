@@ -612,28 +612,115 @@
       "metaSortKey": -5000
     },
     {
-      "_id": "req_10_headers",
+      "_id": "req_10_add_headers",
       "_type": "request",
       "parentId": "fld_10",
-      "name": "GET httpbun/headers (see added headers)",
+      "name": "ADD headers \u2014 GET /headers (see X-Added-By, X-Bootcamp injected)",
       "method": "GET",
       "url": "{{ _.base_url }}/httpbun/headers",
+      "description": "Kong injects X-Added-By:Kong-Gateway and X-Bootcamp:API-Gateway-Demo before forwarding.\nLook for those two keys in the response JSON.",
       "headers": [],
       "body": {},
-      "metaSortKey": -100,
-      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Status is 200', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});\ninsomnia.test('X-Added-By header present', () => {\n  const body = resp.json();\n  insomnia.expect(body.headers['X-Added-By']).to.equal('Kong-Gateway');\n});\ninsomnia.test('X-Bootcamp header present', () => {\n  const body = resp.json();\n  insomnia.expect(body.headers['X-Bootcamp']).to.equal('API-Gateway-Demo');\n});"
+      "authentication": {},
+      "metaSortKey": -100
     },
     {
-      "_id": "req_10_querystring",
+      "_id": "req_10_add_querystring",
       "_type": "request",
       "parentId": "fld_10",
-      "name": "GET httpbun/get (see added query params)",
+      "name": "ADD querystring \u2014 GET /get (see source=kong, gateway=true in args)",
       "method": "GET",
-      "url": "{{ _.base_url }}/httpbun/get?user=bootcamp",
+      "url": "{{ _.base_url }}/httpbun/get",
+      "description": "Kong appends source=kong and gateway=true to the query string.\nCheck .args in the response \u2014 they'll be there even though the client didn't send them.",
       "headers": [],
       "body": {},
-      "metaSortKey": -90,
-      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Added query params visible', () => {\n  const body = resp.json();\n  insomnia.expect(body.args.source).to.equal('kong');\n  insomnia.expect(body.args.gateway).to.equal('true');\n  insomnia.expect(body.args.user).to.equal('bootcamp');\n});"
+      "authentication": {},
+      "metaSortKey": -90
+    },
+    {
+      "_id": "req_10_rename",
+      "_type": "request",
+      "parentId": "fld_10",
+      "name": "RENAME header \u2014 GET /headers (Accept \u2192 X-Original-Accept)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/headers",
+      "description": "Client sends Accept: application/json.\nKong renames it to X-Original-Accept before forwarding.\nIn the response JSON you should see X-Original-Accept but NOT Accept.",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "body": {},
+      "authentication": {},
+      "metaSortKey": -80
+    },
+    {
+      "_id": "req_10_replace",
+      "_type": "request",
+      "parentId": "fld_10",
+      "name": "REPLACE header \u2014 GET /headers (X-Env: staging \u2192 production)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/headers",
+      "description": "Client sends X-Env: staging.\nKong replaces the value to production before forwarding.\nUpstream sees X-Env: production.",
+      "headers": [
+        {
+          "name": "X-Env",
+          "value": "staging"
+        }
+      ],
+      "body": {},
+      "authentication": {},
+      "metaSortKey": -70
+    },
+    {
+      "_id": "req_10_remove_header",
+      "_type": "request",
+      "parentId": "fld_10",
+      "name": "REMOVE header \u2014 GET /headers (X-Remove-Me stripped)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/headers",
+      "description": "Client sends X-Remove-Me: delete-this.\nKong strips it before forwarding \u2014 upstream never sees it.\nX-Remove-Me should be absent from the response JSON.",
+      "headers": [
+        {
+          "name": "X-Remove-Me",
+          "value": "delete-this"
+        }
+      ],
+      "body": {},
+      "authentication": {},
+      "metaSortKey": -60
+    },
+    {
+      "_id": "req_10_remove_querystring",
+      "_type": "request",
+      "parentId": "fld_10",
+      "name": "REMOVE querystring \u2014 GET /get (internal_debug param stripped)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/get?internal_debug=true&user=visible",
+      "description": "Client sends internal_debug=true in the query string.\nKong removes internal_debug before forwarding \u2014 upstream only sees user=visible.\nCheck .args in the response.",
+      "headers": [],
+      "body": {},
+      "authentication": {},
+      "metaSortKey": -50
+    },
+    {
+      "_id": "req_10_append",
+      "_type": "request",
+      "parentId": "fld_10",
+      "name": "APPEND header \u2014 GET /headers (X-Tags: first,kong-appended)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/headers",
+      "description": "Client sends X-Tags: first.\nKong appends ,kong-appended to the existing value.\nUpstream sees X-Tags: first,kong-appended.\nIf the client omits X-Tags, Kong creates it with value kong-appended.",
+      "headers": [
+        {
+          "name": "X-Tags",
+          "value": "first"
+        }
+      ],
+      "body": {},
+      "authentication": {},
+      "metaSortKey": -40
     },
     {
       "_id": "fld_11",
@@ -644,16 +731,69 @@
       "metaSortKey": -4000
     },
     {
-      "_id": "req_11_check",
+      "_id": "req_11_add",
       "_type": "request",
       "parentId": "fld_11",
-      "name": "GET httpbun/get (check modified response headers)",
+      "name": "ADD headers \u2014 GET /get (X-Powered-By, X-Bootcamp-Demo, X-Environment in response)",
       "method": "GET",
       "url": "{{ _.base_url }}/httpbun/get",
+      "description": "Kong injects X-Powered-By, X-Bootcamp-Demo, and X-Environment into the response headers.\nCheck the response headers tab \u2014 they come from Kong, not from httpbun.",
       "headers": [],
       "body": {},
-      "metaSortKey": -100,
-      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('X-Powered-By header added', () => {\n  insomnia.expect(resp.headers['x-powered-by']).to.equal('Kong-Gateway');\n});\ninsomnia.test('X-Bootcamp-Demo header added', () => {\n  insomnia.expect(resp.headers['x-bootcamp-demo']).to.equal('true');\n});\ninsomnia.test('Server header removed', () => {\n  insomnia.expect(resp.headers).to.not.have.property('server');\n});"
+      "authentication": {},
+      "metaSortKey": -100
+    },
+    {
+      "_id": "req_11_rename",
+      "_type": "request",
+      "parentId": "fld_11",
+      "name": "RENAME header \u2014 GET /get (Date \u2192 X-Response-Date)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/get",
+      "description": "httpbun returns a Date header in the response.\nKong renames it to X-Response-Date before delivering to the client.\nYou should see X-Response-Date but NOT Date in the response headers.",
+      "headers": [],
+      "body": {},
+      "authentication": {},
+      "metaSortKey": -90
+    },
+    {
+      "_id": "req_11_replace",
+      "_type": "request",
+      "parentId": "fld_11",
+      "name": "REPLACE header \u2014 GET /get (Content-Type forced to charset=utf-8)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/get",
+      "description": "httpbun returns Content-Type: application/json.\nKong replaces the value to application/json; charset=utf-8.\nCheck the Content-Type response header.",
+      "headers": [],
+      "body": {},
+      "authentication": {},
+      "metaSortKey": -80
+    },
+    {
+      "_id": "req_11_remove",
+      "_type": "request",
+      "parentId": "fld_11",
+      "name": "REMOVE headers \u2014 GET /get (X-Powered-By and Alt-Svc stripped)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/get",
+      "description": "Kong strips the upstream X-Powered-By and Alt-Svc headers from the response.\nThis hides the upstream tech stack from clients.\nNeither X-Powered-By nor Alt-Svc should appear in the response headers.\n\nNOTE: Kong's own Server and Via headers cannot be removed by this plugin \u2014 they are set by Kong core after plugins run.",
+      "headers": [],
+      "body": {},
+      "authentication": {},
+      "metaSortKey": -70
+    },
+    {
+      "_id": "req_11_append",
+      "_type": "request",
+      "parentId": "fld_11",
+      "name": "APPEND header \u2014 GET /get (X-Cache-Tags: kong-gateway added)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/httpbun/get",
+      "description": "Kong appends kong-gateway to the X-Cache-Tags response header.\nIf the header doesn't exist yet, Kong creates it.\nYou should see X-Cache-Tags: kong-gateway in the response.",
+      "headers": [],
+      "body": {},
+      "authentication": {},
+      "metaSortKey": -60
     },
     {
       "_id": "fld_12",

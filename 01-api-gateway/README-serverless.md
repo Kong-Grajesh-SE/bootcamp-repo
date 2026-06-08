@@ -428,7 +428,10 @@ deck gateway apply deck/12-response-transformer.yaml \
 ```bash
 curl -i $PROXY_URL/httpbun/get
 # Added:   X-Powered-By: Kong-Gateway, X-Bootcamp-Demo: true
-# Removed: Server, Via
+# Removed: X-Powered-By (upstream), Alt-Svc
+#
+# NOTE: Kong's own Server and Via headers are injected by Kong core AFTER
+# plugins run — response-transformer cannot remove them.
 ```
 
 ---
