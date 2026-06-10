@@ -28,14 +28,14 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # ── MCP Guardrail Demo Server (Step 7) ────────────────────────────────────
+  # ── MCP Tool Server (Step 7) ──────────────────────────────────────────────
   # Sample MCP server with safe tools (get_weather, calculator, search_docs)
   # and deliberately dangerous tools (execute_shell, drop_database) for the
   # OPA authorization demo. OPA blocks the dangerous tools at the gateway
   # before they reach this server.
-  mcp-guardrail-demo:
-    build: ./services/mcp-guardrail-demo
-    container_name: mcp-guardrail-demo
+  mcp-tool-server:
+    build: ./services/mcp-tool-server
+    container_name: mcp-tool-server
     ports:
       - "8092:8090"
     networks:
@@ -47,15 +47,15 @@ services:
       retries: 3
     restart: unless-stopped
 
-  # ── MCP Guardrail Service / OPA PDP (Step 7) ────────────────────────────
+  # ── OPA Policy Service / PDP (Step 7) ───────────────────────────────────
   # External Policy Decision Point called by the Kong OPA plugin.
   # Exposes /v1/data/mcp/authz/allow (OPA-compatible) that checks:
   #   1. MCP method allowlist
   #   2. Tool blocklist (execute_shell, drop_database, …)
   #   3. Dangerous argument patterns (rm -rf, DROP TABLE, …)
-  mcp-guardrail-service:
-    build: ./services/guardrail-service
-    container_name: mcp-guardrail-service
+  opa-policy-service:
+    build: ./services/opa-policy-service
+    container_name: opa-policy-service
     ports:
       - "8089:8080"
     networks:

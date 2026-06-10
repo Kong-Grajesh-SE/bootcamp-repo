@@ -722,14 +722,14 @@ The demo MCP server exposes both **safe tools** (get_weather, calculator, search
 ```
 MCP Client
   → Kong DP (localhost:8000/mcp-secure)
-      → OPA plugin (access phase) → guardrail-service PDP
+      → OPA plugin (access phase) → opa-policy-service PDP
       → ai-mcp-proxy (passthrough-listener) → MCP demo server
 ```
 
 ### 7.1 Start the Guardrail Services
 
 ```bash
-docker compose up -d mcp-guardrail-demo mcp-guardrail-service
+docker compose up -d mcp-tool-server opa-policy-service
 
 # Verify both services are healthy
 curl -s http://localhost:8092/health | jq .
@@ -741,7 +741,7 @@ curl -s http://localhost:8089/health | jq .
 
 > **Docker networking:** Both services run on the same `kong-net` bridge network
 > as the Kong data plane. The deck file uses Docker service names
-> (`mcp-guardrail-demo:8090` and `mcp-guardrail-service:8080`) so no ngrok or
+> (`mcp-tool-server:8090` and `opa-policy-service:8080`) so no ngrok or
 > host mapping is needed.
 >
 > **Serverless data planes:** If you're using a Konnect Serverless DP, the
@@ -869,7 +869,7 @@ curl -s -X POST $PROXY_URL/mcp-secure \
 ### 7.9 Verify Guardrail Logs
 
 ```bash
-docker compose logs mcp-guardrail-service --tail 20
+docker compose logs opa-policy-service --tail 20
 ```
 
 You should see `mcp_authz ALLOW` for safe calls and `mcp_authz DENY` with the specific reason (blocked tool, dangerous pattern) for rejected calls.
@@ -884,7 +884,7 @@ deck gateway sync deck/06-a2a-routing.yaml \
   --konnect-addr https://us.api.konghq.com
 
 # Stop the guardrail services (keeps the travel MCP backend running)
-docker compose stop mcp-guardrail-demo mcp-guardrail-service
+docker compose stop mcp-tool-server opa-policy-service
 ```
 
 ---
@@ -898,7 +898,7 @@ docker compose stop mcp-guardrail-demo mcp-guardrail-service
 | Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbin/ip` → httpbin-route) |
 | OAuth2 returns 401 with valid token | Check `jwks_endpoint` uses Docker hostname (`host.docker.internal:8080`), not `localhost` |
 | A2A hotels returns empty results | Use 3-letter airport codes (LHR, CDG) - backend matches on `location === code` |
-| OPA returns 500 instead of 403 | Check guardrail service is running: `docker compose logs mcp-guardrail-service` |
+| OPA returns 500 instead of 403 | Check guardrail service is running: `docker compose logs opa-policy-service` |
 | OPA allows everything | Verify `include_parsed_json_body_in_opa_input: true` is set in the deck file |
 | Safe tool returns 403 | Check guardrail service logs — argument may match a dangerous pattern |
 

@@ -22,7 +22,7 @@ _format_version: "3.0"
 services:
 
   - name: mcp-guardrail-demo-service
-    url: http://mcp-guardrail-demo:8090
+    url: http://mcp-tool-server:8090
     tags: [mcp-guardrails]
 
     routes:
@@ -45,7 +45,7 @@ services:
       - name: opa
         config:
           include_parsed_json_body_in_opa_input: true
-          opa_host: mcp-guardrail-service
+          opa_host: opa-policy-service
           opa_port: 8080
           opa_protocol: http
           opa_path: /v1/data/mcp/authz/allow

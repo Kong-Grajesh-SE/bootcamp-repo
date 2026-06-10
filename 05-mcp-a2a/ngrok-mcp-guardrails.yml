@@ -20,10 +20,10 @@
 version: "3"
 
 tunnels:
-  mcp-guardrail-demo:
+  mcp-tool-server:
     proto: http
     addr: 8092
 
-  mcp-guardrail-service:
+  opa-policy-service:
     proto: http
     addr: 8089
