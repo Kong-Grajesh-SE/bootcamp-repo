@@ -1,8 +1,13 @@
 # =============================================================================
 # Step 09 - Semantic Prompt Guard (plugin-only)
-# Uses Mistral embeddings + Redis vector similarity for topic allow/deny.
-# Requires: docker compose up -d redis
+# Uses Mistral embeddings + Redis Cloud vector similarity for topic allow/deny.
+# Requires: Redis Cloud database with RediSearch module enabled
 # Apply: deck file add-plugins -s <state> deck/09-semantic-prompt-guard.yaml | deck gateway sync -s -
+#
+# BEFORE APPLYING - replace these placeholders with your Redis Cloud values:
+#   <REDIS_CLOUD_HOST>     - Redis Cloud endpoint hostname
+#   <REDIS_CLOUD_PORT>     - Redis Cloud endpoint port (e.g. 16379)
+#   <REDIS_CLOUD_PASSWORD> - Redis Cloud default user password
 # =============================================================================
 plugins:
   - name: ai-semantic-prompt-guard
@@ -34,8 +39,10 @@ plugins:
       vectordb:
         strategy: redis
         redis:
-          host: redis
-          port: 6379
+          host: <REDIS_CLOUD_HOST>
+          port: <REDIS_CLOUD_PORT>
+          password: <REDIS_CLOUD_PASSWORD>
+          ssl: true
           timeout: 2000
           # NOTE: RediSearch vector indexes only work on DB 0 in Redis Stack.
           # All semantic plugins share DB 0 (isolation is by index name).

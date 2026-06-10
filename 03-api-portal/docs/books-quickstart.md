@@ -3,13 +3,13 @@
 ## Browse Books
 
 ```bash
-curl -H "apikey: YOUR_KEY" http://localhost:8000/books
+curl -H "apikey: YOUR_KEY" https://<YOUR_SERVERLESS_PROXY_URL>/books
 ```
 
 ## Get a Specific Book
 
 ```bash
-curl -H "apikey: YOUR_KEY" http://localhost:8000/books/42
+curl -H "apikey: YOUR_KEY" https://<YOUR_SERVERLESS_PROXY_URL>/books/42
 ```
 
 ## Add a Book
@@ -18,25 +18,25 @@ curl -H "apikey: YOUR_KEY" http://localhost:8000/books/42
 curl -X POST -H "apikey: YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{"title": "1984", "author": "George Orwell", "isbn": "978-0451524935", "genre": "Fiction", "price": 9.99}' \
-  http://localhost:8000/books
+  https://<YOUR_SERVERLESS_PROXY_URL>/books
 ```
 
 ## Browse Authors
 
 ```bash
-curl -H "apikey: YOUR_KEY" http://localhost:8000/authors
+curl -H "apikey: YOUR_KEY" https://<YOUR_SERVERLESS_PROXY_URL>/authors
 ```
 
 ## Get a Specific Author
 
 ```bash
-curl -H "apikey: YOUR_KEY" http://localhost:8000/authors/7
+curl -H "apikey: YOUR_KEY" https://<YOUR_SERVERLESS_PROXY_URL>/authors/7
 ```
 
 ## Browse Reviews
 
 ```bash
-curl -H "apikey: YOUR_KEY" http://localhost:8000/reviews
+curl -H "apikey: YOUR_KEY" https://<YOUR_SERVERLESS_PROXY_URL>/reviews
 ```
 
 ## Submit a Review
@@ -45,7 +45,7 @@ curl -H "apikey: YOUR_KEY" http://localhost:8000/reviews
 curl -X POST -H "apikey: YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{"bookId": 42, "rating": 5, "comment": "A masterpiece!", "reviewer": "Jane Doe"}' \
-  http://localhost:8000/reviews
+  https://<YOUR_SERVERLESS_PROXY_URL>/reviews
 ```
 
 ## Error Handling

@@ -1,8 +1,11 @@
 # =============================================================================
 # Step 07 - AI Prompt Compressor (plugin-only)
 # Compresses long prompts before they reach the LLM to save tokens.
-# Requires: docker compose up -d ai-compress-service
+# Requires: Compress service exposed via ngrok (or any public endpoint)
 # Apply: deck file add-plugins -s <state> deck/07-prompt-compressor.yaml | deck gateway sync -s -
+#
+# BEFORE APPLYING - replace this placeholder with your compress service URL:
+#   <COMPRESS_SERVICE_URL> - full ngrok URL (e.g. https://abc123.ngrok-free.app)
 # =============================================================================
 _format_version: "3.0"
 plugins:
@@ -10,7 +13,7 @@ plugins:
     service: ai-gateway-service
     config:
       compressor_type: rate
-      compressor_url: http://ai-compress-service:8080
+      compressor_url: <COMPRESS_SERVICE_URL>
       keepalive_timeout: 60000
       log_text_data: false
       stop_on_error: true

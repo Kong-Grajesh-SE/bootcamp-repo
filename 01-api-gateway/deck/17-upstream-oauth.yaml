@@ -11,36 +11,37 @@ _format_version: "3.0"
 # Scoped to httpbun-service, whose `/headers` echoes what the upstream received —
 # so you can literally see the token Kong added.
 #
-# Uses the shared Keycloak's `kong-m2m` client (realm `bootcamp`). Spin it up:
-#     cd ../keycloak && docker compose up -d
+# BEFORE APPLYING - replace the placeholders:
+#   <AUTH0_DOMAIN>            → Auth0 tenant domain
+#   <AUTH0_M2M_CLIENT_ID>     → Machine-to-Machine application client ID
+#   <AUTH0_M2M_CLIENT_SECRET> → Machine-to-Machine application client secret
+#   <AUTH0_API_AUDIENCE>      → API audience identifier (optional, for scoped tokens)
 #
-# NOTE: unlike step 16, there is NO issuer/`iss` matching here - Kong is the
-# client, not the validator, so it just forwards the token upstream. You only
-# need the token_endpoint reachable FROM the Kong DP container
-# (host.docker.internal resolves to the host machine from inside Docker).
+# Auth0 setup:
+#   1. Create a Machine-to-Machine application in Auth0
+#   2. Authorize it against your API (audience)
+#   3. Grant the scopes you need (or leave empty for default)
 # ---------------------------------------------------------------------------
 plugins:
 - name: upstream-oauth
   service: httpbun-service
   config:
     oauth:
-      token_endpoint: http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token
-      client_id: kong-m2m
-      client_secret: kong-m2m-client-secret-replace-in-prod
+      token_endpoint: https://<AUTH0_DOMAIN>/oauth/token
+      client_id: <AUTH0_M2M_CLIENT_ID>
+      client_secret: <AUTH0_M2M_CLIENT_SECRET>
       grant_type: client_credentials
       scopes:
       - openid
     client:
-      # kong-m2m is a confidential client - send client_id/secret in the body.
       auth_method: client_secret_post
     behavior:
-      # Header injected on the upstream request (default is Authorization).
       upstream_access_token_header_name: Authorization
-      # If the upstream rejects the token, drop it from cache and re-fetch.
       purge_token_on_upstream_status_codes:
       - 401
     cache:
-      # Cache the fetched token so Kong isn't hitting the IdP on every request.
       strategy: memory
+      # Token is cached for 1 hour, re-fetched 5 seconds before expiry
+      # to avoid serving a request with an about-to-expire token.
       default_ttl: 3600
       eagerly_expire: 5

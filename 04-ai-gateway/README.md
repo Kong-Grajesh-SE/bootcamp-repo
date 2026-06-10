@@ -1,9 +1,9 @@
 # Kong AI Gateway Bootcamp
 
-> **Deployment:** Konnect Control Plane + Self-Managed Docker Data Plane (Hybrid Mode)
+> **Deployment:** Konnect Control Plane + Konnect Serverless Data Plane
 >
 > 11-step hands-on lab using declarative `deck gateway` commands. Step 1 deploys
-> the service, route, and AI Proxy Advanced plugin. Steps 2–11 each add **one
+> the service, route, and AI Proxy Advanced plugin. Steps 2-11 each add **one
 > plugin at a time** without redeploying the service or routes - the plugin-only
 > files are merged into the live state using `deck file add-plugins`.
 
@@ -20,35 +20,38 @@
 # Konnect credentials
 export KONNECT_TOKEN="<your-konnect-pat>"
 export CP_NAME="<your-control-plane>"
-export PROXY_URL=http://localhost:8000
+export PROXY_URL=https://<YOUR_SERVERLESS_PROXY_URL>
 
 # AI Provider keys (both required from Step 01)
 export DECK_MISTRAL_API_KEY="<your-mistral-api-key>"
 export DECK_CEREBRAS_API_KEY="<your-cerebras-api-key>"
 ```
 
+### Redis Cloud Setup
+
+Redis Cloud replaces the local Docker Redis Stack used in hybrid mode.
+It is required by Semantic Cache (Step 4), AI Rate Limiting (Step 8),
+Semantic Prompt Guard (Step 9), and Semantic Response Guard (Step 10).
+
+1. Create a free Redis Cloud account at https://redis.io/cloud/
+2. Create a database with the **RediSearch** module enabled (required for semantic cache/guards)
+3. Note your endpoint host, port, and password
+4. Replace `<REDIS_CLOUD_HOST>`, `<REDIS_CLOUD_PORT>`, `<REDIS_CLOUD_PASSWORD>` in deck files 04, 08, 09, 10
+
+> RediSearch vector indexes only work on **database 0** - all semantic
+> plugins share DB 0 (isolation is by index name, not DB number). Set
+> `cache_control: false` for semantic cache since upstream LLM providers
+> (Mistral/Cloudflare) set `Cache-Control` headers that cause bypass.
+
 ### Docker Services Setup
 
-The following services run in Docker and are required by specific steps.
-Start them before you reach the step that needs them.
-
-#### Redis Stack (required from Step 4)
-
-Used by Semantic Cache, AI Rate Limiting, Semantic Prompt Guard, and Semantic Response Guard.
+The AI helper services (PII anonymizer, prompt compressor, custom guardrail) still
+run locally in Docker. Since the serverless data plane cannot reach `localhost`,
+you must expose these services via **ngrok tunnels**.
 
 ```bash
-docker network create kong-net 2>/dev/null || true
-
-docker run -d --name redis \
-  --network kong-net \
-  -p 6379:6379 \
-  -p 8001:8001 \
-  --restart unless-stopped \
-  redis/redis-stack:latest
-
-# Verify
-docker exec redis redis-cli ping
-# → PONG
+# Start all AI helper services
+docker compose up -d
 ```
 
 #### AI PII Anonymizer Service (required from Step 6)
@@ -56,8 +59,6 @@ docker exec redis redis-cli ping
 Used by the AI Sanitizer plugin for PII redaction.
 
 ```bash
-cd ai-gateway
-
 docker compose up -d ai-pii-service
 
 # Wait for healthy (takes ~60s to load NLP models)
@@ -97,20 +98,48 @@ curl -s http://localhost:8088/health | jq .
 # → {"status":"ok","service":"custom-guardrail"}
 ```
 
-> **Docker networking note:** The supporting services run on the `kong-net` Docker
-> network for inter-service communication. Since the Kong data plane also runs
-> on this network, the deck plugin files use **container names** (e.g. `redis`)
-> to reach services directly. RediSearch vector indexes only work on **database
-> 0** - all semantic plugins share DB 0 (isolation is by index name, not DB
-> number). Set `cache_control: false` for semantic cache since upstream LLM
-> providers (Mistral/Cloudflare) set `Cache-Control` headers that cause bypass.
+### ngrok Setup (for PII, Compressor, Guardrail services)
+
+The AI services run locally in Docker but the serverless data plane cannot reach them
+directly. Use ngrok to expose them:
+
+1. Start the services: `docker compose up -d`
+2. Create ngrok tunnels:
+   ```bash
+   ngrok http 8086    # PII service
+   ngrok http 8085    # Compressor service
+   ngrok http 8088    # Guardrail service
+   ```
+   Or use a multi-tunnel config file (`ngrok.yml`):
+   ```yaml
+   version: "3"
+   tunnels:
+     pii:
+       addr: 8086
+       proto: http
+     compressor:
+       addr: 8085
+       proto: http
+     guardrail:
+       addr: 8088
+       proto: http
+   ```
+   ```bash
+   ngrok start --all --config ngrok.yml
+   ```
+3. Replace placeholders in deck files:
+   - `<PII_SERVICE_HOST>` and `<PII_SERVICE_PORT>` in `deck/06-ai-sanitizer.yaml` (use ngrok hostname and port `443`)
+   - `<COMPRESS_SERVICE_URL>` in `deck/07-prompt-compressor.yaml` (use full ngrok HTTPS URL, e.g. `https://abc123.ngrok-free.app`)
+   - `<GUARDRAIL_SERVICE_URL>` in `deck/11-custom-guardrails.yaml` (use full ngrok HTTPS URL, e.g. `https://xyz789.ngrok-free.app`)
+
+> **Service reference:**
 >
-> | Service | Plugin Host | Plugin Port | Container Port → Host Port |
-> |---------|-------------|-------------|---------------------------|
-> | Redis | `redis` | `6379` | 6379 → 6379 |
-> | PII Service | `ai-pii-service` | `8080` | 8080 → 8086 |
-> | Compressor | `ai-compress-service` | `8080` | 8080 → 8085 |
-> | Guardrail | `guardrail-service` | `8080` | 8080 → 8088 |
+> | Service | Deck File | Placeholder(s) | Local Port |
+> |---------|-----------|----------------|------------|
+> | Redis Cloud | 04, 08, 09, 10 | `<REDIS_CLOUD_HOST>`, `<REDIS_CLOUD_PORT>`, `<REDIS_CLOUD_PASSWORD>` | n/a (cloud) |
+> | PII Service | 06 | `<PII_SERVICE_HOST>`, `<PII_SERVICE_PORT>` | 8086 |
+> | Compressor | 07 | `<COMPRESS_SERVICE_URL>` | 8085 |
+> | Guardrail | 11 | `<GUARDRAIL_SERVICE_URL>` | 8088 |
 
 ---
 
@@ -294,7 +323,12 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ## Step 4 - Semantic Cache
 
-Caches semantically similar responses using Mistral embeddings + Redis vector store.
+Caches semantically similar responses using Mistral embeddings + Redis Cloud vector store.
+
+> **Requires:** Redis Cloud database with RediSearch module enabled.
+> Replace `<REDIS_CLOUD_HOST>`, `<REDIS_CLOUD_PORT>`, `<REDIS_CLOUD_PASSWORD>` in
+> `deck/04-semantic-cache.yaml` before applying. The deck file sets `ssl: true`
+> for the Redis Cloud TLS connection.
 
 ### 4.1 Add Plugin
 
@@ -344,7 +378,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
   }' | jq '.choices[0].message.content'
 ```
 
-**Expected**: Request 1 is slower (LLM call). Requests 2 & 3 are instant (served from Redis cache). Responses are identical.
+**Expected**: Request 1 is slower (LLM call). Requests 2 & 3 are instant (served from Redis Cloud cache). Responses are identical.
 
 ### 4.3 Test - Negative (different question - cache miss)
 
@@ -430,6 +464,11 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 Detects and redacts PII (emails, phone numbers, credit cards, SSNs, IPs) before the prompt reaches the LLM.
 
+> **Requires:** PII service running locally and exposed via ngrok.
+> Replace `<PII_SERVICE_HOST>` and `<PII_SERVICE_PORT>` in
+> `deck/06-ai-sanitizer.yaml` with your ngrok hostname and port (`443` for
+> ngrok HTTPS tunnels).
+
 ### 6.1 Add Plugin
 
 ```bash
@@ -479,6 +518,10 @@ curl -s $PROXY_URL/ai/proxy/chat \
 ## Step 7 - AI Prompt Compressor
 
 Compresses long prompts before they reach the LLM to reduce token costs.
+
+> **Requires:** Compressor service running locally and exposed via ngrok.
+> Replace `<COMPRESS_SERVICE_URL>` in `deck/07-prompt-compressor.yaml` with
+> the full ngrok HTTPS URL (e.g. `https://abc123.ngrok-free.app`).
 
 ### 7.1 Add Plugin
 
@@ -530,6 +573,11 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 Token-aware rate limits with **per-model policies** for the multi-provider setup.
 
+> **Requires:** Redis Cloud database.
+> Replace `<REDIS_CLOUD_HOST>`, `<REDIS_CLOUD_PORT>`, `<REDIS_CLOUD_PASSWORD>` in
+> `deck/08-ai-rate-limiting.yaml` before applying. The deck file sets `ssl: true`
+> for the Redis Cloud TLS connection.
+
 ### 8.1 Add Plugin
 
 ```bash
@@ -580,7 +628,11 @@ done
 
 ## Step 9 - Semantic Prompt Guard
 
-Uses Mistral embeddings + Redis vector similarity to enforce **topic allow/deny lists** semantically - not just regex patterns.
+Uses Mistral embeddings + Redis Cloud vector similarity to enforce **topic allow/deny lists** semantically - not just regex patterns.
+
+> **Requires:** Redis Cloud database with RediSearch module enabled.
+> Replace `<REDIS_CLOUD_HOST>`, `<REDIS_CLOUD_PORT>`, `<REDIS_CLOUD_PASSWORD>` in
+> `deck/09-semantic-prompt-guard.yaml` before applying.
 
 ### 9.1 Add Plugin
 
@@ -666,7 +718,11 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ## Step 10 - Semantic Response Guard
 
-Filters LLM **output** using embeddings. Even if a prompt gets through, responses matching denied categories are blocked.
+Filters LLM **output** using Redis Cloud embeddings. Even if a prompt gets through, responses matching denied categories are blocked.
+
+> **Requires:** Redis Cloud database with RediSearch module enabled.
+> Replace `<REDIS_CLOUD_HOST>`, `<REDIS_CLOUD_PORT>`, `<REDIS_CLOUD_PASSWORD>` in
+> `deck/10-semantic-response-guard.yaml` before applying.
 
 ### 10.1 Add Plugin
 
@@ -737,6 +793,10 @@ Adds a custom moderation layer that inspects **both directions** - incoming prom
 - **OUTPUT rules:** Catches PII leaks (email addresses, SSNs, credit card numbers) and harmful step-by-step instructions in the LLM response.
 
 The `ai-custom-guardrail` plugin sends the full conversation text to the guardrail service's `/moderate` endpoint. If the service returns `block: true`, Kong rejects the request (or suppresses the response) and returns the `block_message` to the caller.
+
+> **Requires:** Guardrail service running locally and exposed via ngrok.
+> Replace `<GUARDRAIL_SERVICE_URL>` in `deck/11-custom-guardrails.yaml` with
+> the full ngrok HTTPS URL (e.g. `https://xyz789.ngrok-free.app`).
 
 ### 11.1 Start the Guardrail Service
 
@@ -871,29 +931,19 @@ deck gateway reset \
   --konnect-addr https://us.api.konghq.com \
   --force
 
-# Stop and remove bootcamp containers (volumes preserved - re-running the
-# bootcamp keeps cached embeddings and Redis indexes).
+# Stop ngrok tunnels (Ctrl-C in the terminal running ngrok, or kill the process)
+
+# Stop and remove local AI helper containers
 docker compose down
 
-# If you also want to drop the Redis vector indexes, add -v. WARNING:
-# `docker compose down -v` removes named volumes, so cached semantic
-# embeddings vanish and the first run after will be slower.
-# docker compose down -v
-
-# Remove the bootcamp images only when you're truly done with the lab —
+# Remove the bootcamp images only when you're truly done with the lab -
 # rebuilding the PII service from scratch can take a few minutes.
-# docker rmi redis/redis-stack:latest 2>/dev/null
 # docker rmi ai-pii-service:local 2>/dev/null
 # docker rmi ai-compress-service:local 2>/dev/null
 # docker rmi guardrail-service:local 2>/dev/null
 
-# Remove the dedicated Docker network (safe - recreated on next `up`).
-docker network rm kong-net 2>/dev/null
-
-# NOTE: `docker system prune -f` is deliberately NOT shown here. It would
-# delete every stopped container, dangling image, and unused volume on
-# your host - including work from OTHER projects you may be running.
-# Only run it if you understand the blast radius.
+# (Optional) Delete your Redis Cloud database from the Redis Cloud console
+# if you no longer need it for other modules.
 ```
 
 ---
@@ -903,7 +953,9 @@ docker network rm kong-net 2>/dev/null
 | Symptom | Fix |
 |---------|-----|
 | `401 Unauthorized` on LLM calls | Check `DECK_MISTRAL_API_KEY` and `DECK_CEREBRAS_API_KEY` are exported |
-| Semantic cache not working | Ensure Redis is running: `docker ps \| grep redis` |
+| Semantic cache not working | Verify Redis Cloud credentials and that the RediSearch module is enabled |
+| Redis connection refused | Confirm `<REDIS_CLOUD_HOST>`, `<REDIS_CLOUD_PORT>`, `<REDIS_CLOUD_PASSWORD>` are replaced and `ssl: true` is set |
+| PII/Compressor/Guardrail unreachable | Verify ngrok tunnels are running and placeholders are replaced with ngrok URLs |
 | PII service errors | Rebuild: `docker compose up -d --build ai-pii-service` |
 | Compressor errors | Rebuild: `docker compose up -d --build ai-compress-service` |
 | Guardrail service errors | Rebuild: `docker compose up -d --build guardrail-service` |
@@ -911,3 +963,4 @@ docker network rm kong-net 2>/dev/null
 | `deck gateway sync` fails | Verify `KONNECT_TOKEN` and `CP_NAME` are set correctly |
 | Round-robin not alternating | Send 4+ requests - model field in JSON response shows the provider |
 | Semantic guard false positives | Adjust `threshold` in the vectordb config (lower = stricter) |
+| ngrok tunnel expired | Free-tier ngrok tunnels expire after ~2 hours; restart `ngrok` and update deck file placeholders |

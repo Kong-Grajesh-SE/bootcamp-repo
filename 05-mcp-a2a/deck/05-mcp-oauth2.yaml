@@ -1,20 +1,25 @@
 # =============================================================================
 # Step 05 - MCP + OAuth2 / PKCE
 # Creates a second MCP service (with /mcp path prefix) and route that
-# requires OAuth2 tokens validated against Keycloak. The ai-mcp-oauth2
+# requires OAuth2 tokens validated against Auth0. The ai-mcp-oauth2
 # plugin handles MCP OAuth 2.0 spec validation; ai-mcp-proxy in
 # passthrough-listener mode forwards the authenticated request.
 #
-# Prerequisites: the shared Keycloak running at localhost:8080 with the
-# `bootcamp` realm - start it with `cd ../keycloak && docker compose up -d`.
+# Prerequisites: an Auth0 tenant with:
+#   - A Machine-to-Machine application (for client_credentials flow)
+#   - A Single Page Application with PKCE enabled (for authorization_code flow)
+#   - An API (audience) registered for token validation
+#
+# BEFORE APPLYING - replace the placeholders below:
+#   <AUTH0_DOMAIN>     → your Auth0 tenant domain (e.g. my-tenant.us.auth0.com)
+#   <MCP_BACKEND_URL>  → ngrok HTTPS URL for the MCP backend
+#                        (e.g. https://abc123.ngrok-free.app)
 # =============================================================================
 _format_version: "3.0"
 
 services:
   - name: mcp-backend-oauth
-    host: mcp-backend
-    port: 3001
-    protocol: http
+    url: http://<MCP_BACKEND_URL>
     path: /mcp
     tags:
       - mcp
@@ -32,20 +37,15 @@ services:
         plugins:
           - name: ai-mcp-oauth2
             config:
-              resource: http://localhost:8000/mcp-oauth/tools
+              resource: $PROXY_URL/mcp-oauth/tools
               authorization_servers:
-                - http://localhost:8080/realms/bootcamp
-              # JWKS is fetched from inside the Kong DP container, which can't
-              # see `localhost` - it reaches the shared Keycloak on the host via
-              # `host.docker.internal`.
-              jwks_endpoint: http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/certs
+                - https://<AUTH0_DOMAIN>/
+              jwks_endpoint: https://<AUTH0_DOMAIN>/.well-known/jwks.json
               # DEMO ONLY - relaxes RFC 8707 audience binding so a token issued
               # without an explicit `audience` claim still validates. Do NOT
               # ship this to production: pair the IdP-side resource indicator
               # with strict validation instead.
               insecure_relaxed_audience_validation: true
-              # DEMO ONLY - Keycloak runs over plain HTTP on localhost.
-              ssl_verify: false
               claim_to_header:
                 - claim: sub
                   header: X-User-Id

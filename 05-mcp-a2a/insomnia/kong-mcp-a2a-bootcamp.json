@@ -18,11 +18,10 @@
       "_type": "environment",
       "name": "Base Environment",
       "data": {
-        "proxy_url": "http://localhost:8000",
+        "proxy_url": "https://<YOUR_SERVERLESS_PROXY_URL>",
         "mcp_key": "mcp-key-001",
         "agent_key": "orchestrator-key-xyz",
-        "keycloak_url": "http://localhost:8080",
-        "keycloak_realm": "bootcamp"
+        "auth0_domain": "<AUTH0_DOMAIN>"
       }
     },
     {
@@ -561,29 +560,16 @@
       "name": "\ud83d\udd11 Get Token (client_credentials)",
       "description": "Copy access_token from response and paste into the Bearer token requests below.",
       "method": "POST",
-      "url": "{{ _.keycloak_url }}/realms/{{ _.keycloak_realm }}/protocol/openid-connect/token",
+      "url": "https://{{ _.auth0_domain }}/oauth/token",
       "headers": [
         {
           "name": "Content-Type",
-          "value": "application/x-www-form-urlencoded"
+          "value": "application/json"
         }
       ],
       "body": {
-        "mimeType": "application/x-www-form-urlencoded",
-        "params": [
-          {
-            "name": "grant_type",
-            "value": "client_credentials"
-          },
-          {
-            "name": "client_id",
-            "value": "mcp-service-client"
-          },
-          {
-            "name": "client_secret",
-            "value": "mcp-service-secret"
-          }
-        ]
+        "mimeType": "application/json",
+        "text": "{\n  \"client_id\": \"mcp-service-client\",\n  \"client_secret\": \"mcp-service-secret\",\n  \"audience\": \"https://{{ _.auth0_domain }}/api/v2/\",\n  \"grant_type\": \"client_credentials\"\n}"
       }
     },
     {

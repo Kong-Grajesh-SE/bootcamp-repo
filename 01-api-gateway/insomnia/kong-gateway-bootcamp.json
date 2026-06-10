@@ -17,7 +17,7 @@
       "parentId": "wrk_bootcamp",
       "name": "Base Environment",
       "data": {
-        "base_url": "http://localhost:8000",
+        "base_url": "https://<YOUR_SERVERLESS_PROXY_URL>",
         "api_key": "my-secret-key-123",
         "api_key_test": "test-key-456",
         "api_key_alice": "alice-api-key",
@@ -26,25 +26,15 @@
         "api_key_standard": "standard-key-456",
         "api_key_blocked": "blocked-key-789",
         "jwt_token": "",
-        "keycloak_issuer": "http://host.docker.internal:8080/realms/bootcamp",
-        "keycloak_client_id": "kong",
-        "keycloak_client_secret": "kong-bootcamp-client-secret-replace-in-prod",
-        "keycloak_token": "",
         "kong_identity_issuer": "<your-kong-identity-issuer-url>",
         "kong_identity_client_id": "<your-kong-identity-client-id>",
         "kong_identity_client_secret": "<your-kong-identity-client-secret>",
         "kong_identity_token": "",
-        "api_key_charlie": "charlie-api-key"
-      },
-      "isPrivate": false
-    },
-    {
-      "_id": "env_docker",
-      "_type": "environment",
-      "parentId": "env_base",
-      "name": "Docker DP (localhost:8000)",
-      "data": {
-        "base_url": "http://localhost:8000"
+        "api_key_charlie": "charlie-api-key",
+        "auth0_domain": "<AUTH0_DOMAIN>",
+        "auth0_client_id": "<AUTH0_CLIENT_ID>",
+        "auth0_client_secret": "<AUTH0_CLIENT_SECRET>",
+        "auth0_token": ""
       },
       "isPrivate": false
     },
@@ -967,49 +957,30 @@
       "_id": "fld_16",
       "_type": "request_group",
       "parentId": "wrk_bootcamp",
-      "name": "16 - Keycloak OIDC",
-      "description": "OpenID Connect via the shared Keycloak (realm bootcamp). Start it: cd ../keycloak && docker compose up -d. Add 127.0.0.1 host.docker.internal to /etc/hosts so the issuer matches. Apply deck/16-oidc-keycloak.yaml (httpbun-service).",
+      "name": "16 - Auth0 OIDC",
+      "description": "OpenID Connect via Auth0. Set auth0_domain, auth0_client_id, auth0_client_secret in the environment. Apply deck/16-oidc-auth0.yaml (httpbun-service).",
       "metaSortKey": -140
     },
     {
       "_id": "req_16_token",
       "_type": "request",
       "parentId": "fld_16",
-      "name": "POST get token (alice, password grant)",
-      "description": "Mints alice's access token from Keycloak and stores it in keycloak_token. Mint against host.docker.internal so the iss matches the issuer Kong validates.",
+      "name": "POST get token (Auth0, client_credentials)",
+      "description": "Mints a client_credentials access token from Auth0 and stores it in auth0_token.",
       "method": "POST",
-      "url": "{{ _.keycloak_issuer }}/protocol/openid-connect/token",
+      "url": "https://{{ _.auth0_domain }}/oauth/token",
       "body": {
-        "mimeType": "application/x-www-form-urlencoded",
-        "params": [
-          {
-            "name": "grant_type",
-            "value": "password"
-          },
-          {
-            "name": "client_id",
-            "value": "{{ _.keycloak_client_id }}"
-          },
-          {
-            "name": "client_secret",
-            "value": "{{ _.keycloak_client_secret }}"
-          },
-          {
-            "name": "username",
-            "value": "alice"
-          },
-          {
-            "name": "password",
-            "value": "alice-password"
-          },
-          {
-            "name": "scope",
-            "value": "openid profile email"
-          }
-        ]
+        "mimeType": "application/json",
+        "text": "{\n  \"client_id\": \"{{ _.auth0_client_id }}\",\n  \"client_secret\": \"{{ _.auth0_client_secret }}\",\n  \"audience\": \"https://{{ _.auth0_domain }}/api/v2/\",\n  \"grant_type\": \"client_credentials\"\n}"
       },
       "metaSortKey": -160,
-      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Got a token', () => {\n  insomnia.expect(resp.status).to.equal(200);\n  insomnia.expect(resp.json().access_token).to.be.a('string');\n});\nif (resp.code === 200) { insomnia.environment.set('keycloak_token', resp.json().access_token); }"
+      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Got a token', () => {\n  insomnia.expect(resp.status).to.equal(200);\n  insomnia.expect(resp.json().access_token).to.be.a('string');\n});\nif (resp.code === 200) { insomnia.environment.set('auth0_token', resp.json().access_token); }",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
     },
     {
       "_id": "req_16_no_token",
@@ -1028,39 +999,39 @@
       "_type": "request",
       "parentId": "fld_16",
       "name": "GET httpbun/get (with bearer - 200)",
-      "description": "Run 'POST get token' first to populate keycloak_token.",
+      "description": "Run 'POST get token' first to populate auth0_token.",
       "method": "GET",
       "url": "{{ _.base_url }}/httpbun/get",
       "headers": [
         {
           "name": "Authorization",
-          "value": "Bearer {{ _.keycloak_token }}"
+          "value": "Bearer {{ _.auth0_token }}"
         }
       ],
       "body": {},
       "metaSortKey": -140,
-      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Accepted with alice token', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});"
+      "afterResponseScript": "const resp = insomnia.response;\ninsomnia.test('Accepted with Auth0 token', () => {\n  insomnia.expect(resp.status).to.equal(200);\n});"
     },
     {
       "_id": "req_16_introspect",
       "_type": "request",
       "parentId": "fld_16",
       "name": "POST introspect token (active: true)",
-      "description": "RFC 7662 introspection. Returns {active:true,...} for a live token; after the user logs out in Keycloak it returns active:false.",
+      "description": "RFC 7662 introspection. Returns {active:true,...} for a live token.",
       "method": "POST",
-      "url": "{{ _.keycloak_issuer }}/protocol/openid-connect/token/introspect",
+      "url": "https://{{ _.auth0_domain }}/oauth/token/introspect",
       "authentication": {
         "type": "basic",
         "disabled": false,
-        "username": "{{ _.keycloak_client_id }}",
-        "password": "{{ _.keycloak_client_secret }}"
+        "username": "{{ _.auth0_client_id }}",
+        "password": "{{ _.auth0_client_secret }}"
       },
       "body": {
         "mimeType": "application/x-www-form-urlencoded",
         "params": [
           {
             "name": "token",
-            "value": "{{ _.keycloak_token }}"
+            "value": "{{ _.auth0_token }}"
           }
         ]
       },
@@ -1072,7 +1043,7 @@
       "_type": "request_group",
       "parentId": "wrk_bootcamp",
       "name": "17 - Upstream OAuth",
-      "description": "Kong is the OAuth client: it fetches an M2M token (kong-m2m) and injects it on the UPSTREAM call. Apply deck/17-upstream-oauth.yaml (httpbun-service). The client below sends NO auth.",
+      "description": "Kong is the OAuth client: it fetches an M2M token and injects it on the UPSTREAM call. Apply deck/17-upstream-oauth.yaml (httpbun-service). The client below sends NO auth.",
       "metaSortKey": -130
     },
     {
@@ -1080,7 +1051,7 @@
       "_type": "request",
       "parentId": "fld_17",
       "name": "GET httpbun/headers (see Kong-injected Bearer)",
-      "description": "The client sends no Authorization header. The echoed response should show an Authorization: Bearer token that Kong obtained from Keycloak using kong-m2m.",
+      "description": "The client sends no Authorization header. The echoed response should show an Authorization: Bearer token that Kong obtained from Auth0 using the upstream-oauth plugin.",
       "method": "GET",
       "url": "{{ _.base_url }}/httpbun/headers",
       "headers": [],

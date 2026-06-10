@@ -1,7 +1,13 @@
 # =============================================================================
 # Step 08 - AI Rate Limiting Advanced (plugin-only)
 # Token-aware rate limits with per-model policies for multi-provider setup.
+# Requires: Redis Cloud database
 # Apply: deck file add-plugins -s <state> deck/08-ai-rate-limiting.yaml | deck gateway sync -s -
+#
+# BEFORE APPLYING - replace these placeholders with your Redis Cloud values:
+#   <REDIS_CLOUD_HOST>     - Redis Cloud endpoint hostname
+#   <REDIS_CLOUD_PORT>     - Redis Cloud endpoint port (e.g. 16379)
+#   <REDIS_CLOUD_PASSWORD> - Redis Cloud default user password
 # =============================================================================
 plugins:
   - name: ai-rate-limiting-advanced
@@ -14,8 +20,10 @@ plugins:
       sync_rate: 1
       strategy: redis
       redis:
-        host: redis
-        port: 6379
+        host: <REDIS_CLOUD_HOST>
+        port: <REDIS_CLOUD_PORT>
+        password: <REDIS_CLOUD_PASSWORD>
+        ssl: true
         timeout: 2000
       llm_providers:
         # Per-provider token quotas. Numbers paired positionally: limit[i]

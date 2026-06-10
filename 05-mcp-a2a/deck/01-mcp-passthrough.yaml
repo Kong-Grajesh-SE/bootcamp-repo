@@ -3,14 +3,19 @@
 # Creates the MCP backend service + passthrough route.
 # The ai-mcp-proxy plugin in passthrough-listener mode forwards native MCP
 # JSON-RPC traffic unchanged to the backend.
+#
+# Serverless deployment: the DP can't reach Docker services directly.
+# Use ngrok to expose the MCP backend and replace the placeholder below.
+#
+# BEFORE APPLYING - replace the placeholder below:
+#   <MCP_BACKEND_URL>  → ngrok HTTPS URL for the MCP backend
+#                        (e.g. https://abc123.ngrok-free.app)
 # =============================================================================
 _format_version: "3.0"
 
 services:
   - name: mcp-backend
-    host: mcp-backend
-    port: 3001
-    protocol: http
+    url: http://<MCP_BACKEND_URL>
     tags:
       - mcp
     routes:

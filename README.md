@@ -10,7 +10,7 @@ state on the same control plane.
 
 | Module | Description | CLI guide | UI guide |
 |--------|-------------|-----------|----------|
-| [api-gateway](01-api-gateway/) | Core gateway plugins - rate limiting, caching, auth, CORS, logging, consumer groups - plus Kong Identity (M2M), OIDC with Keycloak, and Upstream OAuth | [README](01-api-gateway/README.md) | [README-UI](01-api-gateway/README-UI.md) |
+| [api-gateway](01-api-gateway/) | Core gateway plugins - rate limiting, caching, auth, CORS, logging, consumer groups - plus Kong Identity (M2M), OIDC with Auth0, and Upstream OAuth | [README](01-api-gateway/README.md) | [README-UI](01-api-gateway/README-UI.md) |
 | [apiops](02-apiops/) | decK CLI mastery - sync, diff, validate, dump, lint, OpenAPI-to-Kong, tags, templates | [README](02-apiops/README.md) | [README-UI](02-apiops/README-UI.md) |
 | [ai-gateway](04-ai-gateway/) | LLM controls - multi-provider routing, prompt guards, semantic cache, PII sanitization, AI rate limiting, custom guardrails | [README](04-ai-gateway/README.md) | [README-UI](04-ai-gateway/README-UI.md) |
 | [mcp-a2a](05-mcp-a2a/) | Agentic AI - MCP passthrough & conversion listeners, multi-team aggregation, OAuth2 PKCE, A2A routing | [README](05-mcp-a2a/README.md) | [README-UI](05-mcp-a2a/README-UI.md) |
@@ -22,30 +22,38 @@ state on the same control plane.
 |---|---|---|
 | [bootcamp-automation](bootcamp-automation/) | **AI agent driving the Konnect UI through Kong** - Playwright MCP server gated by `key-auth` + `rate-limiting` + `ai-mcp-proxy`. Showcase that ties every prior module's plugins back together. | [README](bootcamp-automation/README.md) |
 
-### Shared services
+### External Identity Provider
 
-| Folder | Description | Used by |
-|---|---|---|
-| [keycloak](keycloak/) | **One shared Keycloak** (realm `bootcamp`) - external OpenID Connect / OAuth2 provider. Holds every module's clients (`kong`, `kong-m2m`, `mcp-service-client`, `mcp-pkce-client`) and users (`alice`, `bob-admin`, `agent-user`). Start once: `cd keycloak && docker compose up -d`. | 01-api-gateway (steps 16–17), 05-mcp-a2a (step 5) |
+This bootcamp uses **[Auth0](https://auth0.com/)** (free tenant) as the
+external OpenID Connect / OAuth2 provider. Auth0 is cloud-hosted - no Docker
+container to manage. Each module's README explains how to configure the
+required Auth0 applications, APIs, and users.
+
+| Service | Used by |
+|---|---|
+| Auth0 tenant (OIDC / OAuth2) | 01-api-gateway (steps 16-17), 05-mcp-a2a (step 5) |
 
 ## Prerequisites
 
-- [Kong Konnect](https://cloud.konghq.com/) account with a control plane
+- [Kong Konnect](https://cloud.konghq.com/) account with a serverless control plane
 - [decK CLI](https://docs.konghq.com/deck/latest/installation/) installed
-- Docker (for modules that run local services)
+- [Auth0](https://auth0.com/) account (free tenant) - external IdP for OIDC/OAuth2 modules
+- [Redis Cloud](https://redis.io/cloud/) account (free tier with RediSearch module) - for AI gateway semantic cache
+- [ngrok](https://ngrok.com/) - to expose local services to the serverless data plane
+- Docker (for modules that run local AI services exposed via ngrok)
 - A Konnect Personal Access Token (PAT)
 
 ```bash
 export KONNECT_TOKEN="<your-konnect-pat>"
 export CP_NAME="<your-control-plane-name>"
-export PROXY_URL=http://localhost:8000
+export PROXY_URL=https://<YOUR_SERVERLESS_PROXY_URL>
 ```
 
 ## Recommended Order
 
 | # | Module | Approx. time | New concepts introduced |
 |---|---|---|---|
-| 1 | **api-gateway** | 2–3 hrs | Services, routes, plugins, consumers, plugin scopes, Kong Identity (M2M), OIDC (Keycloak), token introspection, Upstream OAuth |
+| 1 | **api-gateway** | 2–3 hrs | Services, routes, plugins, consumers, plugin scopes, Kong Identity (M2M), OIDC (Auth0), token introspection, Upstream OAuth |
 | 2 | **apiops** | 2 hrs | `deck gateway` vs `deck file`, partials, tags, OpenAPI→Kong, lint, patch |
 | 3 | **ai-gateway** | 2–3 hrs | AI Proxy multi-provider LB, embeddings, semantic cache, prompt/response guards, PII redaction, token rate limiting |
 | 4 | **mcp-a2a** | 1.5–2 hrs | MCP protocol, listener modes, OAuth2 + PKCE, A2A agent routing |
@@ -71,19 +79,17 @@ deck gateway reset \
 ### 2. Stop and remove Docker services
 
 ```bash
-# Stop all module services
+# Stop local services (AI gateway backends, MCP servers)
 cd 04-ai-gateway && docker compose down -v && cd ..
 cd 05-mcp-a2a   && docker compose down -v && cd ..
-cd keycloak     && docker compose down -v && cd ..
-
-# Remove the Kong DP container (replace with your container name)
-docker rm -f <kong-dp-container>
-
-# Clean up the shared network (only if no other containers use it)
-docker network rm kong-net 2>/dev/null || true
 ```
 
-### 3. Remove generated files
+### 3. Clean up Auth0
+
+- Reset Auth0 test users if needed
+- Remove test applications created during the bootcamp
+
+### 4. Remove generated files
 
 The AI gateway module generates cumulative state snapshots during
 `deck file add-plugins` steps. These are gitignored but accumulate on disk:
@@ -94,7 +100,7 @@ rm -rf 01-api-gateway/output/
 rm -f /tmp/current-state.yaml /tmp/with-plugin.yaml
 ```
 
-### 4. Reset git working tree (if needed)
+### 5. Reset git working tree (if needed)
 
 ```bash
 git checkout -- .

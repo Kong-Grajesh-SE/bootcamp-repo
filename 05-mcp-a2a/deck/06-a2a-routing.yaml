@@ -5,6 +5,13 @@
 #   - Sub-agent routes: flights + hotels (key-auth, 30/min rate-limit)
 #   - Sub-agent route: weather (no auth, 60/min rate-limit)
 #   - Consumer: orchestrator-agent with key-auth credential
+#
+# Serverless deployment: the DP can't reach Docker services directly.
+# Use ngrok to expose the MCP backend and replace the placeholder below.
+#
+# BEFORE APPLYING - replace the placeholder below:
+#   <MCP_BACKEND_URL>  → ngrok HTTPS URL for the MCP backend
+#                        (e.g. https://abc123.ngrok-free.app)
 # =============================================================================
 _format_version: "3.0"
 
@@ -17,9 +24,7 @@ consumers:
 
 services:
   - name: a2a-backend
-    host: mcp-backend
-    port: 3001
-    protocol: http
+    url: http://<MCP_BACKEND_URL>
     tags:
       - a2a
     routes:

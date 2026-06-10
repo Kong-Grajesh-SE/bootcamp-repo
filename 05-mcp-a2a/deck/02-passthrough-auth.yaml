@@ -2,6 +2,13 @@
 # Step 02 - Key-Auth + Rate-Limiting on Passthrough
 # Adds a consumer with an API key, key-auth, and rate-limiting on the
 # passthrough route. Apply on top of step 01.
+#
+# Serverless deployment: the DP can't reach Docker services directly.
+# Use ngrok to expose the MCP backend and replace the placeholder below.
+#
+# BEFORE APPLYING - replace the placeholder below:
+#   <MCP_BACKEND_URL>  → ngrok HTTPS URL for the MCP backend
+#                        (e.g. https://abc123.ngrok-free.app)
 # =============================================================================
 _format_version: "3.0"
 
@@ -14,9 +21,7 @@ consumers:
 
 services:
   - name: mcp-backend
-    host: mcp-backend
-    port: 3001
-    protocol: http
+    url: http://<MCP_BACKEND_URL>
     tags:
       - mcp
     routes:

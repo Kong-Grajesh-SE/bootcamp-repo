@@ -1,0 +1,66 @@
+_format_version: "3.0"
+# ---------------------------------------------------------------------------
+# OpenID Connect with Auth0 (cloud IdP) - SERVERLESS deployment
+#
+# Protects httpbun-service with the `openid-connect` plugin, delegating
+# authentication to an Auth0 tenant.
+#
+# BEFORE APPLYING - replace the placeholders below:
+#   <AUTH0_DOMAIN>        → your Auth0 tenant domain (e.g. my-tenant.us.auth0.com)
+#   <AUTH0_CLIENT_ID>     → Application client ID (Regular Web App type)
+#   <AUTH0_CLIENT_SECRET> → Application client secret
+#   <SERVERLESS_PROXY_URL> → Konnect serverless proxy URL
+#
+# Auth0 setup:
+#   1. Create a Regular Web Application in Auth0
+#   2. Set Allowed Callback URLs to:
+#        <SERVERLESS_PROXY_URL>/httpbun/auth/callback
+#   3. Enable "password" grant under Application → Advanced → Grant Types
+#   4. Create test users in Auth0 → User Management → Users:
+#        alice@bootcamp.dev / AlicePassword1!
+#        bob@bootcamp.dev   / BobPassword1!
+#   5. Create an API (audience) for token validation if using client_credentials
+#
+# auth_methods are set to password + bearer + client_credentials so the demo is
+# testable from curl without a browser. To exercise the real browser login
+# (Auth0 Universal Login → redirect back to Kong), switch to:
+#     auth_methods: [authorization_code, bearer, session]
+#     login_action: redirect
+# ---------------------------------------------------------------------------
+plugins:
+- name: openid-connect
+  service: httpbun-service
+  config:
+    issuer: https://<AUTH0_DOMAIN>/
+    cache_tokens_salt: bootcamp-oidc-salt-change-me
+    client_id:
+    - <AUTH0_CLIENT_ID>
+    client_secret:
+    - <AUTH0_CLIENT_SECRET>
+    auth_methods:
+    - password
+    - bearer
+    - client_credentials
+    scopes:
+    - openid
+    - profile
+    - email
+    redirect_uri:
+    - <SERVERLESS_PROXY_URL>/httpbun/auth/callback
+    login_action: response
+    logout_uri_suffix: /logout
+    upstream_access_token_header: authorization
+    # Auth0 uses "nickname" by default (not Keycloak's "preferred_username").
+    # To use "preferred_username", add a custom Auth0 Action that injects it.
+    upstream_headers_claims:
+    - nickname
+    - email
+    upstream_headers_names:
+    - x-authenticated-user
+    - x-authenticated-email
+    # ── Token introspection (RFC 7662) - OPTIONAL ──────────────────────────
+    # By default Kong validates JWT access tokens OFFLINE against the issuer's
+    # JWKS (fast, no per-request call to Auth0). Introspection instead asks
+    # Auth0 on EVERY request "is this token still active?" - slower, but it
+    # honours revocation immediately and also works for opaque tokens.
+    # See 16-oidc-introspection-auth0.yaml for the introspection variant.

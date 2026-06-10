@@ -1,8 +1,12 @@
 # =============================================================================
 # Step 06 - AI Sanitizer / PII Redaction (plugin-only)
 # Detects and redacts PII before it reaches the LLM.
-# Requires: docker compose up -d ai-pii-service
+# Requires: PII service exposed via ngrok (or any public endpoint)
 # Apply: deck file add-plugins -s <state> deck/06-ai-sanitizer.yaml | deck gateway sync -s -
+#
+# BEFORE APPLYING - replace these placeholders with your PII service values:
+#   <PII_SERVICE_HOST> - ngrok hostname (e.g. abc123.ngrok-free.app)
+#   <PII_SERVICE_PORT> - ngrok port (443 for ngrok HTTPS tunnels)
 # =============================================================================
 plugins:
   - name: ai-sanitizer
@@ -16,8 +20,8 @@ plugins:
         - ssn
         - ip
         - url
-      host: ai-pii-service
-      port: 8080
+      host: <PII_SERVICE_HOST>
+      port: <PII_SERVICE_PORT>
       redact_type: placeholder
       stop_on_error: true
       recover_redacted: false

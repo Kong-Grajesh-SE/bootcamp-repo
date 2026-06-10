@@ -8,21 +8,28 @@
 #   2. Tool blocklist    - dangerous tools (execute_shell, drop_database, …) are denied
 #   3. Argument scanning - patterns like `rm -rf`, `DROP TABLE` are blocked
 #
-# Architecture (hybrid - Docker DP):
+# Architecture (serverless - Konnect DP):
 #   MCP Client
-#     → Kong DP (localhost:8000/mcp-secure)
-#         → OPA plugin (access phase) → guardrail service PDP on kong-net
-#         → ai-mcp-proxy (passthrough-listener) → MCP demo server on kong-net
+#     → Konnect Serverless DP ($PROXY_URL/mcp-secure)
+#         → OPA plugin (access phase) → guardrail service PDP via ngrok
+#         → ai-mcp-proxy (passthrough-listener) → MCP demo server via ngrok
 #
-# Requires: docker compose up -d mcp-guardrail-demo mcp-guardrail-service
+# Requires: docker compose up -d mcp-tool-server opa-policy-service
+# Then: ngrok start --all --config ngrok-mcp-guardrails.yml
 # This is a self-contained state file - sync it to replace the previous state.
+#
+# BEFORE APPLYING - replace the placeholders below:
+#   <MCP_TOOL_SERVER_URL>  → ngrok HTTPS URL for the MCP demo server
+#                            (e.g. https://abc123.ngrok-free.app)
+#   <OPA_SERVICE_HOST>     → ngrok hostname for the OPA guardrail service
+#                            (e.g. def456.ngrok-free.app - no https:// prefix)
 # =============================================================================
 _format_version: "3.0"
 
 services:
 
   - name: mcp-guardrail-demo-service
-    url: http://mcp-tool-server:8090
+    url: https://<MCP_TOOL_SERVER_URL>
     tags: [mcp-guardrails]
 
     routes:
@@ -45,9 +52,9 @@ services:
       - name: opa
         config:
           include_parsed_json_body_in_opa_input: true
-          opa_host: opa-policy-service
-          opa_port: 8080
-          opa_protocol: http
+          opa_host: <OPA_SERVICE_HOST>
+          opa_port: 443
+          opa_protocol: https
           opa_path: /v1/data/mcp/authz/allow
 
       # ai-mcp-proxy in passthrough-listener mode - Kong is an authenticated,

@@ -1,6 +1,6 @@
 # Agentic AI Bootcamp - MCP & A2A with Kong Gateway
 
-> **Deployment:** Konnect Control Plane + Self-Managed Docker Data Plane (Hybrid Mode)
+> **Deployment:** Konnect Control Plane + Konnect Serverless Data Plane
 >
 > 7-step hands-on lab using declarative `deck gateway` commands.
 > Each step syncs a self-contained YAML file that **replaces** the
@@ -114,49 +114,60 @@ Each step's "Why this auth?" callout assumes you've read the table above.
 ```bash
 export KONNECT_TOKEN="<your-konnect-pat>"
 export CP_NAME="<your-control-plane-name>"
-export PROXY_URL=http://localhost:8000
+export PROXY_URL="<your-serverless-proxy-url>"   # e.g. https://abc123.kong-proxy.com
 ```
 
-### Docker Services
+### Auth0 Tenant (Step 5 only)
+
+Step 5 (OAuth2/PKCE) requires an Auth0 tenant. Set up the following:
+
+1. **Machine-to-Machine Application** (for `client_credentials` flow)
+   - Note the **Client ID** and **Client Secret**
+2. **Single Page Application** with PKCE enabled (for `authorization_code` flow)
+   - Set **Allowed Callback URLs** to: `$PROXY_URL/mcp-oauth/callback`
+   - Note the **Client ID**
+3. **API** (audience) for token validation
+4. **Test users** (optional, for PKCE flow):
+   - `agent-user@bootcamp.dev` / `Agent123!`
 
 ```bash
-cd mcp-a2a
-docker compose up -d --build          # MCP backend only
-
-# Step 5 (OAuth2/PKCE) also needs the shared Keycloak - start it once:
-cd ../keycloak && docker compose up -d && cd ../mcp-a2a
+export AUTH0_DOMAIN="<your-tenant>.us.auth0.com"
 ```
 
-This starts:
-- **MCP Backend** (`localhost:3001`) - travel tools: flights, hotels, weather
-- **Keycloak** (`localhost:8080`) - shared bootcamp OIDC provider, realm
-  `bootcamp` (from [`../keycloak/`](../keycloak/); only required for Step 5)
+### Docker Services + ngrok
 
-### Connect Kong DP to the backend network
-
-Kong DP runs on Docker's default `bridge` network. The MCP backend runs on `mcp-a2a_kong-net`. Connect Kong so it can resolve the `mcp-backend` hostname (Keycloak is reached separately via `host.docker.internal:8080`, so it needs no network connection):
+The MCP backend runs locally in Docker. The Konnect Serverless DP cannot
+reach Docker services directly, so you need **ngrok** to create public
+tunnels.
 
 ```bash
-# Find your Kong DP container name
-docker ps --format '{{.Names}}\t{{.Image}}' | grep kong-gateway
-# e.g. kong-dp
-
-# Connect it to the mcp-a2a network
-docker network connect 05-mcp-a2a_kong-net <kong-dp-container-name>
+cd 05-mcp-a2a
+docker compose up -d --build          # MCP backend (travel tools)
 ```
 
-**Fix Kong DNS** - Required if you get `name resolution failed` errors (needed when Kong DP is not running with Docker's embedded DNS by default):
+Expose the MCP backend via ngrok:
 
 ```bash
-docker exec <kong-dp-container-name> sh -c \
-  'echo "dns_resolver = 127.0.0.11" >> /etc/kong/kong.conf && kong reload'
+ngrok http 3001
+# → Forwarding  https://abc123.ngrok-free.app -> http://localhost:3001
 ```
+
+Copy the ngrok HTTPS URL and set it:
+
+```bash
+export MCP_BACKEND_URL="abc123.ngrok-free.app"   # hostname only, no https://
+```
+
+> **Steps 3-4** use httpbun.com (external) -- no ngrok needed.
+>
+> **Step 7** requires additional ngrok tunnels for the MCP demo server and
+> OPA guardrail service. See the Step 7 section for details.
 
 ### Verify
 
 ```bash
-curl -s http://localhost:3001/health | jq '.'                        # MCP Backend
-curl -s http://localhost:8080/realms/bootcamp | jq '.realm'          # Keycloak
+curl -s http://localhost:3001/health | jq '.'                        # MCP Backend (local)
+curl -s https://$MCP_BACKEND_URL/health | jq '.'                    # MCP Backend (via ngrok)
 deck gateway ping --konnect-token "$KONNECT_TOKEN" \
   --konnect-control-plane-name "$CP_NAME"                            # decK → Konnect
 ```
@@ -178,6 +189,8 @@ deck gateway reset --force \
 Client sends native MCP JSON-RPC → Kong forwards it unchanged → MCP backend processes it.
 
 ### 1.1 Sync
+
+Replace `<MCP_BACKEND_URL>` in `deck/01-mcp-passthrough.yaml` with your ngrok URL (e.g. `abc123.ngrok-free.app`), then sync:
 
 ```bash
 deck gateway sync deck/01-mcp-passthrough.yaml \
@@ -219,6 +232,8 @@ curl -s -X POST $PROXY_URL/mcp/tools \
 Protect the passthrough route with API key authentication and a 30 req/min rate limit.
 
 ### 2.1 Sync
+
+Replace `<MCP_BACKEND_URL>` in `deck/02-passthrough-auth.yaml` with your ngrok URL, then sync:
 
 ```bash
 deck gateway sync deck/02-passthrough-auth.yaml \
@@ -414,10 +429,10 @@ issued JWT either way - Kong doesn't care which OAuth2 flow produced the token.
 > **Rule:** `ai-mcp-oauth2` MUST pair with `passthrough-listener` - never with `conversion-listener`.
 
 ```
-                       ┌───────── Keycloak (realm: bootcamp) ─────────┐
-                       │  mcp-service-client  (confidential, secret)  │
-                       │  mcp-pkce-client     (public, PKCE-only)     │
-                       └────────────────────────────────────────────────┘
+                       ┌───────── Auth0 Tenant ──────────────────────┐
+                       │  mcp-service-app  (M2M, client_credentials) │
+                       │  mcp-pkce-app     (SPA, PKCE-only)          │
+                       └─────────────────────────────────────────────┘
                                        ▲                ▲
                                        │ client_creds   │ auth_code + PKCE
                                        │                │
@@ -430,7 +445,22 @@ issued JWT either way - Kong doesn't care which OAuth2 flow produced the token.
                                (Kong validates JWT → ai-mcp-proxy)
 ```
 
-### 5.1 Sync
+### 5.1 Auth0 Setup
+
+Before syncing, set up two applications in your Auth0 tenant:
+
+1. **Machine-to-Machine Application** (`mcp-service-app`)
+   - Authorize it against your API (audience)
+   - Note the **Client ID** and **Client Secret**
+
+2. **Single Page Application** (`mcp-pkce-app`)
+   - Set **Allowed Callback URLs** to: `$PROXY_URL/mcp-oauth/callback`
+   - PKCE is enabled by default for SPA applications
+   - Note the **Client ID**
+
+### 5.2 Sync
+
+Replace `<AUTH0_DOMAIN>` and `<MCP_BACKEND_URL>` in `deck/05-mcp-oauth2.yaml`, then sync:
 
 ```bash
 deck gateway sync deck/05-mcp-oauth2.yaml \
@@ -438,7 +468,7 @@ deck gateway sync deck/05-mcp-oauth2.yaml \
   --konnect-control-plane-name "$CP_NAME"
 ```
 
-### 5.2 Test - No token → 401
+### 5.3 Test - No token → 401
 
 ```bash
 curl -si -X POST $PROXY_URL/mcp-oauth/tools \
@@ -449,18 +479,19 @@ curl -si -X POST $PROXY_URL/mcp-oauth/tools \
 
 **Expected:** `HTTP/1.1 401 Unauthorized`
 
-### 5.3 Flow A - `client_credentials` (server-to-server)
+### 5.4 Flow A - `client_credentials` (server-to-server)
 
-Uses the **confidential** client `mcp-service-client`. The client holds a
-secret; Keycloak returns an access token directly. No browser, no user.
+Uses the **Machine-to-Machine** application `mcp-service-app`. The client
+holds a secret; Auth0 returns an access token directly. No browser, no user.
 
 ```bash
 TOKEN=$(curl -s -X POST \
-  http://localhost:8080/realms/bootcamp/protocol/openid-connect/token \
+  https://$AUTH0_DOMAIN/oauth/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=client_credentials" \
-  -d "client_id=mcp-service-client" \
-  -d "client_secret=mcp-service-secret" \
+  -d "client_id=<AUTH0_M2M_CLIENT_ID>" \
+  -d "client_secret=<AUTH0_M2M_CLIENT_SECRET>" \
+  -d "audience=<AUTH0_API_AUDIENCE>" \
   | jq -r '.access_token')
 echo "Token (first 40 chars): ${TOKEN:0:40}..."
 
@@ -478,9 +509,9 @@ curl -s -X POST $PROXY_URL/mcp-oauth/tools \
 > the IdP and call MCP tools without any user interaction. The secret never
 > leaves your infrastructure.
 
-### 5.4 Flow B - `authorization_code` + PKCE (by hand)
+### 5.5 Flow B - `authorization_code` + PKCE (by hand)
 
-Uses the **public** client `mcp-pkce-client`. There is no secret; the client
+Uses the **SPA** application `mcp-pkce-app`. There is no secret; the client
 generates a random `code_verifier`, hashes it to a `code_challenge`, sends the
 challenge with the auth request, and proves possession of the verifier when
 exchanging the code for a token. This is what VS Code and Claude Desktop do
@@ -494,26 +525,27 @@ CHALLENGE=$(printf %s "$VERIFIER" | openssl dgst -sha256 -binary \
 echo "verifier:  $VERIFIER"
 echo "challenge: $CHALLENGE"
 
-# 2. Open this URL in a browser, sign in as agent-user / agent123,
+# 2. Open this URL in a browser, sign in with your Auth0 user,
 #    and paste back the `code=...` value from the redirect URL.
-echo "http://localhost:8080/realms/bootcamp/protocol/openid-connect/auth?\
-client_id=mcp-pkce-client&\
+echo "https://$AUTH0_DOMAIN/authorize?\
+client_id=<AUTH0_SPA_CLIENT_ID>&\
 response_type=code&\
-scope=openid+profile+mcp-tools&\
-redirect_uri=http://localhost:8000/mcp-oauth/callback&\
+scope=openid+profile&\
+redirect_uri=$PROXY_URL/mcp-oauth/callback&\
 code_challenge=$CHALLENGE&\
-code_challenge_method=S256"
+code_challenge_method=S256&\
+audience=<AUTH0_API_AUDIENCE>"
 
 read -p "Paste the code from the redirect URL: " CODE
 
 # 3. Exchange the code + verifier for a token (no client_secret).
 TOKEN=$(curl -s -X POST \
-  http://localhost:8080/realms/bootcamp/protocol/openid-connect/token \
+  https://$AUTH0_DOMAIN/oauth/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=authorization_code" \
-  -d "client_id=mcp-pkce-client" \
+  -d "client_id=<AUTH0_SPA_CLIENT_ID>" \
   -d "code=$CODE" \
-  -d "redirect_uri=http://localhost:8000/mcp-oauth/callback" \
+  -d "redirect_uri=$PROXY_URL/mcp-oauth/callback" \
   -d "code_verifier=$VERIFIER" \
   | jq -r '.access_token')
 echo "Token (first 40 chars): ${TOKEN:0:40}..."
@@ -529,13 +561,13 @@ curl -s -X POST $PROXY_URL/mcp-oauth/tools \
 
 **Expected:** same five tool names as Flow A. The difference is *who the token
 is bound to* - Flow A's `sub` is the service account; Flow B's `sub` is
-`agent-user`. Inspect the token at [jwt.io](https://jwt.io) to compare.
+the authenticated user. Inspect the token at [jwt.io](https://jwt.io) to compare.
 
 > **What you just proved:** A desktop app with no secret can still get a
 > user-scoped token. The `code_verifier` never touches the wire until the
 > exchange, and the `code` alone is useless without it.
 
-### 5.5 Connect VS Code Copilot
+### 5.6 Connect VS Code Copilot
 
 VS Code does PKCE for you. Create `.vscode/mcp.json`:
 
@@ -544,14 +576,14 @@ VS Code does PKCE for you. Create `.vscode/mcp.json`:
   "servers": {
     "kong-travel-mcp": {
       "type": "http",
-      "url": "http://localhost:8000/mcp-oauth/tools",
+      "url": "<PROXY_URL>/mcp-oauth/tools",
       "headers": { "Content-Type": "application/json" },
       "auth": {
         "type": "oauth2",
-        "authorizationUrl": "http://localhost:8080/realms/bootcamp/protocol/openid-connect/auth",
-        "tokenUrl": "http://localhost:8080/realms/bootcamp/protocol/openid-connect/token",
-        "clientId": "mcp-pkce-client",
-        "scopes": ["openid", "profile", "mcp-tools"],
+        "authorizationUrl": "https://<AUTH0_DOMAIN>/authorize",
+        "tokenUrl": "https://<AUTH0_DOMAIN>/oauth/token",
+        "clientId": "<AUTH0_SPA_CLIENT_ID>",
+        "scopes": ["openid", "profile"],
         "pkce": true
       }
     }
@@ -561,7 +593,7 @@ VS Code does PKCE for you. Create `.vscode/mcp.json`:
 
 `Ctrl+Shift+P` → **GitHub Copilot: Open MCP Tools** → `kong-travel-mcp` → first call triggers browser login.
 
-### 5.6 Connect Claude Desktop
+### 5.7 Connect Claude Desktop
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -570,12 +602,12 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "kong-travel": {
       "type": "http",
-      "url": "http://localhost:8000/mcp-oauth/tools",
+      "url": "<PROXY_URL>/mcp-oauth/tools",
       "oauth": {
-        "clientId": "mcp-pkce-client",
-        "authorizationUrl": "http://localhost:8080/realms/bootcamp/protocol/openid-connect/auth",
-        "tokenUrl": "http://localhost:8080/realms/bootcamp/protocol/openid-connect/token",
-        "scopes": ["openid", "mcp-tools"],
+        "clientId": "<AUTH0_SPA_CLIENT_ID>",
+        "authorizationUrl": "https://<AUTH0_DOMAIN>/authorize",
+        "tokenUrl": "https://<AUTH0_DOMAIN>/oauth/token",
+        "scopes": ["openid", "profile"],
         "pkce": true
       }
     }
@@ -583,34 +615,32 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-### 5.7 (Exploration) Swap Keycloak for Kong Identity
+### 5.8 (Exploration) Swap Auth0 for Kong Identity
 
-Keycloak is fine for a lab, but introduces a second piece of infrastructure to
-run, patch, back up, and SSO into. **Kong Identity** is Konnect's
-built-in identity service - it lets you issue OIDC tokens (including PKCE
-flows) without standing up a separate IdP. The `ai-mcp-oauth2` plugin doesn't
-care who issued the JWT, so the swap is mechanical:
+Auth0 works well, but introduces a separate identity provider to manage.
+**Kong Identity** is Konnect's built-in identity service - it lets you issue
+OIDC tokens (including PKCE flows) without standing up a separate IdP. The
+`ai-mcp-oauth2` plugin doesn't care who issued the JWT, so the swap is
+mechanical:
 
-| What changes | Keycloak | Kong Identity |
+| What changes | Auth0 | Kong Identity |
 |---|---|---|
-| `authorization_servers` in `deck/05-mcp-oauth2.yaml` | `http://localhost:8080/realms/bootcamp` | `https://<your-org>.id.konghq.com` (issuer URL from the Kong Identity console) |
-| `jwks_endpoint` | `http://host.docker.internal:8080/.../certs` | `https://<your-org>.id.konghq.com/.well-known/jwks.json` |
-| Where you create the clients | Keycloak admin UI / realm JSON | Konnect → **Identity** → **Applications** |
+| `authorization_servers` in `deck/05-mcp-oauth2.yaml` | `https://<AUTH0_DOMAIN>/` | `https://<your-org>.id.konghq.com` (issuer URL from the Kong Identity console) |
+| `jwks_endpoint` | `https://<AUTH0_DOMAIN>/.well-known/jwks.json` | `https://<your-org>.id.konghq.com/.well-known/jwks.json` |
+| Where you create the clients | Auth0 Dashboard → Applications | Konnect → **Identity** → **Applications** |
 | `insecure_relaxed_audience_validation` | `true` (demo) | `false` - Kong Identity issues RFC-8707-compliant `aud` claims, so strict validation works out of the box |
-| `ssl_verify` | `false` (HTTP localhost) | `true` (Konnect endpoints are TLS) |
 
 When to actually use Kong Identity:
 - Single pane of glass for *all* Konnect product auth (Dev Portal, Gateway, AI Gateway, MCP, Mesh).
 - No second IdP to operate, patch, or back up.
 - Identity scope tied to your Konnect org and RBAC - same teams, same audit trail.
 
-When to stick with Keycloak (or your existing IdP):
-- You already federate workforce identity through Okta / Azure AD / Ping and
+When to stick with Auth0 (or your existing IdP):
+- You already federate workforce identity through Auth0 / Okta / Azure AD / Ping and
   want one source of truth across products outside Konnect.
 - You need protocols Kong Identity doesn't expose yet (e.g., raw SAML).
 
-This bootcamp keeps Keycloak so the lab is fully self-contained on a laptop —
-but in a customer engagement, **the first question to ask is "do you have an
+In a customer engagement, **the first question to ask is "do you have an
 IdP already, and if not, do you want Konnect to be it?"** before designing
 around either.
 
@@ -630,6 +660,8 @@ Orchestrator Agent
 ```
 
 ### 6.1 Sync
+
+Replace `<MCP_BACKEND_URL>` in `deck/06-a2a-routing.yaml` with your ngrok URL, then sync:
 
 ```bash
 deck gateway sync deck/06-a2a-routing.yaml \
@@ -721,9 +753,9 @@ The demo MCP server exposes both **safe tools** (get_weather, calculator, search
 
 ```
 MCP Client
-  → Kong DP (localhost:8000/mcp-secure)
-      → OPA plugin (access phase) → opa-policy-service PDP
-      → ai-mcp-proxy (passthrough-listener) → MCP demo server
+  → Konnect Serverless DP ($PROXY_URL/mcp-secure)
+      → OPA plugin (access phase) → guardrail service PDP via ngrok
+      → ai-mcp-proxy (passthrough-listener) → MCP demo server via ngrok
 ```
 
 ### 7.1 Start the Guardrail Services
@@ -739,25 +771,30 @@ curl -s http://localhost:8089/health | jq .
 # → {"status":"ok","service":"custom-guardrail"}
 ```
 
-> **Docker networking:** Both services run on the same `kong-net` bridge network
-> as the Kong data plane. The deck file uses Docker service names
-> (`mcp-tool-server:8090` and `opa-policy-service:8080`) so no ngrok or
-> host mapping is needed.
->
-> **Serverless data planes:** If you're using a Konnect Serverless DP, the
-> gateway can't reach Docker services directly. Use the ngrok config in
-> `ngrok-mcp-guardrails.yml` to create tunnels, then update the deck file
-> with the ngrok URLs. See comments in the ngrok config for details.
+### 7.2 Start ngrok Tunnels
 
-### 7.2 Connect Kong to the Network
-
-If your Kong data plane container is not already on the `05-mcp-a2a_kong-net` network:
+The Konnect Serverless DP cannot reach Docker services directly. Use the
+provided ngrok config to create tunnels for both services:
 
 ```bash
-docker network connect 05-mcp-a2a_kong-net <your-kong-dp-container>
+ngrok start --all --config ngrok-mcp-guardrails.yml
+```
+
+This creates two tunnels:
+- **mcp-tool-server** → `localhost:8092` (the MCP demo server)
+- **opa-policy-service** → `localhost:8089` (the OPA guardrail PDP)
+
+Note the ngrok HTTPS URLs from the output, e.g.:
+```
+mcp-tool-server:   https://abc123.ngrok-free.app → http://localhost:8092
+opa-policy-service: https://def456.ngrok-free.app → http://localhost:8089
 ```
 
 ### 7.3 Sync the Deck File
+
+Replace the placeholders in `deck/07-mcp-guardrails.yaml`:
+- `<MCP_TOOL_SERVER_URL>` → ngrok HTTPS URL for the MCP demo server (e.g. `abc123.ngrok-free.app`)
+- `<OPA_SERVICE_HOST>` → ngrok hostname for the OPA service (e.g. `def456.ngrok-free.app` -- no `https://` prefix)
 
 ```bash
 deck gateway sync deck/07-mcp-guardrails.yaml \
@@ -893,12 +930,13 @@ docker compose stop mcp-tool-server opa-policy-service
 
 | Symptom | Fix |
 |---------|-----|
-| `name resolution failed` for mcp-backend | `docker network connect mcp-a2a_kong-net <kong-dp>` and fix DNS resolver |
-| `already exists in network` | Safe to ignore - Kong is already connected. Network name is `05-mcp-a2a_kong-net`. |
+| `502 Bad Gateway` for MCP backend calls | Check ngrok tunnel is running and the URL in the deck file matches |
+| ngrok tunnel shows `ERR_NGROK_...` | Free tier allows 1 tunnel at a time. Use `ngrok start --all --config ...` for multi-tunnel configs |
 | Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbun/ip` → httpbun-route) |
-| OAuth2 returns 401 with valid token | Check `jwks_endpoint` uses Docker hostname (`host.docker.internal:8080`), not `localhost` |
+| OAuth2 returns 401 with valid token | Check `jwks_endpoint` uses `https://<AUTH0_DOMAIN>/.well-known/jwks.json` |
+| OAuth2 returns 401 with audience error | Confirm `insecure_relaxed_audience_validation: true` is set, or pass the correct `audience` when requesting the token |
 | A2A hotels returns empty results | Use 3-letter airport codes (LHR, CDG) - backend matches on `location === code` |
-| OPA returns 500 instead of 403 | Check guardrail service is running: `docker compose logs opa-policy-service` |
+| OPA returns 500 instead of 403 | Check guardrail service is running and ngrok tunnel is active: `docker compose logs opa-policy-service` |
 | OPA allows everything | Verify `include_parsed_json_body_in_opa_input: true` is set in the deck file |
 | Safe tool returns 403 | Check guardrail service logs - argument may match a dangerous pattern |
 
@@ -908,8 +946,5 @@ docker compose stop mcp-tool-server opa-policy-service
 deck gateway reset --force \
   --konnect-token "$KONNECT_TOKEN" \
   --konnect-control-plane-name "$CP_NAME"
-docker compose down -v        # stops the MCP backend only
+docker compose down -v        # stops the MCP backend + guardrail services
 ```
-
-> The shared Keycloak is **not** part of this module's compose. If you're done
-> with the whole bootcamp, stop it separately: `cd ../keycloak && docker compose down -v`.

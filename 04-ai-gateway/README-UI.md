@@ -1,47 +1,46 @@
 # Kong AI Gateway Bootcamp - Konnect UI Walkthrough
 
+> **Deployment:** Konnect Control Plane + Konnect Serverless Data Plane
+>
 > 10-step hands-on lab using the Konnect web console. Each step adds one AI plugin while maintaining multi-provider load balancing throughout.
 
 ## Prerequisites
 
 1. **Konnect account** at [cloud.konghq.com](https://cloud.konghq.com)
-2. **Control Plane** with a connected Data Plane
+2. **Control Plane** with a connected **Serverless Data Plane**
 3. **API keys** ready:
    - Mistral API key (primary model + embeddings)
    - Cerebras API key (secondary model for load balancing)
-4. **Proxy URL** - typically `http://localhost:8000` or your DP ingress
+4. **Proxy URL** - your serverless data plane URL
 
 ```bash
-export PROXY_URL=http://localhost:8000
+export PROXY_URL=https://<YOUR_SERVERLESS_PROXY_URL>
 ```
+
+### Redis Cloud Setup
+
+Redis Cloud replaces the local Docker Redis Stack used in hybrid mode.
+It is required by Semantic Cache (Step 4), AI Rate Limiting (Step 8),
+Semantic Prompt Guard (Step 9), and Semantic Response Guard (Step 10).
+
+1. Create a free Redis Cloud account at https://redis.io/cloud/
+2. Create a database with the **RediSearch** module enabled (required for semantic cache/guards)
+3. Note your endpoint host, port, and password
+
+> RediSearch vector indexes only work on **database 0** - all semantic
+> plugins share DB 0 (isolation is by index name, not DB number). Set
+> `Cache Control` to **off** for semantic cache since upstream LLM providers
+> (Mistral/Cloudflare) set `Cache-Control` headers that would cause bypass.
 
 ### Docker Services Setup
 
-Start each service before you reach the step that needs it.
-
-#### Redis Stack (required from Step 4)
-
-Used by Semantic Cache, AI Rate Limiting, Semantic Prompt Guard, and Semantic Response Guard.
-
-```bash
-docker network create kong-net 2>/dev/null || true
-
-docker run -d --name redis \
-  --network kong-net \
-  -p 6379:6379 \
-  -p 8001:8001 \
-  --restart unless-stopped \
-  redis/redis-stack:latest
-
-# Verify
-docker exec redis redis-cli ping
-# → PONG
-```
+The AI helper services (PII anonymizer, prompt compressor) still run locally
+in Docker. Since the serverless data plane cannot reach `localhost`, you must
+expose these services via **ngrok tunnels**.
 
 #### AI PII Anonymizer Service (required from Step 6)
 
 ```bash
-cd ai-gateway
 docker compose up -d ai-pii-service
 
 # Wait for healthy (takes ~60s to load NLP models)
@@ -67,20 +66,26 @@ docker compose logs -f ai-compress-service
 curl -s http://localhost:8085/status | jq .
 ```
 
-> **Docker networking note:** The supporting services (Redis, PII, Compressor) run
-> on the `kong-net` Docker network so they can communicate with each other.
-> Since the Kong data plane also runs on this network, plugins use **container
-> names** (e.g. `redis`) to reach services directly. RediSearch vector indexes
-> only work on **database 0** - all semantic plugins share DB 0 (isolation is
-> by index name, not DB number). Set `Cache Control` to **off** for semantic
-> cache since upstream LLM providers (Mistral/Cloudflare) set `Cache-Control`
-> headers that would cause bypass.
+### ngrok Setup (for PII and Compressor services)
+
+The AI services run locally in Docker but the serverless data plane cannot reach them
+directly. Use ngrok to expose them:
+
+1. Start the services: `docker compose up -d`
+2. Create ngrok tunnels:
+   ```bash
+   ngrok http 8086    # PII service
+   ngrok http 8085    # Compressor service
+   ```
+3. Note the ngrok hostnames for plugin configuration in Steps 6 and 7.
+
+> **Service reference:**
 >
-> | Service | Plugin Host/URL | Plugin Port | Container Port → Host Port |
-> |---------|----------------|-------------|---------------------------|
-> | Redis | `redis` | `6379` | 6379 → 6379 |
-> | PII Service | `ai-pii-service` | `8080` | 8080 → 8086 |
-> | Compressor | `http://ai-compress-service:8080` | - | 8080 → 8085 |
+> | Service | Plugin Config | Local Port |
+> |---------|---------------|------------|
+> | Redis Cloud | Host + Port + Password (from Redis Cloud console) | n/a (cloud) |
+> | PII Service | ngrok hostname + port `443` | 8086 |
+> | Compressor | ngrok full HTTPS URL | 8085 |
 
 ---
 
@@ -253,7 +258,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ## Step 4 - Semantic Cache
 
-
+Caches semantically similar responses using Mistral embeddings + Redis Cloud vector store.
 
 ### 4.1 Add Plugin
 
@@ -267,28 +272,16 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - **Auth Header Value**: `Bearer <your-mistral-api-key>`
 4. Configure **Vector DB**:
    - **Strategy**: `redis`
-   - **Redis Host**: `redis`
-   - **Redis Port**: `6379`
+   - **Redis Host**: `<your-redis-cloud-host>`
+   - **Redis Port**: `<your-redis-cloud-port>`
+   - **Redis Password**: `<your-redis-cloud-password>`
+   - **SSL**: `on`
    - **Database**: `0`
    - **Dimensions**: `1024`
    - **Distance Metric**: `cosine`
    - **Threshold**: `0.2`
 5. Set **Cache Control**: `off`
 6. Click **Save**
-
-> **Serverless deployment?** The serverless DP can't reach local Docker Redis.
-> Use [Redis Cloud](https://redis.io/cloud/) (free tier available) instead:
->
-> | Field | Value |
-> |-------|-------|
-> | **Redis Host** | `redis-17275.c283.us-east-1-4.ec2.cloud.redislabs.com` |
-> | **Redis Port** | `17275` |
-> | **Database** | `0` |
-> | **Username** | `default` |
-> | **Password** | `<your-redis-cloud-password>` |
->
-> All other fields (Dimensions, Distance Metric, Threshold) stay the same.
-> Ensure the **RediSearch** module is enabled on your Redis Cloud database.
 
 ### 4.2 Test - Positive (cache miss → hit)
 
@@ -365,25 +358,8 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ## Step 6 - AI Sanitizer (PII Redaction)
 
-> **Serverless deployment?** The AI Sanitizer and Prompt Compressor plugins use
-> plain HTTP JSON-RPC - a standard `ngrok http` tunnel won't work because it
-> terminates TLS (the plugin sends plain HTTP → "connection reset by peer").
->
-> **Option 1 - Skip:** Skip Steps 6 and 7 on serverless. These work out of the
-> box on hybrid deployments.
->
-> **Option 2 - ngrok TCP tunnel:** Use a TCP tunnel which forwards raw traffic
-> without TLS termination:
-> ```bash
-> ngrok tcp 8086
-> # → Forwarding  tcp://0.tcp.ngrok.io:XXXXX -> localhost:8086
-> ```
-> Then configure the plugin with:
-> - **Host**: `0.tcp.ngrok.io` (the hostname ngrok gives you)
-> - **Port**: `XXXXX` (the port ngrok assigns)
->
-> Note: ngrok free tier allows only **1 tunnel at a time**. Demo Step 6 first,
-> tear down the tunnel, then demo Step 7.
+> **Requires:** PII service running locally and exposed via ngrok.
+> Use the ngrok hostname and port `443` for the plugin configuration.
 
 ### 6.1 Add Plugin
 
@@ -391,15 +367,12 @@ curl -s $PROXY_URL/ai/proxy/chat \
 2. Click **New Plugin → AI → AI Sanitizer**
 3. Configure:
    - **Anonymize**: `general`, `email`, `phone`, `creditcard`, `ssn`, `ip`, `url`
-   - **Host**: `ai-pii-service`
-   - **Port**: `8080`
+   - **Host**: `<your-ngrok-hostname>` (e.g. `abc123.ngrok-free.app`)
+   - **Port**: `443`
    - **Redact Type**: `placeholder`
    - **Stop on Error**: `on`
    - **Recover Redacted**: `off`
 4. Click **Save**
-
-> The DP must be on the `kong-net` Docker network to reach `ai-pii-service` by name.
-> If your DP isn't on kong-net, use `host.docker.internal` with port `8086` instead.
 
 ### 6.2 Test - Positive (PII redacted)
 
@@ -428,14 +401,8 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ## Step 7 - AI Prompt Compressor
 
-> **Serverless deployment?** Skip this step, or use an ngrok TCP tunnel - see
-> the note in Step 6.
->
-> ```bash
-> ngrok tcp 8085
-> # → Forwarding  tcp://0.tcp.ngrok.io:YYYYY -> localhost:8085
-> ```
-> Then set **Compressor URL**: `http://0.tcp.ngrok.io:YYYYY`
+> **Requires:** Compressor service running locally and exposed via ngrok.
+> Use the full ngrok HTTPS URL for the plugin configuration.
 
 ### 7.1 Add Plugin
 
@@ -443,7 +410,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 2. Click **New Plugin → AI → AI Prompt Compressor**
 3. Configure:
    - **Compressor Type**: `rate`
-   - **Compressor URL**: `http://ai-compress-service:8080`
+   - **Compressor URL**: `<your-ngrok-url>` (e.g. `https://abc123.ngrok-free.app`)
    - **Stop on Error**: `on`
    - **Timeout**: `10000`
    - **Keepalive Timeout**: `60000`
@@ -452,9 +419,6 @@ curl -s $PROXY_URL/ai/proxy/chat \
      - Min Tokens: `20`, Max Tokens: `100`, Value: `0.8`
      - Min Tokens: `100`, Max Tokens: `1000000`, Value: `0.3`
 4. Click **Save**
-
-> The DP must be on the `kong-net` Docker network to reach `ai-compress-service` by name.
-> If your DP isn't on kong-net, use `http://host.docker.internal:8085` instead.
 
 ### 7.2 Test - Positive (long prompt compressed)
 
@@ -500,11 +464,10 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - Limits: `50 per 60s`
 7. Configure **Redis**:
    - **Strategy**: `redis`
-   - **Redis Host**: `redis`
-   - **Redis Port**: `6379`
-
-   > **Serverless?** Use Redis Cloud instead - see the callout in Step 4.1.
-
+   - **Redis Host**: `<your-redis-cloud-host>`
+   - **Redis Port**: `<your-redis-cloud-port>`
+   - **Redis Password**: `<your-redis-cloud-password>`
+   - **SSL**: `on`
 8. Click **Save**
 
 ### 8.2 Test - Positive (within limits)
@@ -547,15 +510,14 @@ done
    - **Auth Header Value**: `Bearer <your-mistral-api-key>`
 4. Configure **Vector DB**:
    - **Strategy**: `redis`
-   - **Redis Host**: `redis`
-   - **Redis Port**: `6379`
+   - **Redis Host**: `<your-redis-cloud-host>`
+   - **Redis Port**: `<your-redis-cloud-port>`
+   - **Redis Password**: `<your-redis-cloud-password>`
+   - **SSL**: `on`
    - **Database**: `0`
    - **Dimensions**: `1024`
    - **Distance Metric**: `cosine`
    - **Threshold**: `0.15`
-
-   > **Serverless?** Use Redis Cloud instead - see the callout in Step 4.1.
-
 5. Add **Allow Prompts**:
    - `Kong Gateway configuration and architecture`
    - `DevOps automation and CI/CD pipelines`
@@ -619,14 +581,14 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - **Auth Header Value**: `Bearer <your-mistral-api-key>`
 4. Configure **Vector DB**:
    - **Strategy**: `redis`
-   - **Redis Host**: `redis`
-   - **Redis Port**: `6379`
+   - **Redis Host**: `<your-redis-cloud-host>`
+   - **Redis Port**: `<your-redis-cloud-port>`
+   - **Redis Password**: `<your-redis-cloud-password>`
+   - **SSL**: `on`
    - **Database**: `0`
    - **Dimensions**: `1024`
    - **Distance Metric**: `cosine`
    - **Threshold**: `0.5`
-
-   > **Serverless?** Use Redis Cloud instead - see the callout in Step 4.1.
 
 5. Add **Deny Responses**:
    - `Detailed exploitation techniques, vulnerability exploitation, or hacking instructions`
@@ -675,23 +637,16 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 1. Go to **Gateway Manager → Control Plane → Services**
 2. Delete `ai-gateway-service` (cascades to route + plugins)
-3. Stop and remove Docker containers, images, and volumes:
+3. Stop ngrok tunnels (Ctrl-C in the terminal running ngrok)
+4. Stop and remove local AI helper containers:
    ```bash
-   # Stop all bootcamp containers
    docker compose down
-   docker rm -f redis 2>/dev/null
 
-   # Remove bootcamp images
-   docker rmi redis/redis-stack:latest 2>/dev/null
-   docker rmi ai-pii-service:local 2>/dev/null
-   docker rmi ai-compress-service:local 2>/dev/null
-
-   # Remove the Docker network
-   docker network rm kong-net 2>/dev/null
-
-   # (Optional) Prune unused Docker resources
-   docker system prune -f
+   # Remove bootcamp images (optional - rebuilding takes a few minutes)
+   # docker rmi ai-pii-service:local 2>/dev/null
+   # docker rmi ai-compress-service:local 2>/dev/null
    ```
+5. (Optional) Delete your Redis Cloud database from the Redis Cloud console
 
 ---
 
@@ -700,8 +655,12 @@ curl -s $PROXY_URL/ai/proxy/chat \
 | Symptom | Fix |
 |---------|-----|
 | `401` on LLM calls | Verify API key values in the AI Proxy Advanced plugin config |
-| Semantic cache not working | Check Redis is reachable from the data plane: `docker ps \| grep redis` |
-| PII service unreachable | Ensure `ai-pii-service` container is running on `kong-net` |
+| Semantic cache not working | Verify Redis Cloud credentials and that the RediSearch module is enabled |
+| Redis connection refused | Confirm Redis Cloud host, port, password, and SSL are configured correctly |
+| PII/Compressor unreachable | Verify ngrok tunnels are running and plugin host/URL fields match ngrok output |
+| PII service errors | Rebuild: `docker compose up -d --build ai-pii-service` |
+| Compressor errors | Rebuild: `docker compose up -d --build ai-compress-service` |
 | Round-robin not alternating | Send 4+ requests - check `model` field in responses |
 | Semantic guard false positives | Lower the `threshold` value in the vectordb config |
 | Plugin not visible in UI | Ensure Kong Gateway version is 3.14+ with AI plugins enabled |
+| ngrok tunnel expired | Free-tier ngrok tunnels expire after ~2 hours; restart `ngrok` and update plugin config |

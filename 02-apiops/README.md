@@ -31,7 +31,7 @@
 ```bash
 export KONNECT_TOKEN="<your-konnect-pat>"
 export CP_NAME="<your-control-plane-name>"
-export PROXY_URL=http://localhost:8000
+export PROXY_URL=https://<YOUR_SERVERLESS_PROXY_URL>
 
 # Several steps write transformed YAML into ./output/. Create it once up front.
 mkdir -p output

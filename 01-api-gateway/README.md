@@ -1,27 +1,31 @@
 # Kong API Gateway Bootcamp
 
-> **Deployment:** Konnect Control Plane + Self-Managed Docker Data Plane (Hybrid Mode)
+> **Deployment:** Konnect Control Plane + Konnect Serverless Data Plane
 >
 > 17-step hands-on lab covering core gateway plugins, consumer management,
-> Kong Identity (M2M), OpenID Connect with Keycloak, and Upstream OAuth.
+> Kong Identity (M2M), OpenID Connect with Auth0, and Upstream OAuth.
 > All configuration is managed declaratively via decK.
 
 ---
 
 ## Prerequisites
 
-- Docker Desktop running
 - [decK CLI](https://docs.konghq.com/deck/latest/installation/) installed
 - [Insomnia](https://insomnia.rest/) installed
-- Konnect account with a control plane
+- Konnect account with a control plane and a **serverless data plane** provisioned
+- **Auth0 tenant** (free tier is fine) for steps 16 and 17
 
 ## Environment Setup
 
 ```bash
 export KONNECT_TOKEN=<your-personal-access-token>
 export CP_NAME="<your-control-plane-name>"
-export PROXY_URL=http://localhost:8000
+export PROXY_URL=https://<YOUR_SERVERLESS_PROXY_URL>
 ```
+
+> **Finding your serverless proxy URL:** In Konnect, go to **Gateway Manager →
+> your-control-plane → Overview**. The proxy URL is shown under the serverless
+> data plane section (e.g. `https://<id>.us.kong-dp.konghq.tech`).
 
 ---
 
@@ -29,13 +33,13 @@ export PROXY_URL=http://localhost:8000
 
 ```
 ┌──────────────┐       ┌──────────────────────┐       ┌──────────────┐
-│   Client     │──────▶│  Docker Data Plane    │──────▶│  httpbun.com │
-│  (curl /     │       │  (localhost:8000)     │       │              │
-│   Insomnia)  │       │ kong/kong-gateway:3.14│       │              │
+│   Client     │──────▶│  Konnect Serverless   │──────▶│  httpbun.com │
+│  (curl /     │       │  Data Plane           │       │              │
+│   Insomnia)  │       │  ($PROXY_URL)         │       │              │
 │              │       │                       │       │              │
 └──────────────┘       └──────────────────────┘       └──────────────┘
                               ▲
-                              │ mTLS config sync
+                              │ config sync
                        ┌──────┴──────┐
                        │   Konnect   │
                        │   Control   │◀──── deck gateway sync/apply
@@ -65,17 +69,14 @@ api-gateway/
 │   ├── 13-http-log.yaml              ← HTTP Log (httpbun)
 │   ├── 14-consumer-groups-acl.yaml   ← Consumer Groups + ACL
 │   ├── 15-kong-identity.yaml         ← Kong Identity (Konnect-native M2M auth)
-│   ├── 16-oidc-keycloak.yaml         ← OpenID Connect via local Keycloak (AuthN/AuthZ)
-│   ├── 16-oidc-introspection.yaml    ← ↳ + Token introspection variant
+│   ├── 16-oidc-auth0.yaml            ← OpenID Connect via Auth0 (AuthN/AuthZ)
+│   ├── 16-oidc-introspection-auth0.yaml ← ↳ + Token introspection variant
 │   └── 17-upstream-oauth.yaml        ← Upstream OAuth (Kong → backend M2M token)
 ├── insomnia/
 │   └── kong-gateway-bootcamp.json    ← Full Insomnia collection
 ├── README.md                         ← This file (decK CLI walkthrough)
 └── README-UI.md                      ← Konnect UI walkthrough
 ```
-
-> **Keycloak for step 16 is shared** across all bootcamp modules - it lives at
-> the repo root in [`../../keycloak/`](../../keycloak/) (realm `bootcamp`).
 
 ## Backends
 
@@ -97,23 +98,11 @@ All routes use `strip_path: true` - the prefix is removed before forwarding.
 
 > **Placeholders used in this guide:**
 > - `<your-control-plane>` - replace with the value you set in `$CP_NAME`
-> - `<kong-dp-container>` - replace with the name Docker assigned to your
->   Kong data plane container (run `docker ps` to find it, e.g. `eager_bell`)
 
 
-### Step 3 - Verify DP is Connected
+### Step 3 - Verify Serverless DP is Connected
 
-```bash
-# Check container is running
-docker ps --filter name=<kong-dp-container>
-
-# Check DP logs for successful connection
-docker logs <kong-dp-container> 2>&1 | tail -20
-
-# Look for: "successfully connected to the control plane"
-```
-
-In Konnect UI: **Gateway Manager → your-control-plane → Data Plane Nodes** - should show your node as connected.
+In Konnect UI: **Gateway Manager → your-control-plane → Data Plane Nodes** - should show your serverless node as connected.
 
 ```bash
 # Test the proxy (will return 404 - no routes configured yet)
@@ -139,54 +128,19 @@ curl -s $PROXY_URL/httpbun/get | jq .url
 ### Step 6 - Import Insomnia Collection
 
 Open Insomnia → Import → select `insomnia/kong-gateway-bootcamp.json`
-Switch environment to **"Docker DP (localhost:8000)"** (default).
+Set the `PROXY_URL` environment variable to your serverless proxy URL.
 
 ---
 
-## Docker DP Management
-
-### Start / Stop / Restart
-
-```bash
-# Stop the data plane
-docker stop <kong-dp-container>
-
-# Start it again
-docker start <kong-dp-container>
-
-# Restart
-docker restart <kong-dp-container>
-
-# View logs (live)
-docker logs -f <kong-dp-container>
-```
-
-### Remove and Recreate
-
-```bash
-docker rm -f <kong-dp-container>
-# Then re-run the docker run command from Step 2
-```
-
-### Check DP Health
-
-```bash
-# Kong status endpoint (inside the container)
-docker exec <kong-dp-container> kong health
-```
-
----
-
-## Hybrid-Specific Notes
+## Serverless-Specific Notes
 
 | Topic | Detail |
 |-------|--------|
-| **PROXY_URL** | `http://localhost:8000` (HTTP) or `https://localhost:8443` (HTTPS, self-signed) |
+| **PROXY_URL** | `https://<id>.us.kong-dp.konghq.tech` (your serverless proxy URL from Konnect) |
 | **Config propagation** | ~5 seconds after `deck gateway apply/sync` |
-| **Client IP** | Docker bridge IP (`172.x.x.x`), not `127.0.0.1` - affects IP Restriction plugin |
-| **host.docker.internal** | Resolves to your Mac/host machine - used by HTTP Log plugin |
+| **Client IP** | Your actual public IP - affects IP Restriction plugin |
 | **httpbun.com** | HTTP echo service used as the sole upstream backend |
-| **Certificates** | Must be saved in `certs/` and mounted into the container |
+| **Auth0** | Cloud IdP used for steps 16 and 17 (no local Docker containers needed) |
 
 ---
 
@@ -415,15 +369,15 @@ deck gateway apply deck/09-ip-restriction.yaml \
 ```
 
 ```bash
-# From local machine via Docker → 200 (Docker bridge IP is in allow list)
+# From your machine → 200 (your public IP should be in the allow list)
 curl -i $PROXY_URL/httpbun/get
 
-# To test blocking: remove 172.16.0.0/12 from allow list, re-apply, then:
+# To test blocking: remove your IP range from the allow list, re-apply, then:
 curl -i $PROXY_URL/httpbun/get
 # → 403 "Your IP address is not allowed"
 ```
 
-> **Docker note:** Your client IP appears as `172.x.x.x` (Docker bridge), not `127.0.0.1`. The allow list includes `172.16.0.0/12` (the RFC 1918 range Docker bridges live in) for this reason.
+> **Serverless note:** Your client IP is your actual public IP (not a Docker bridge address). Check your IP with `curl -s httpbun.com/ip | jq .origin` and make sure it falls within the allow list CIDRs.
 
 ---
 
@@ -530,7 +484,7 @@ curl -s $PROXY_URL/httpbun/get
 > **How it works:** The plugin POSTs a JSON log entry to the configured webhook.site URL after every proxied request. Open your webhook.site unique URL in a browser to see logs appear in real time.
 >
 > To use your own endpoint, edit `deck/13-http-log.yaml` and change `http_endpoint`.
-> For local Docker receivers, use `http://host.docker.internal:9999/log`.
+> The endpoint must be publicly reachable since the serverless DP runs in Konnect's cloud.
 
 ---
 
@@ -785,13 +739,13 @@ the simplest place to start is **Kong Identity**
 machine-to-machine auth **without running any IdP yourself**: create an auth
 server + client in Konnect, services mint tokens via `client_credentials`, and
 the `openid-connect` plugin validates them. (Step 16 then swaps in a full
-external IdP, Keycloak, for browser SSO.)
+external IdP, Auth0, for browser SSO and user login.)
 
-| | Kong Identity (this step) | Keycloak (step 16) |
+| | Kong Identity (this step) | Auth0 (step 16) |
 |---|---|---|
-| Where the IdP runs | Konnect-hosted, regional | You host it (Docker/ngrok) |
+| Where the IdP runs | Konnect-hosted, regional | Auth0 cloud tenant |
 | Best for | Service-to-service (M2M) tokens | Browser SSO + user login |
-| Setup | Konnect UI: Auth Server + Client | Docker Compose + realm |
+| Setup | Konnect UI: Auth Server + Client | Auth0 dashboard: tenant + app |
 
 #### Step 1 - Create the auth server + client in Konnect
 
@@ -840,112 +794,93 @@ curl -i $PROXY_URL/httpbun/get
 
 ---
 
-### 16 - OIDC with Keycloak (Authentication / Authorization)
+### 16 - OIDC with Auth0 (Authentication / Authorization)
 
 Kong Identity (step 15) is Konnect-hosted. When you instead need to integrate
 your **own corporate IdP** - Okta, Entra ID, Auth0, Ping, or Keycloak - you point
 the same **`openid-connect`** plugin at that external provider. Here you protect
-`httpbun-service` with a local **Keycloak** acting as the OAuth2 / OIDC provider,
-which also unlocks the **browser SSO (Authorization Code)** flow with real users.
+`httpbun-service` with **Auth0** acting as the OAuth2 / OIDC provider, which also
+unlocks the **browser SSO (Authorization Code)** flow with real users.
 
 ```
 ┌────────┐  1. login / get token   ┌──────────────┐
-│ Client │ ───────────────────────▶│   Keycloak   │  realm: bootcamp
-│ (curl/ │ ◀───────────────────────│  :8080 (IdP) │  users: alice, bob-admin
+│ Client │ ───────────────────────▶│    Auth0     │  tenant: <AUTH0_DOMAIN>
+│ (curl/ │ ◀───────────────────────│  (cloud IdP) │  users: alice, bob
 │ browser)│      access token       └──────────────┘
 │        │                                 ▲ 3. validate token (JWKS / discovery)
 │        │  2. Bearer <token>      ┌────────┴───────┐
-│        │ ───────────────────────▶│  Kong DP :8000  │ openid-connect plugin
+│        │ ───────────────────────▶│ Serverless DP   │ openid-connect plugin
 └────────┘ ◀───────────────────────│  → httpbun.com  │ on httpbun-service
               4. 200 (or 401)       └────────────────┘
 ```
 
-> Mirrors the enterprise OIDC lab from
-> [learn-kong-gateway / module-07-enterprise](https://github.com/Kong-Grajesh-SE/learn-kong-gateway/tree/main/module-07-enterprise).
+#### Step 0 - Set up Auth0
 
-**Pre-built realm identities** (`../keycloak/realm-bootcamp.json`):
+1. **Create an Auth0 tenant** at [auth0.com](https://auth0.com) (free tier works)
+2. **Create a Regular Web Application:**
+   - Auth0 Dashboard → Applications → Create Application → Regular Web Application
+   - Note the **Domain**, **Client ID**, and **Client Secret**
+   - Under Settings → Allowed Callback URLs, add:
+     `$PROXY_URL/httpbun/auth/callback`
+   - Under Settings → Advanced Settings → Grant Types, enable **Password** grant
+3. **Create test users** in Auth0 → User Management → Users:
 
-| Username | Password | Realm role | Group |
-|---|---|---|---|
-| `alice` | `alice-password` | `user` | `travel-users` |
-| `bob-admin` | `bob-password` | `admin` | `platform-engineers` |
+   | Email | Password | Nickname |
+   |---|---|---|
+   | `alice@bootcamp.dev` | `AlicePassword1!` | `alice` |
+   | `bob@bootcamp.dev` | `BobPassword1!` | `bob` |
 
-| Client | Type | Grants enabled |
-|---|---|---|
-| `kong` | confidential | authorization_code · password · client_credentials |
-| `kong-m2m` | confidential | client_credentials |
+4. **Create an API** (optional, for `client_credentials` flow):
+   - Auth0 Dashboard → Applications → APIs → Create API
+   - Set an **Identifier** (audience), e.g. `https://<AUTH0_DOMAIN>/api/v2/`
 
-> ⚠️ The client secrets in `../keycloak/realm-bootcamp.json` are committed for convenience.
-> **Never** reuse them in production - generate real secrets in a vault.
+> **Placeholders used below:**
+> - `<AUTH0_DOMAIN>` - your Auth0 tenant domain (e.g. `my-tenant.us.auth0.com`)
+> - `<AUTH0_CLIENT_ID>` - Regular Web App client ID
+> - `<AUTH0_CLIENT_SECRET>` - Regular Web App client secret
+> - `<SERVERLESS_PROXY_URL>` - your Konnect serverless proxy URL
 
-> ⚠️ **Issuer must match - one hostname for host *and* container.** The Kong DP
-> (a container) can only reach Keycloak at `host.docker.internal:8080`, so its
-> issuer is `http://host.docker.internal:8080/realms/bootcamp`. OpenID Connect
-> rejects a token whose `iss` claim doesn't equal that issuer - so you must mint
-> tokens against the **same** host. Make your host resolve it (one-time):
-> ```bash
-> echo "127.0.0.1 host.docker.internal" | sudo tee -a /etc/hosts
-> ```
-> (Docker Desktop already resolves `host.docker.internal` inside containers;
-> this adds it on the host so curl/browser use the identical issuer. On native
-> Linux, also start the DP with `--add-host=host.docker.internal:host-gateway`.)
+#### Step 1 - Apply the openid-connect plugin
 
-#### Step 1 - Start Keycloak
-
-```bash
-cd ../keycloak && docker compose up -d && cd -
-
-# Wait for it to boot, then confirm the issuer is live (via the shared host):
-curl -s http://host.docker.internal:8080/realms/bootcamp/.well-known/openid-configuration | jq .issuer
-# → "http://host.docker.internal:8080/realms/bootcamp"
-```
-
-Admin Console: http://localhost:8080 (`admin` / `admin`).
-
-#### Step 2 - Apply the openid-connect plugin
-
-The Docker DP reaches Keycloak on your host via `host.docker.internal:8080`
-(already set as the `issuer` in the deck file). The deck file also configures:
+The deck file configures:
+- **Issuer**: `https://<AUTH0_DOMAIN>/` (Auth0 OIDC discovery)
 - **Auth Methods**: `password`, `bearer`, `client_credentials` (testable from curl)
 - **Scopes**: `openid`, `profile`, `email`
-- **Redirect URI**: `http://localhost:8000/httpbun/auth/callback` (for browser flow)
-- **Upstream Header Forwarding**: maps `preferred_username` → `x-authenticated-user`
+- **Redirect URI**: `<SERVERLESS_PROXY_URL>/httpbun/auth/callback` (for browser flow)
+- **Upstream Header Forwarding**: maps `nickname` → `x-authenticated-user`
   and `email` → `x-authenticated-email` so the upstream sees who authenticated
 
+Edit `deck/16-oidc-auth0.yaml` and replace the four placeholders, then apply:
+
 ```bash
-deck gateway apply deck/16-oidc-keycloak.yaml \
+deck gateway apply deck/16-oidc-auth0.yaml \
   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
 ```
 
-#### Step 3 - Test (token via password grant)
+#### Step 2 - Test (token via client credentials)
 
 ```bash
 # 1. No token → 401
 curl -i $PROXY_URL/httpbun/get
 
-# 2. Get an access token for alice - mint it against host.docker.internal so the
-#    token's `iss` matches the issuer Kong validates against (see note above).
-TOKEN=$(curl -s -X POST \
-  -d 'grant_type=password' \
-  -d 'client_id=kong' \
-  -d 'client_secret=kong-bootcamp-client-secret-replace-in-prod' \
-  -d 'username=alice' -d 'password=alice-password' \
-  -d 'scope=openid profile email' \
-  http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token \
-  | jq -r .access_token)
+# 2. Get an access token from Auth0
+TOKEN=$(curl -s --request POST \
+  --url https://<AUTH0_DOMAIN>/oauth/token \
+  --header 'content-type: application/json' \
+  --data '{"client_id":"<AUTH0_CLIENT_ID>","client_secret":"<AUTH0_CLIENT_SECRET>","audience":"https://<AUTH0_DOMAIN>/api/v2/","grant_type":"client_credentials"}' | jq -r '.access_token')
 echo "${TOKEN:0:40}…"
 
 # 3. Call Kong with the bearer token → 200
 curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"
-# Upstream also sees x-authenticated-user: alice / x-authenticated-email
+# Upstream also sees x-authenticated-user and x-authenticated-email headers
 
 # 4. Garbage token → 401
 curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer not-a-real-token"
 ```
 
-#### Step 4 (optional) - Full browser login (Authorization Code flow)
+#### Step 3 (optional) - Full browser login (Authorization Code flow)
 
-Edit `deck/16-oidc-keycloak.yaml`, switch the plugin to the interactive flow,
+Edit `deck/16-oidc-auth0.yaml`, switch the plugin to the interactive flow,
 then re-apply:
 
 ```yaml
@@ -953,77 +888,46 @@ then re-apply:
     login_action: redirect
 ```
 
-Open `http://localhost:8000/httpbun/get` in a browser → Kong redirects to the
-Keycloak login page → sign in as **alice / alice-password** → Keycloak redirects
-back, Kong sets a session cookie and returns the upstream response.
+Open `$PROXY_URL/httpbun/get` in a browser → Kong redirects to the
+Auth0 Universal Login page → sign in as **alice@bootcamp.dev / AlicePassword1!** →
+Auth0 redirects back, Kong sets a session cookie and returns the upstream response.
 
 > Revert to `login_action: response` and the password/bearer `auth_methods`
 > before re-running the curl tests above.
 
-#### Step 5 (optional) - Token introspection (real-time revocation)
+#### Step 4 (optional) - Token introspection (real-time revocation)
 
-By default Kong validates the JWT **offline** against Keycloak's JWKS - fast, no
+By default Kong validates the JWT **offline** against Auth0's JWKS - fast, no
 per-request call to the IdP, but a token stays valid until it expires even if you
-log the user out. **Introspection** ([RFC 7662](https://www.rfc-editor.org/rfc/rfc7662))
-flips that: on every request Kong calls Keycloak's introspect endpoint to ask
-"is this token still active?", so revocation/logout takes effect immediately (and
+revoke it. **Introspection** ([RFC 7662](https://www.rfc-editor.org/rfc/rfc7662))
+flips that: on every request Kong calls Auth0's introspect endpoint to ask
+"is this token still active?", so revocation takes effect immediately (and
 it also works for opaque, non-JWT tokens).
 
 | | Local JWKS validation (default) | Introspection |
 |---|---|---|
-| Per-request cost | None (verifies signature locally) | One call to Keycloak |
+| Per-request cost | None (verifies signature locally) | One call to Auth0 |
 | Revocation honoured | Only at token expiry | Immediately |
 | Works with opaque tokens | No (JWT only) | Yes |
 
-**See it first - call the introspect endpoint directly:**
+Apply the introspection variant instead:
 
 ```bash
-# (reuse $TOKEN from Step 3 - alice's access token)
-curl -s -u kong:kong-bootcamp-client-secret-replace-in-prod \
-  -d "token=$TOKEN" \
-  http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token/introspect | jq
-# → { "active": true, "username": "alice", "scope": "openid profile email", ... }
-```
-
-**Switch the plugin to introspection** - uncomment this block in
-`deck/16-oidc-keycloak.yaml` (under `config:`) and re-apply:
-
-```yaml
-    introspection_endpoint: http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token/introspect
-    introspect_jwt_tokens: true                # introspect even JWT access tokens
-    introspection_endpoint_auth_method: client_secret_basic
-    cache_introspection: false                 # demo: no caching so revocation is instant
-```
-
-```bash
-deck gateway apply deck/16-oidc-keycloak.yaml \
+deck gateway apply deck/16-oidc-introspection-auth0.yaml \
   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
 ```
 
-**Test real-time revocation:**
+This variant sets:
+- **Introspection Endpoint**: `https://<AUTH0_DOMAIN>/oauth/introspect`
+- **Introspect JWT Tokens**: `true` (introspect even JWT access tokens)
+- **Introspection Endpoint Auth Method**: `client_secret_basic`
+- **Cache Introspection**: `false` (demo: no caching so revocation is instant)
 
-```bash
-# 1. Token still works
-curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"   # → 200
-
-# 2. Revoke it (log alice's sessions out) via Keycloak's admin REST API
-ADMIN=$(curl -s -d 'grant_type=password' -d 'client_id=admin-cli' \
-  -d 'username=admin' -d 'password=admin' \
-  http://host.docker.internal:8080/realms/master/protocol/openid-connect/token | jq -r .access_token)
-ALICE_ID=$(curl -s -H "Authorization: Bearer $ADMIN" \
-  "http://host.docker.internal:8080/admin/realms/bootcamp/users?username=alice" | jq -r '.[0].id')
-curl -s -X POST -H "Authorization: Bearer $ADMIN" \
-  "http://host.docker.internal:8080/admin/realms/bootcamp/users/$ALICE_ID/logout"
-
-# 3. Same token now rejected - introspection reports active:false
-curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"   # → 401
-```
-
-With the **default** (offline JWKS) config, step 3 would still return `200`
-until the token expired - that's the difference introspection makes.
+With the **default** (offline JWKS) config, a revoked token would still return
+`200` until it expired - that's the difference introspection makes.
 
 > **Clean up:** `deck gateway sync deck/01-services-and-routes.yaml …` removes
-> the plugin; `cd ../keycloak && docker compose down -v` stops Keycloak.
+> the plugin.
 
 ---
 
@@ -1039,21 +943,29 @@ internal service.
 
 ```
         no auth          Kong fetches M2M token        Bearer <token>
-client ─────────▶ Kong ──────────────────────▶ Keycloak (kong-m2m)
+client ─────────▶ Kong ──────────────────────▶ Auth0 (M2M app)
                    │  ◀── token ────────────────┘
                    └──────────────── Authorization: Bearer <token> ──▶ upstream
 ```
 
 Scoped to `httpbun-service`, whose `/headers` echoes what the upstream received —
-so you can literally see the token Kong added. Uses the shared Keycloak's
-`kong-m2m` client. The deck file configures: `client_secret_post` auth method,
+so you can literally see the token Kong added. Uses an Auth0 Machine-to-Machine
+application. The deck file configures: `client_secret_post` auth method,
 `memory` cache strategy with 3600 s TTL, `eagerly_expire: 5` (re-fetches 5 s
 before expiry), and `purge_token_on_upstream_status_codes: [401]`.
 
 > **No `iss` matching here.** Unlike step 16, Kong is the *client*, not the
 > validator - it just forwards the token upstream. You only need the
-> `token_endpoint` reachable **from the DP container** (`host.docker.internal`);
-> no `/etc/hosts` entry is required.
+> `token_endpoint` reachable from the serverless DP (Auth0 is public, so this
+> works out of the box).
+
+#### Auth0 Setup
+
+1. **Create a Machine-to-Machine application** in Auth0 Dashboard → Applications
+2. **Authorize it** against your API (audience)
+3. Note the **Client ID** (`<AUTH0_M2M_CLIENT_ID>`) and **Client Secret** (`<AUTH0_M2M_CLIENT_SECRET>`)
+
+Edit `deck/17-upstream-oauth.yaml` and replace the placeholders, then apply:
 
 ```bash
 deck gateway apply deck/17-upstream-oauth.yaml \
@@ -1065,16 +977,17 @@ deck gateway apply deck/17-upstream-oauth.yaml \
 ```bash
 # Client sends NO Authorization header
 curl -s $PROXY_URL/httpbun/headers | jq '.headers.Authorization'
-# → "Bearer eyJhbGciOi..."  (Kong obtained this from Keycloak using kong-m2m)
+# → "Bearer eyJhbGciOi..."  (Kong obtained this from Auth0 using the M2M app)
 
-# Decode it to prove it's a real M2M token minted for kong-m2m
+# Decode it to prove it's a real M2M token
 curl -s $PROXY_URL/httpbun/headers | jq -r '.headers.Authorization' \
   | cut -d' ' -f2 | cut -d. -f2 | base64 -d 2>/dev/null | jq '{iss, azp, typ}'
-# → { "iss": "http://host.docker.internal:8080/realms/bootcamp", "azp": "kong-m2m", "typ": "Bearer" }
+# → { "iss": "https://<AUTH0_DOMAIN>/", "azp": "<AUTH0_M2M_CLIENT_ID>", "typ": "Bearer" }
 ```
 
-Kong caches the token (`cache.default_ttl`) so it isn't calling Keycloak on every
-request; it auto-refreshes near expiry.
+Kong caches the token (`cache.default_ttl: 3600`) so it isn't calling Auth0 on every
+request; it auto-refreshes near expiry (`eagerly_expire: 5` means it re-fetches
+5 seconds before the token expires).
 
 > **Clean up:** `deck gateway sync deck/01-services-and-routes.yaml …`.
 
@@ -1084,16 +997,17 @@ request; it auto-refreshes near expiry.
 
 Import `insomnia/kong-gateway-bootcamp.json` into Insomnia.
 
-Use **"Docker DP (localhost:8000)"** environment (selected by default).
+Set the `PROXY_URL` environment variable to your serverless proxy URL.
 
 For JWT tests: generate a token, then set `jwt_token` in the Insomnia environment.
 
-The collection also has folders **15 – Kong Identity**, **16 – Keycloak OIDC**,
+The collection also has folders **15 – Kong Identity**, **16 – Auth0 OIDC**,
 and **17 – Upstream OAuth**. Their "POST get token" requests auto-store the token
-in an environment variable (`keycloak_token` / `kong_identity_token`) via an
+in an environment variable (`auth0_token` / `kong_identity_token`) via an
 after-response script, so you can run the bearer/introspect requests next. Fill
 the `kong_identity_*` placeholders in the Base Environment with values from your
-Konnect Kong Identity auth server.
+Konnect Kong Identity auth server, and the `auth0_*` placeholders with your
+Auth0 tenant details.
 
 ---
 
@@ -1108,18 +1022,11 @@ deck gateway reset \
   --force
 ```
 
-### Remove Docker DP
-
-```bash
-docker rm -f <kong-dp-container>
-```
-
 ### Clean Restart
 
 ```bash
-docker rm -f <kong-dp-container>
 deck gateway reset --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME" --force
-# Then re-run docker run + deck gateway sync from Quick Start
+# Then re-run deck gateway sync from Quick Start
 ```
 
 ---
@@ -1128,12 +1035,15 @@ deck gateway reset --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `curl: (7) Failed to connect to localhost port 8000` | Docker container not running | `docker start <kong-dp-container>` or re-run `docker run` |
-| DP not showing in Konnect UI | Certs wrong or CP endpoint typo | Check `docker logs <kong-dp-container>`, verify certs and endpoint |
-| `no Route matched` after apply | Config not synced yet | Wait 5s and retry, or `docker restart <kong-dp-container>` |
+| `curl: (6) Could not resolve host` | Wrong `$PROXY_URL` | Verify your serverless proxy URL in Konnect UI → Gateway Manager → Overview |
+| DP not showing in Konnect UI | Serverless DP not provisioned | Provision a serverless DP in Gateway Manager → your-control-plane |
+| `no Route matched` after apply | Config not synced yet | Wait 5-10s and retry |
 | 503 on `/httpbun/*` | httpbun.com unreachable | Check internet connectivity; try again after a few seconds |
-| IP Restriction blocking everything | Docker bridge IP not in allow list | Add `172.16.0.0/12` (the RFC 1918 range Docker bridges use) to the allow list |
-| HTTP Log not receiving | Python server not running or wrong port | Check `python3` is listening on 9999, check `host.docker.internal` resolves |
+| IP Restriction blocking everything | Your public IP not in allow list | Check your IP with `curl -s httpbun.com/ip` and add the appropriate CIDR |
+| HTTP Log not receiving | Endpoint not reachable from serverless DP | Serverless DPs run in Konnect's cloud - the endpoint must be publicly reachable |
+| Auth0 `invalid_grant` | Wrong credentials or grant not enabled | Verify client ID/secret; ensure password grant is enabled under Application → Advanced → Grant Types |
+| Auth0 `consent_required` | API audience not authorized | Authorize the application against the API in Auth0 Dashboard → APIs |
+| Auth0 `audience mismatch` | Wrong audience in token request | Verify the `audience` parameter matches your Auth0 API identifier |
 
 ---
 

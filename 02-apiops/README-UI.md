@@ -18,10 +18,10 @@
 
 1. **Konnect account** at [cloud.konghq.com](https://cloud.konghq.com)
 2. **Control Plane** named `<your-control-plane>` with at least one connected Data Plane
-3. **Proxy URL** - typically `http://localhost:8000` or your DP ingress
+3. **Proxy URL** - your Konnect serverless data plane URL
 
 ```bash
-export PROXY_URL=http://localhost:8000
+export PROXY_URL=https://<YOUR_SERVERLESS_PROXY_URL>
 ```
 
 > **What this UI walkthrough does NOT replace:** the offline `deck file *`
@@ -555,7 +555,7 @@ deck gateway reset \
 
 | Symptom | Fix |
 |---|---|
-| Data Plane shows "Disconnected" | Restart the DP container; check `KONG_CLUSTER_CONTROL_PLANE` env var |
+| Data Plane shows "Disconnected" | Check the serverless data plane status in Konnect Gateway Manager |
 | Save button greyed out on plugin form | A required field is empty or invalid - scroll for red highlights |
 | Export Configuration produces empty YAML | The CP has no entities, or your role lacks read scope on this CP |
 | Import Configuration preview shows surprise deletions | Your uploaded YAML is incomplete - use `deck file merge` to combine partials before upload |

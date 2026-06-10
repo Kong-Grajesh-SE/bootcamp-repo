@@ -52,7 +52,7 @@
 ```bash
 export KONNECT_TOKEN="<your-konnect-pat>"
 export CP_NAME="<your-control-plane-name>"
-export PROXY_URL=http://localhost:8000
+export PROXY_URL=https://<YOUR_SERVERLESS_PROXY_URL>
 
 export KONNECT_PAT="$KONNECT_TOKEN"
 export KONNECT_API="https://us.api.konghq.com"
@@ -624,56 +624,38 @@ data plane proxy is. Set the proxy URL on your control plane:
 ```
 1. Gateway Manager → your-control-plane → Overview
 2. Under Proxy URL, click Add Endpoint
-3. Enter:
-   - Protocol: http (or https if using TLS)
-   - Host: localhost (or your public hostname)
-   - Port: 8000
+3. Enter your serverless data plane proxy URL
 4. Click Save
 ```
 
 ### Via Konnect API
 
 ```bash
+# Extract host from your serverless proxy URL
+export SERVERLESS_HOST="<YOUR_SERVERLESS_PROXY_URL>"
+
 curl -s -X PATCH "$KONNECT_API/v2/control-planes/$CP_ID" \
   -H "Authorization: Bearer $KONNECT_PAT" \
   -H "Content-Type: application/json" \
-  -d '{
-    "config": {
-      "proxy_urls": [
+  -d "{
+    \"config\": {
+      \"proxy_urls\": [
         {
-          "host": "localhost",
-          "port": 8000,
-          "protocol": "http"
+          \"host\": \"$SERVERLESS_HOST\",
+          \"port\": 443,
+          \"protocol\": \"https\"
         }
       ]
     }
-  }' | jq '.config.proxy_urls'
+  }" | jq '.config.proxy_urls'
 ```
 
-> **"Try It" limitations with local data planes:**
-> The portal is hosted at `https://*.kongportals.com`. The "Try It" panel makes
-> requests from your browser. If your data plane is on `localhost`, "Try It" will
-> fail with **"Failed to fetch"** due to mixed content (HTTPS → HTTP) or the
-> proxy being unreachable from other machines.
+> **Serverless advantage:** The serverless data plane has a public HTTPS URL
+> by default, so the portal's "Try It" feature works out of the box - no
+> ngrok or mixed-content workarounds needed.
 >
-> **Options for a working "Try It":**
-> - Use [ngrok](https://ngrok.com) to expose your local proxy: `ngrok http 8000`,
->   then update the proxy URL to the ngrok HTTPS hostname:
->   ```bash
->   # Start ngrok
->   ngrok http 8000
->   # Copy the https://*.ngrok-free.app URL, then update the proxy URL:
->   export NGROK_HOST="<your-subdomain>.ngrok-free.app"
->   curl -s -X PATCH "$KONNECT_API/v2/control-planes/$CP_ID" \
->     -H "Authorization: Bearer $KONNECT_PAT" \
->     -H "Content-Type: application/json" \
->     -d "{\"proxy_urls\": [{\"host\": \"$NGROK_HOST\", \"port\": 443, \"protocol\": \"https\"}]}"
->   ```
-> - Use a cloud-hosted data plane with a public URL
-> - Use Konnect Cloud Gateway (managed DP with built-in public URL)
->
-> **For the bootcamp:** Test via `curl` in Step 18 - this always works regardless
-> of proxy visibility.
+> **For the bootcamp:** Both `curl` (Step 18) and the portal's "Try It" panel
+> should work directly with your serverless proxy URL.
 
 ---
 
@@ -749,7 +731,7 @@ echo "Open in incognito: https://$PORTAL_URL"
 # Replace <PASTE-API-KEY-FROM-STEP-17> with the key the portal displayed
 # in Step 17 (this is the ONLY time you can see the full value).
 export DEV_API_KEY="<PASTE-API-KEY-FROM-STEP-17>"
-export PROXY_URL=http://localhost:8000
+export PROXY_URL=https://<YOUR_SERVERLESS_PROXY_URL>
 
 # ✅ With key → proxied to upstream (httpbun echoes back the request as JSON)
 curl -i -H "apikey: $DEV_API_KEY" $PROXY_URL/books
