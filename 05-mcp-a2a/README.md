@@ -2,7 +2,7 @@
 
 > **Deployment:** Konnect Control Plane + Self-Managed Docker Data Plane (Hybrid Mode)
 >
-> 6-step hands-on lab using declarative `deck gateway` commands.
+> 7-step hands-on lab using declarative `deck gateway` commands.
 > Each step syncs a self-contained YAML file that **replaces** the
 > previous gateway state. Steps are independent — test each step
 > before moving to the next.
@@ -709,6 +709,186 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 
 ---
 
+## Step 7 - MCP Tool-Call Authorization with OPA
+
+Adds an **OPA authorization layer** in front of an MCP passthrough listener. Instead of trusting every tool call from MCP clients, the OPA plugin intercepts each JSON-RPC request in the access phase and calls a guardrail service (Python PDP) that enforces three checks:
+
+1. **Method allowlist** — only known MCP methods (`initialize`, `tools/list`, `tools/call`, `ping`, etc.) are permitted.
+2. **Tool blocklist** — dangerous tools (`execute_shell`, `drop_database`, `write_file`, `admin_reset`) are denied before reaching the server.
+3. **Argument scanning** — patterns like `rm -rf`, `DROP TABLE`, `/etc/passwd` in tool arguments are blocked.
+
+The demo MCP server exposes both **safe tools** (get_weather, calculator, search_docs, get_time) and **deliberately dangerous tools** (execute_shell, admin_reset, write_file, drop_database). With OPA in place, dangerous tool calls never reach the server.
+
+```
+MCP Client
+  → Kong DP (localhost:8000/mcp-secure)
+      → OPA plugin (access phase) → guardrail-service PDP
+      → ai-mcp-proxy (passthrough-listener) → MCP demo server
+```
+
+### 7.1 Start the Guardrail Services
+
+```bash
+docker compose up -d mcp-guardrail-demo mcp-guardrail-service
+
+# Verify both services are healthy
+curl -s http://localhost:8092/health | jq .
+# → {"status":"ok","service":"demo-mcp-server"}
+
+curl -s http://localhost:8089/health | jq .
+# → {"status":"ok","service":"custom-guardrail"}
+```
+
+> **Docker networking:** Both services run on the same `kong-net` bridge network
+> as the Kong data plane. The deck file uses Docker service names
+> (`mcp-guardrail-demo:8090` and `mcp-guardrail-service:8080`) so no ngrok or
+> host mapping is needed.
+>
+> **Serverless data planes:** If you're using a Konnect Serverless DP, the
+> gateway can't reach Docker services directly. Use the ngrok config in
+> `ngrok-mcp-guardrails.yml` to create tunnels, then update the deck file
+> with the ngrok URLs. See comments in the ngrok config for details.
+
+### 7.2 Connect Kong to the Network
+
+If your Kong data plane container is not already on the `05-mcp-a2a_kong-net` network:
+
+```bash
+docker network connect 05-mcp-a2a_kong-net <your-kong-dp-container>
+```
+
+### 7.3 Sync the Deck File
+
+```bash
+deck gateway sync deck/07-mcp-guardrails.yaml \
+  --konnect-token "$KONNECT_TOKEN" \
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr https://us.api.konghq.com
+```
+
+### 7.4 Test - Initialize MCP Session
+
+```bash
+curl -s -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0"}}
+  }' | jq .
+```
+
+**Expected:** `200` — server returns its capabilities and protocol version.
+
+### 7.5 Test - List Available Tools
+
+```bash
+curl -s -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}' | jq '.result.tools[].name'
+```
+
+**Expected:** Both safe and dangerous tools are listed (the MCP server advertises all tools — OPA blocks at call time, not at discovery).
+
+### 7.6 Test - Safe Tool Call (allowed by OPA)
+
+```bash
+curl -s -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {"name": "get_weather", "arguments": {"city": "Sydney"}}
+  }' | jq .
+```
+
+**Expected:** `200` — OPA allows, server returns weather data for Sydney.
+
+```bash
+# Calculator
+curl -s -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "tools/call",
+    "params": {"name": "calculator", "arguments": {"expression": "(3 + 5) * 2"}}
+  }' | jq '.result.content[0].text'
+```
+
+**Expected:** `"(3 + 5) * 2 = 16"` — safe arithmetic passes all OPA checks.
+
+### 7.7 Test - Blocked Tool (denied by OPA)
+
+```bash
+# execute_shell — blocked by tool blocklist
+curl -s -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 5,
+    "method": "tools/call",
+    "params": {"name": "execute_shell", "arguments": {"cmd": "ls -la"}}
+  }' | jq .
+```
+
+**Expected:** `403 Forbidden` — OPA blocks because `execute_shell` is in the tool blocklist. The request never reaches the MCP server.
+
+```bash
+# drop_database — also blocked
+curl -s -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 6,
+    "method": "tools/call",
+    "params": {"name": "drop_database", "arguments": {"name": "production"}}
+  }' | jq .
+```
+
+**Expected:** `403 Forbidden` — `drop_database` is in the tool blocklist.
+
+### 7.8 Test - Dangerous Argument Pattern (denied by OPA)
+
+```bash
+# Safe tool name, but dangerous argument content
+curl -s -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 7,
+    "method": "tools/call",
+    "params": {"name": "get_weather", "arguments": {"city": "rm -rf /tmp/data"}}
+  }' | jq .
+```
+
+**Expected:** `403 Forbidden` — OPA blocks because the argument matches the `rm -rf` dangerous pattern, even though `get_weather` is a safe tool.
+
+### 7.9 Verify Guardrail Logs
+
+```bash
+docker compose logs mcp-guardrail-service --tail 20
+```
+
+You should see `mcp_authz ALLOW` for safe calls and `mcp_authz DENY` with the specific reason (blocked tool, dangerous pattern) for rejected calls.
+
+### 7.10 Clean Up
+
+```bash
+# Reset to Step 6 state (or any previous step)
+deck gateway sync deck/06-a2a-routing.yaml \
+  --konnect-token "$KONNECT_TOKEN" \
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr https://us.api.konghq.com
+
+# Stop the guardrail services (keeps the travel MCP backend running)
+docker compose stop mcp-guardrail-demo mcp-guardrail-service
+```
+
+---
+
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -718,6 +898,9 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 | Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbin/ip` → httpbin-route) |
 | OAuth2 returns 401 with valid token | Check `jwks_endpoint` uses Docker hostname (`host.docker.internal:8080`), not `localhost` |
 | A2A hotels returns empty results | Use 3-letter airport codes (LHR, CDG) - backend matches on `location === code` |
+| OPA returns 500 instead of 403 | Check guardrail service is running: `docker compose logs mcp-guardrail-service` |
+| OPA allows everything | Verify `include_parsed_json_body_in_opa_input: true` is set in the deck file |
+| Safe tool returns 403 | Check guardrail service logs — argument may match a dangerous pattern |
 
 ## Cleanup
 
