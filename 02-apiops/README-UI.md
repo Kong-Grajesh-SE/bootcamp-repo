@@ -120,7 +120,7 @@ This is the UI version of syncing `deck/01-bookstore-base.yaml`.
 2. Click **New Gateway Service**
 3. Configure:
    - **Name**: `bookstore-service`
-   - **Upstream URL**: `https://httpbin.org`
+   - **Upstream URL**: `https://httpbun.com`
    - **Retries**: `3`
    - **Connect Timeout**: `30000`
    - **Read Timeout**: `30000`
@@ -142,13 +142,13 @@ This is the UI version of syncing `deck/01-bookstore-base.yaml`.
 
 ```bash
 curl -s $PROXY_URL/bookstore/get | jq .url
-# → "https://httpbin.org/get"
+# → "https://httpbun.com/get"
 
 curl -s $PROXY_URL/bookstore/headers | jq .headers.Host
-# → "httpbin.org"
+# → "httpbun.com"
 ```
 
-**Expected:** httpbin echoes the request back, proxied through Kong.
+**Expected:** httpbun echoes the request back, proxied through Kong.
 
 > **Why this matters:** A `sync` is a *full reconciliation* - anything not in
 > the YAML gets deleted. Clicking through the UI is *additive* by default; the
@@ -427,7 +427,7 @@ Catalog → Specs** or via the API product flow):
 6. Click **Create**
 
 **The upstream URL** comes from the `servers` block in the OpenAPI spec
-(`https://httpbin.org`).
+(`https://httpbun.com`).
 
 > **Why use the CLI version:** `openapi2kong` runs offline and writes a YAML
 > file you can commit to git. The UI version creates live entities directly —

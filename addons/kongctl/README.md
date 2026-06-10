@@ -1,8 +1,8 @@
-# Addon: kongctl Skills — Bring Your Own Agent
+# Addon: kongctl Skills - Bring Your Own Agent
 
 > **What:** Teach AI coding agents to manage Kong Konnect using `kongctl` skills.
 > Your agent learns Konnect schemas, scaffolds YAML configs, previews changes,
-> and applies them — all from natural language.
+> and applies them - all from natural language.
 >
 > **When:** After the core API Gateway module (steps 01–17). Works as a
 > standalone 45-minute addon or a 20-minute lightning demo.
@@ -57,7 +57,7 @@ kongctl version
 
 ## Step-by-Step Guide
 
-### Step 1 — Authenticate with Konnect
+### Step 1 - Authenticate with Konnect
 
 ```bash
 # Interactive login (opens browser)
@@ -74,7 +74,7 @@ export KONGCTL_DEFAULT_KONNECT_TOKEN=$KONNECT_TOKEN
 
 ---
 
-### Step 2 — Install Skills into Your Repo
+### Step 2 - Install Skills into Your Repo
 
 ```bash
 # Preview what will be written (no changes)
@@ -104,11 +104,11 @@ ls -la .claude/skills/
 > your AI agent product-specific workflows. They tell the agent _when_ to use
 > `kongctl explain` (discover schemas), `kongctl scaffold` (generate YAML),
 > and `kongctl plan/diff/apply` (safe change management). The agent reads
-> these files automatically — no configuration needed.
+> these files automatically - no configuration needed.
 
 ---
 
-### Step 3 — Discover Konnect Schemas with `explain`
+### Step 3 - Discover Konnect Schemas with `explain`
 
 Before writing any YAML, your agent (or you) can ask kongctl what fields a
 resource supports:
@@ -133,7 +133,7 @@ kongctl explain api_versions
 
 ---
 
-### Step 4 — Scaffold Starter YAML with `scaffold`
+### Step 4 - Scaffold Starter YAML with `scaffold`
 
 Generate valid, ready-to-edit YAML for any supported resource:
 
@@ -154,11 +154,11 @@ kongctl scaffold apis --name bookstore-api > config/bookstore-api.yaml
 ```
 
 > **Agent usage:** The skill tells your agent to use `scaffold` as a starting
-> point and then customize the generated YAML — rather than writing from scratch.
+> point and then customize the generated YAML - rather than writing from scratch.
 
 ---
 
-### Step 5 — Write Declarative Config (Agent or Manual)
+### Step 5 - Write Declarative Config (Agent or Manual)
 
 Create `config/bootcamp-platform.yaml`:
 
@@ -198,7 +198,7 @@ apis:
 
 ---
 
-### Step 6 — Preview Changes (Plan & Diff)
+### Step 6 - Preview Changes (Plan & Diff)
 
 Always preview before applying:
 
@@ -225,7 +225,7 @@ The diff output shows exactly what will be created, updated, or deleted:
 
 ---
 
-### Step 7 — Apply the Plan
+### Step 7 - Apply the Plan
 
 ```bash
 # Apply from the saved plan
@@ -244,7 +244,7 @@ kongctl get apis
 
 ---
 
-### Step 8 — Bring Your Agent: Natural Language Exercises
+### Step 8 - Bring Your Agent: Natural Language Exercises
 
 Now the real demo. Ask your AI agent to perform these tasks using kongctl skills:
 
@@ -286,7 +286,7 @@ integration. Show me the full plan before applying."
 
 ---
 
-### Step 9 — Adopt Existing Resources
+### Step 9 - Adopt Existing Resources
 
 Resources created via the Konnect UI or API can be adopted under kongctl
 declarative management:
@@ -302,7 +302,7 @@ agent-generated configs.
 
 ---
 
-### Step 10 — decK Integration via `_deck`
+### Step 10 - decK Integration via `_deck`
 
 The power move: manage Konnect platform resources AND gateway entities in a
 single workflow. kongctl orchestrates decK for gateway config:
@@ -346,7 +346,7 @@ control_planes:
 ```
 
 ```bash
-# Preview everything — platform AND gateway
+# Preview everything - platform AND gateway
 kongctl diff --mode apply -f config/full-stack.yaml
 
 # Apply everything in one command
@@ -355,7 +355,7 @@ kongctl apply -f config/full-stack.yaml
 
 > `kongctl plan` runs `deck gateway diff` under the hood for the `_deck` section.
 > `kongctl apply` runs `deck gateway apply`. `kongctl sync` runs `deck gateway sync`.
-> Auth flags are injected automatically — don't supply `--konnect-token` yourself.
+> Auth flags are injected automatically - don't supply `--konnect-token` yourself.
 
 ---
 
@@ -397,12 +397,12 @@ kongctl apply -f config/full-stack.yaml
 
 | Agent | Skill location | Auto-loads? |
 |---|---|---|
-| GitHub Copilot (VS Code) | `.agents/skills/` | Yes — agent mode reads skills |
-| Claude Code | `.claude/skills/` | Yes — reads skill files natively |
+| GitHub Copilot (VS Code) | `.agents/skills/` | Yes - agent mode reads skills |
+| Claude Code | `.claude/skills/` | Yes - reads skill files natively |
 | Cursor | `.agents/skills/` | Yes |
 | Cline | `.agents/skills/` | Yes |
 | Windsurf | `.agents/skills/` | Yes |
-| Any agent | Point at `.kongctl/skills/` | Manual — add to agent context |
+| Any agent | Point at `.kongctl/skills/` | Manual - add to agent context |
 
 ---
 
@@ -421,12 +421,12 @@ kongctl get portals
 
 ## Key Takeaways
 
-1. **Skills are the bridge** between natural language and Konnect — your agent reads them, learns the workflow, and executes kongctl commands.
-2. **`explain` before `scaffold`, `scaffold` before writing** — the agent never guesses field names.
-3. **`plan`/`diff` before `apply`, always** — the agent is taught to preview before changing anything.
-4. **`apply` is safe (additive), `sync` is powerful (reconciles deletes)** — same distinction as decK.
+1. **Skills are the bridge** between natural language and Konnect - your agent reads them, learns the workflow, and executes kongctl commands.
+2. **`explain` before `scaffold`, `scaffold` before writing** - the agent never guesses field names.
+3. **`plan`/`diff` before `apply`, always** - the agent is taught to preview before changing anything.
+4. **`apply` is safe (additive), `sync` is powerful (reconciles deletes)** - same distinction as decK.
 5. **`_deck` integration** lets you manage platform resources AND gateway entities in a single declarative file.
-6. **Any agent works** — skills are plain markdown files, not vendor-locked.
+6. **Any agent works** - skills are plain markdown files, not vendor-locked.
 
 ---
 

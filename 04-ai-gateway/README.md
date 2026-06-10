@@ -4,7 +4,7 @@
 >
 > 11-step hands-on lab using declarative `deck gateway` commands. Step 1 deploys
 > the service, route, and AI Proxy Advanced plugin. Steps 2–11 each add **one
-> plugin at a time** without redeploying the service or routes — the plugin-only
+> plugin at a time** without redeploying the service or routes - the plugin-only
 > files are merged into the live state using `deck file add-plugins`.
 
 > **What you bring forward from the previous modules:** Everything you
@@ -101,7 +101,7 @@ curl -s http://localhost:8088/health | jq .
 > network for inter-service communication. Since the Kong data plane also runs
 > on this network, the deck plugin files use **container names** (e.g. `redis`)
 > to reach services directly. RediSearch vector indexes only work on **database
-> 0** — all semantic plugins share DB 0 (isolation is by index name, not DB
+> 0** - all semantic plugins share DB 0 (isolation is by index name, not DB
 > number). Set `cache_control: false` for semantic cache since upstream LLM
 > providers (Mistral/Cloudflare) set `Cache-Control` headers that cause bypass.
 >
@@ -731,7 +731,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ## Step 11 - AI Custom Guardrail
 
-Adds a custom moderation layer that inspects **both directions** — incoming prompts (INPUT) and LLM responses (OUTPUT). The guardrail service is a lightweight FastAPI app that checks content against configurable rules:
+Adds a custom moderation layer that inspects **both directions** - incoming prompts (INPUT) and LLM responses (OUTPUT). The guardrail service is a lightweight FastAPI app that checks content against configurable rules:
 
 - **INPUT rules:** Blocks jailbreak attempts, violence, illegal activity, and malware requests using keyword matching and regex patterns.
 - **OUTPUT rules:** Catches PII leaks (email addresses, SSNs, credit card numbers) and harmful step-by-step instructions in the LLM response.
@@ -778,7 +778,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
   }' | jq '.choices[0].message.content'
 ```
 
-**Expected:** Normal response — content is approved by the guardrail service.
+**Expected:** Normal response - content is approved by the guardrail service.
 
 ### 11.4 Test - Negative (jailbreak blocked on INPUT)
 
@@ -790,7 +790,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
   }' | jq .
 ```
 
-**Expected:** Blocked — the guardrail service detects the jailbreak pattern and returns `block: true` with a message indicating the `jailbreak` category.
+**Expected:** Blocked - the guardrail service detects the jailbreak pattern and returns `block: true` with a message indicating the `jailbreak` category.
 
 ```bash
 # Another variant
@@ -801,7 +801,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
   }' | jq .
 ```
 
-**Expected:** Blocked — matches the "pretend you are unrestricted" regex pattern.
+**Expected:** Blocked - matches the "pretend you are unrestricted" regex pattern.
 
 ### 11.5 Test - Negative (malware request blocked on INPUT)
 
@@ -813,7 +813,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
   }' | jq .
 ```
 
-**Expected:** Blocked — matches the `malware` keyword category.
+**Expected:** Blocked - matches the `malware` keyword category.
 
 ### 11.6 Verify Guardrail Logs
 

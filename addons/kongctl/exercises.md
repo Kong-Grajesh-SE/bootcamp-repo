@@ -1,4 +1,4 @@
-# Bring Your Own Agent — Exercise Prompts
+# Bring Your Own Agent - Exercise Prompts
 #
 # Copy-paste these prompts into your AI agent after installing kongctl skills.
 # Each exercise builds on the previous one. The agent should use kongctl
@@ -11,7 +11,7 @@
 #   3. export CP_NAME="<your-cp>"   (set your control plane name)
 
 # ─────────────────────────────────────────────────────────────────
-# EXERCISE 1 — Discovery (read-only, safe)
+# EXERCISE 1 - Discovery (read-only, safe)
 # ─────────────────────────────────────────────────────────────────
 #
 # Prompt:
@@ -28,7 +28,7 @@
 #   - Summarizes required vs optional fields
 
 # ─────────────────────────────────────────────────────────────────
-# EXERCISE 2 — Scaffold and customize (generates files, no remote changes)
+# EXERCISE 2 - Scaffold and customize (generates files, no remote changes)
 # ─────────────────────────────────────────────────────────────────
 #
 # Prompt:
@@ -43,7 +43,7 @@
 #   - Writes config/weather-api.yaml
 
 # ─────────────────────────────────────────────────────────────────
-# EXERCISE 3 — Plan and apply (creates resources in Konnect)
+# EXERCISE 3 - Plan and apply (creates resources in Konnect)
 # ─────────────────────────────────────────────────────────────────
 #
 # Prompt:
@@ -58,7 +58,7 @@
 #   - kongctl get apis (verify)
 
 # ─────────────────────────────────────────────────────────────────
-# EXERCISE 4 — Portal publication (end-to-end)
+# EXERCISE 4 - Portal publication (end-to-end)
 # ─────────────────────────────────────────────────────────────────
 #
 # Prompt:
@@ -75,7 +75,7 @@
 #   - kongctl apply --plan plans/portal.json
 
 # ─────────────────────────────────────────────────────────────────
-# EXERCISE 5 — Namespace isolation (multi-team)
+# EXERCISE 5 - Namespace isolation (multi-team)
 # ─────────────────────────────────────────────────────────────────
 #
 # Prompt:
@@ -91,7 +91,7 @@
 #   - Explains what gets affected vs protected
 
 # ─────────────────────────────────────────────────────────────────
-# EXERCISE 6 — Full stack with decK integration (advanced)
+# EXERCISE 6 - Full stack with decK integration (advanced)
 # ─────────────────────────────────────────────────────────────────
 #
 # Prompt:
@@ -108,7 +108,7 @@
 #   - Explains what kongctl manages vs what decK manages
 
 # ─────────────────────────────────────────────────────────────────
-# EXERCISE 7 — Clean up
+# EXERCISE 7 - Clean up
 # ─────────────────────────────────────────────────────────────────
 #
 # Prompt:

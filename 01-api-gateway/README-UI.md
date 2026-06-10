@@ -36,100 +36,56 @@ export PROXY_URL=http://localhost:8000
 
 ---
 
-## Backends used by every step
+## Backend used by every step
 
 | Service | Backend | Protocol | Port |
 |---------|---------|----------|------|
-| `httpbin-service` | `httpbin.org` | HTTPS | 443 |
 | `httpbun-service` | `httpbun.com` | HTTPS | 443 |
-| `konghq-service` | `httpbin.konghq.com` | HTTP | 80 |
 
-All three routes use `strip_path: on` so the prefix is dropped before the
-upstream call. The same three services are reused across every step.
+The route uses `strip_path: on` so the prefix is dropped before the
+upstream call. The same service is reused across every step.
 
 ---
 
 ## Step 1 - Services & Routes
 
-Build the base topology: three upstream services, each with one route.
-After this step the proxy responds with real upstream payloads for
-`/httpbin/*`, `/httpbun/*`, and `/konghq/*`.
+Build the base topology: one upstream service with one route.
+After this step the proxy responds with real upstream payloads at
+`/httpbun/*`.
 
-### 1.1 Create the httpbin Service
+### 1.1 Create the httpbun Service
 
 1. Go to **Gateway Manager → `<your-control-plane>` → Gateway Services**
 2. Click **New Gateway Service**
 3. Configure:
-   - **Name**: `httpbin-service`
-   - **URL**: `https://httpbin.org`
+   - **Name**: `httpbun-service`
+   - **URL**: `https://httpbun.com`
    - **Retries**: `3`
    - **Connect Timeout**: `30000`
    - **Read Timeout**: `30000`
    - **Write Timeout**: `30000`
 4. Click **Save**
 
-### 1.2 Create the httpbin Route
+### 1.2 Create the httpbun Route
 
-1. On the `httpbin-service` detail page, open the **Routes** tab
+1. On the `httpbun-service` detail page, open the **Routes** tab
 2. Click **New Route**
 3. Configure:
-   - **Name**: `httpbin-route`
-   - **Paths**: `/httpbin`
-   - **Protocols**: `http`, `https`
-   - **Strip Path**: `on`
-4. Click **Save**
-
-### 1.3 Create the httpbun Service
-
-1. Back to **Gateway Services → New Gateway Service**
-2. Configure:
-   - **Name**: `httpbun-service`
-   - **URL**: `https://httpbun.com`
-   - **Retries**: `3`
-   - **Connect/Read/Write Timeout**: `30000`
-3. Click **Save**
-
-### 1.4 Create the httpbun Route
-
-1. On `httpbun-service` → **Routes** tab → **New Route**
-2. Configure:
    - **Name**: `httpbun-route`
    - **Paths**: `/httpbun`
    - **Protocols**: `http`, `https`
    - **Strip Path**: `on`
-3. Click **Save**
+4. Click **Save**
 
-### 1.5 Create the konghq Service
-
-1. **Gateway Services → New Gateway Service**
-2. Configure:
-   - **Name**: `konghq-service`
-   - **URL**: `http://httpbin.konghq.com`
-   - **Retries**: `3`
-   - **Connect/Read/Write Timeout**: `30000`
-3. Click **Save**
-
-### 1.6 Create the konghq Route
-
-1. On `konghq-service` → **Routes** tab → **New Route**
-2. Configure:
-   - **Name**: `konghq-route`
-   - **Paths**: `/konghq`
-   - **Protocols**: `http`, `https`
-   - **Strip Path**: `on`
-3. Click **Save**
-
-### 1.7 Test - all three routes resolve
+### 1.3 Test - route resolves
 
 ```bash
-curl -s $PROXY_URL/httpbin/get | jq .origin
 curl -s $PROXY_URL/httpbun/get | jq .url
-curl -s $PROXY_URL/konghq/get | jq .origin
 ```
 
-**Expected**: Three JSON bodies from three different upstreams. No `404`s.
+**Expected**: JSON body from httpbun.com. No `404`.
 
-### 1.8 Test - unknown path is rejected
+### 1.4 Test - unknown path is rejected
 
 ```bash
 curl -s $PROXY_URL/does-not-exist | jq .message
@@ -141,12 +97,12 @@ curl -s $PROXY_URL/does-not-exist | jq .message
 
 ## Step 2 - Rate Limiting
 
-Limit `httpbin-service` to **5 requests per minute per IP** so you can
+Limit `httpbun-service` to **5 requests per minute per IP** so you can
 see Kong's classic traffic-control plugin in action.
 
 ### 2.1 Add the Rate Limiting plugin
 
-1. Navigate to **Gateway Services → `httpbin-service` → Plugins**
+1. Navigate to **Gateway Services → `httpbun-service` → Plugins**
 2. Click **New Plugin → Traffic Control → Rate Limiting**
 3. Configure:
    - **Minute**: `5`
@@ -156,14 +112,14 @@ see Kong's classic traffic-control plugin in action.
    - **Fault Tolerant**: `on`
    - **Error Code**: `429`
    - **Error Message**: `Rate limit exceeded - try again later`
-4. **Scope**: `Service` → `httpbin-service` (auto-selected)
+4. **Scope**: `Service` → `httpbun-service` (auto-selected)
 5. Click **Save**
 
 ### 2.2 Test - first five requests succeed
 
 ```bash
 for i in 1 2 3 4 5; do
-  curl -s -o /dev/null -w "Request $i: %{http_code}\n" $PROXY_URL/httpbin/get
+  curl -s -o /dev/null -w "Request $i: %{http_code}\n" $PROXY_URL/httpbun/get
 done
 ```
 
@@ -173,7 +129,7 @@ and `X-RateLimit-Remaining-Minute` counting down.
 ### 2.3 Test - sixth request is throttled
 
 ```bash
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 ```
 
 **Expected**: `429 Too Many Requests` with the configured error message.
@@ -184,18 +140,18 @@ curl -i $PROXY_URL/httpbin/get
 curl -i $PROXY_URL/httpbun/get
 ```
 
-**Expected**: `200` - the plugin is scoped only to `httpbin-service`.
+**Expected**: `200` - the plugin is scoped only to `httpbun-service`.
 
 ---
 
 ## Step 3 - Proxy Cache
 
-Cache `GET`/`HEAD` responses from `httpbin-service` for **30 seconds** in
+Cache `GET`/`HEAD` responses from `httpbun-service` for **30 seconds** in
 the data plane's in-memory store.
 
 ### 3.1 Add the Proxy Cache plugin
 
-1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Traffic Control → Proxy Cache**
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Traffic Control → Proxy Cache**
 2. Configure:
    - **Response Code**: `200`, `301`, `302`
    - **Request Method**: `GET`, `HEAD`
@@ -203,17 +159,17 @@ the data plane's in-memory store.
    - **Cache TTL**: `30`
    - **Strategy**: `memory`
    - **Cache Control**: `off`
-3. **Scope**: `Service` → `httpbin-service`
+3. **Scope**: `Service` → `httpbun-service`
 4. Click **Save**
 
 ### 3.2 Test - cache miss then hit
 
 ```bash
 # First call - X-Cache-Status: Miss
-curl -i $PROXY_URL/httpbin/get | grep -i x-cache-status
+curl -i $PROXY_URL/httpbun/get | grep -i x-cache-status
 
 # Second call within 30s - X-Cache-Status: Hit
-curl -i $PROXY_URL/httpbin/get | grep -i x-cache-status
+curl -i $PROXY_URL/httpbun/get | grep -i x-cache-status
 ```
 
 **Expected**: First response shows `Miss`, second shows `Hit`.
@@ -221,7 +177,7 @@ curl -i $PROXY_URL/httpbin/get | grep -i x-cache-status
 ### 3.3 Test - POST is bypassed
 
 ```bash
-curl -i -X POST $PROXY_URL/httpbin/post -d '{}' | grep -i x-cache-status
+curl -i -X POST $PROXY_URL/httpbun/post -d '{}' | grep -i x-cache-status
 ```
 
 **Expected**: `X-Cache-Status: Bypass` - `POST` is not in the cached methods.
@@ -301,7 +257,7 @@ curl -s $PROXY_URL/lb | jq .url
 
 ## Step 5 - Key Auth (+ first consumers)
 
-Lock `httpbin-service` behind an API key, then create two consumers so
+Lock `httpbun-service` behind an API key, then create two consumers so
 the key check actually identifies *who* is calling.
 
 > **Consumer - quick primer (covered in depth in Step 7):** A **consumer**
@@ -315,7 +271,7 @@ the key check actually identifies *who* is calling.
 
 ### 5.1 Add the Key Auth plugin
 
-1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Authentication → Key Authentication**
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Authentication → Key Authentication**
 2. Configure:
    - **Key Names**: `apikey`
    - **Key In Header**: `on`
@@ -323,7 +279,7 @@ the key check actually identifies *who* is calling.
    - **Key In Body**: `off`
    - **Hide Credentials**: `on`
    - **Run On Preflight**: `on`
-3. **Scope**: `Service` → `httpbin-service`
+3. **Scope**: `Service` → `httpbun-service`
 4. Click **Save**
 
 ### 5.2 Create consumer `demo-user`
@@ -352,7 +308,7 @@ the key check actually identifies *who* is calling.
 ### 5.4 Test - no key is rejected
 
 ```bash
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 ```
 
 **Expected**: `401 Unauthorized`.
@@ -360,7 +316,7 @@ curl -i $PROXY_URL/httpbin/get
 ### 5.5 Test - key in header
 
 ```bash
-curl -i $PROXY_URL/httpbin/get -H "apikey: my-secret-key-123"
+curl -i $PROXY_URL/httpbun/get -H "apikey: my-secret-key-123"
 ```
 
 **Expected**: `200`. Upstream sees `X-Consumer-Username: demo-user`.
@@ -368,7 +324,7 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: my-secret-key-123"
 ### 5.6 Test - key in query string
 
 ```bash
-curl -i "$PROXY_URL/httpbin/get?apikey=my-secret-key-123"
+curl -i "$PROXY_URL/httpbun/get?apikey=my-secret-key-123"
 ```
 
 **Expected**: `200` - both header and query are accepted.
@@ -376,7 +332,7 @@ curl -i "$PROXY_URL/httpbin/get?apikey=my-secret-key-123"
 ### 5.7 Test - wrong key
 
 ```bash
-curl -i $PROXY_URL/httpbin/get -H "apikey: wrong-key"
+curl -i $PROXY_URL/httpbun/get -H "apikey: wrong-key"
 ```
 
 **Expected**: `401`.
@@ -387,7 +343,7 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: wrong-key"
 curl -i $PROXY_URL/httpbun/get
 ```
 
-**Expected**: `200` - `key-auth` is scoped to `httpbin-service` only.
+**Expected**: `200` - `key-auth` is scoped to `httpbun-service` only.
 
 ---
 
@@ -477,10 +433,10 @@ curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer not-a-real-jwt"
 
 Now that you've seen consumers attached to a plugin, create three
 **standalone** consumers that reuse the existing `key-auth` plugin on
-`httpbin-service`. This is the everyday "add a new client" workflow.
+`httpbun-service`. This is the everyday "add a new client" workflow.
 
 > **Prerequisite:** Step 5 must already be in place - the `key-auth`
-> plugin on `httpbin-service` is what gives these new keys meaning.
+> plugin on `httpbun-service` is what gives these new keys meaning.
 
 ### 7.1 Create consumer `alice`
 
@@ -518,9 +474,9 @@ Now that you've seen consumers attached to a plugin, create three
 ### 7.4 Test - each key identifies its consumer
 
 ```bash
-curl -s $PROXY_URL/httpbin/get -H "apikey: alice-api-key"   | jq '.headers["X-Consumer-Username"]'
-curl -s $PROXY_URL/httpbin/get -H "apikey: bob-api-key"     | jq '.headers["X-Consumer-Username"]'
-curl -s $PROXY_URL/httpbin/get -H "apikey: charlie-api-key" | jq '.headers["X-Consumer-Username"]'
+curl -s $PROXY_URL/httpbun/get -H "apikey: alice-api-key"   | jq '.headers["X-Consumer-Username"]'
+curl -s $PROXY_URL/httpbun/get -H "apikey: bob-api-key"     | jq '.headers["X-Consumer-Username"]'
+curl -s $PROXY_URL/httpbun/get -H "apikey: charlie-api-key" | jq '.headers["X-Consumer-Username"]'
 ```
 
 **Expected**: `"alice"`, `"bob"`, `"charlie"` - Kong injects the
@@ -529,7 +485,7 @@ consumer username on every authenticated request.
 ### 7.5 Test - unknown key still rejected
 
 ```bash
-curl -i $PROXY_URL/httpbin/get -H "apikey: nobody-knows"
+curl -i $PROXY_URL/httpbun/get -H "apikey: nobody-knows"
 ```
 
 **Expected**: `401`.
@@ -558,7 +514,7 @@ in the control plane. CORS is applied **globally** (no service/route scope).
 ### 8.2 Test - simple cross-origin request
 
 ```bash
-curl -i $PROXY_URL/httpbin/get -H "Origin: http://localhost:3000"
+curl -i $PROXY_URL/httpbun/get -H "Origin: http://localhost:3000"
 ```
 
 **Expected**: `200` with `Access-Control-Allow-Origin: http://localhost:3000`.
@@ -566,7 +522,7 @@ curl -i $PROXY_URL/httpbin/get -H "Origin: http://localhost:3000"
 ### 8.3 Test - preflight (OPTIONS)
 
 ```bash
-curl -i -X OPTIONS $PROXY_URL/httpbin/get \
+curl -i -X OPTIONS $PROXY_URL/httpbun/get \
   -H "Origin: http://localhost:3000" \
   -H "Access-Control-Request-Method: POST"
 ```
@@ -576,7 +532,7 @@ curl -i -X OPTIONS $PROXY_URL/httpbin/get \
 ### 8.4 Test - disallowed origin
 
 ```bash
-curl -i $PROXY_URL/httpbin/get -H "Origin: https://evil.example.org"
+curl -i $PROXY_URL/httpbun/get -H "Origin: https://evil.example.org"
 ```
 
 **Expected**: `200` but no `Access-Control-Allow-Origin` header - the browser
@@ -586,13 +542,13 @@ will block this client-side.
 
 ## Step 9 - IP Restriction
 
-Restrict `httpbin-service` so only RFC 1918 private ranges and loopback
+Restrict `httpbun-service` so only RFC 1918 private ranges and loopback
 can reach it. Important: when the data plane runs in Docker, your client
 IP arrives as a Docker bridge address in `172.16.0.0/12`.
 
 ### 9.1 Add the IP Restriction plugin
 
-1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Security → IP Restriction**
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Security → IP Restriction**
 2. Configure **Allow** (one per row):
    - `127.0.0.0/8`
    - `10.0.0.0/8`
@@ -601,13 +557,13 @@ IP arrives as a Docker bridge address in `172.16.0.0/12`.
    - `::1`
 3. Configure:
    - **Message**: `Your IP address is not allowed`
-4. **Scope**: `Service` → `httpbin-service`
+4. **Scope**: `Service` → `httpbun-service`
 5. Click **Save**
 
 ### 9.2 Test - allowed source
 
 ```bash
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 ```
 
 **Expected**: `200` - Docker bridge IP (`172.x.x.x`) is in the allow list.
@@ -617,7 +573,7 @@ curl -i $PROXY_URL/httpbin/get
 Temporarily remove `172.16.0.0/12` from the allow list, save, then:
 
 ```bash
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 ```
 
 **Expected**: `403 Forbidden` with the configured message. Re-add the
@@ -644,7 +600,7 @@ trace a call end-to-end through your logs.
 ### 10.2 Test - header is generated
 
 ```bash
-curl -i $PROXY_URL/httpbin/get | grep -i x-correlation-id
+curl -i $PROXY_URL/httpbun/get | grep -i x-correlation-id
 ```
 
 **Expected**: `X-Correlation-ID: <uuid>#1` (the counter increments per request).
@@ -652,15 +608,15 @@ curl -i $PROXY_URL/httpbin/get | grep -i x-correlation-id
 ### 10.3 Test - upstream sees the same ID
 
 ```bash
-curl -s $PROXY_URL/httpbin/headers | jq '.headers["X-Correlation-Id"]'
+curl -s $PROXY_URL/httpbun/headers | jq '.headers["X-Correlation-Id"]'
 ```
 
-**Expected**: Same UUID was forwarded to `httpbin.org`.
+**Expected**: Same UUID was forwarded to `httpbun.com`.
 
 ### 10.4 Test - client-supplied ID is preserved
 
 ```bash
-curl -i $PROXY_URL/httpbin/get -H "X-Correlation-ID: my-trace-123"
+curl -i $PROXY_URL/httpbun/get -H "X-Correlation-ID: my-trace-123"
 ```
 
 **Expected**: Response echoes `X-Correlation-ID: my-trace-123`.
@@ -669,12 +625,13 @@ curl -i $PROXY_URL/httpbin/get -H "X-Correlation-ID: my-trace-123"
 
 ## Step 11 - Request Transformer
 
-Add headers and query params to requests as they leave Kong toward
-`httpbin-service`, and rename one incoming header.
+Demonstrate all five transformer operations on requests as they leave Kong
+toward `httpbun-service`: **add**, **rename**, **replace**, **remove**, and
+**append**.
 
 ### 11.1 Add the Request Transformer plugin
 
-1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Transformations → Request Transformer**
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Transformations → Request Transformer**
 2. Configure **Add**:
    - **Headers**:
      - `X-Added-By:Kong-Gateway`
@@ -684,14 +641,20 @@ Add headers and query params to requests as they leave Kong toward
      - `gateway:true`
 3. Configure **Rename**:
    - **Headers**: `Accept:X-Original-Accept`
-4. Leave **Replace**, **Remove**, **Append** empty
-5. **Scope**: `Service` → `httpbin-service`
-6. Click **Save**
+4. Configure **Replace**:
+   - **Headers**: `X-Env:production`
+5. Configure **Remove**:
+   - **Headers**: `X-Remove-Me`
+   - **Querystring**: `internal_debug`
+6. Configure **Append**:
+   - **Headers**: `X-Tags:kong-appended`
+7. **Scope**: `Service` → `httpbun-service`
+8. Click **Save**
 
 ### 11.2 Test - added headers reach the upstream
 
 ```bash
-curl -s $PROXY_URL/httpbin/headers | jq '.headers'
+curl -s $PROXY_URL/httpbun/headers | jq '.headers'
 ```
 
 **Expected**: Output includes `"X-Added-By": "Kong-Gateway"` and
@@ -700,7 +663,7 @@ curl -s $PROXY_URL/httpbin/headers | jq '.headers'
 ### 11.3 Test - added query params reach the upstream
 
 ```bash
-curl -s $PROXY_URL/httpbin/get | jq '.args'
+curl -s $PROXY_URL/httpbun/get | jq '.args'
 ```
 
 **Expected**: `{ "source": "kong", "gateway": "true" }`.
@@ -708,45 +671,89 @@ curl -s $PROXY_URL/httpbin/get | jq '.args'
 ### 11.4 Test - header rename
 
 ```bash
-curl -s $PROXY_URL/httpbin/headers -H "Accept: application/json" \
+curl -s $PROXY_URL/httpbun/headers -H "Accept: application/json" \
   | jq '.headers | {accept: ."Accept", original: ."X-Original-Accept"}'
 ```
 
 **Expected**: `Accept` is gone (or empty), `X-Original-Accept` carries
 `application/json`.
 
+### 11.5 Test - replace overwrites existing header value
+
+```bash
+curl -s $PROXY_URL/httpbun/headers -H "X-Env: staging" \
+  | jq '.headers["X-Env"]'
+```
+
+**Expected**: `"production"` (Replace rewrites the value only when the
+header is already present).
+
+### 11.6 Test - remove strips header and query param
+
+```bash
+curl -s "$PROXY_URL/httpbun/headers?internal_debug=1" -H "X-Remove-Me: secret" \
+  | jq '{headers: .headers["X-Remove-Me"], args: .args.internal_debug}'
+```
+
+**Expected**: Both values are `null` - the plugin stripped them before
+the request reached the upstream.
+
+### 11.7 Test - append adds to existing header
+
+```bash
+curl -s $PROXY_URL/httpbun/headers -H "X-Tags: first" \
+  | jq '.headers["X-Tags"]'
+```
+
+**Expected**: `"first,kong-appended"` (Append adds the value; if the header
+was absent, it creates it with just `kong-appended`).
+
 ---
 
 ## Step 12 - Response Transformer
 
-Reshape the response on the way back: add three headers, strip two
-upstream-leaked headers (`Server`, `Via`).
+Demonstrate all five transformer operations on responses: **add**, **rename**,
+**replace**, **remove**, and **append**.
 
 ### 12.1 Add the Response Transformer plugin
 
-1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Transformations → Response Transformer**
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Transformations → Response Transformer**
 2. Configure **Add**:
    - **Headers**:
      - `X-Powered-By:Kong-Gateway`
      - `X-Bootcamp-Demo:true`
      - `X-Environment:bootcamp`
-3. Configure **Remove**:
-   - **Headers**: `Server`, `Via`
-4. Leave **Replace**, **Rename**, **Append** empty
-5. **Scope**: `Service` → `httpbin-service`
-6. Click **Save**
+3. Configure **Rename**:
+   - **Headers**: `Date:X-Response-Date`
+4. Configure **Replace**:
+   - **Headers**: `Content-Type:application/json; charset=utf-8`
+5. Configure **Remove**:
+   - **Headers**: `X-Powered-By`, `Alt-Svc`
+6. Configure **Append**:
+   - **Headers**: `X-Cache-Tags:kong-gateway`
+7. **Scope**: `Service` → `httpbun-service`
+8. Click **Save**
 
 ### 12.2 Test - headers added and removed
 
 ```bash
-curl -i $PROXY_URL/httpbin/get | grep -iE "^(server|via|x-powered-by|x-bootcamp-demo|x-environment):"
+curl -i $PROXY_URL/httpbun/get | grep -iE "^(x-powered-by|x-bootcamp-demo|x-environment|alt-svc|x-response-date|x-cache-tags|content-type):"
 ```
 
 **Expected**:
-- `X-Powered-By: Kong-Gateway`
+- `X-Powered-By: Kong-Gateway`  (plugin *adds* this value, overriding whatever upstream sent)
 - `X-Bootcamp-Demo: true`
 - `X-Environment: bootcamp`
-- *No* `Server:` or `Via:` headers.
+- `X-Response-Date: <timestamp>` (renamed from `Date`)
+- `Content-Type: application/json; charset=utf-8` (replaced)
+- `X-Cache-Tags: kong-gateway` (appended)
+- *No* `Alt-Svc:` header (stripped by the remove rule).
+- *No* `Date:` header (renamed to `X-Response-Date`).
+
+> **Note:** Kong's own `Server` and `Via` headers are injected by Kong core
+> *after* plugins run and **cannot** be removed by the Response Transformer
+> plugin. To suppress them, set `headers = off` in `kong.conf` (not available
+> on Konnect Serverless data planes).
 
 ---
 
@@ -762,7 +769,7 @@ log lines arrive in your browser in real time.
 
 ### 13.1 Add the HTTP Log plugin
 
-1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Logging → HTTP Log**
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Logging → HTTP Log**
 2. Configure:
    - **HTTP Endpoint**: `https://webhook.site/<YOUR-UNIQUE-ID>`
      (paste your real webhook.site URL - do **not** leave the placeholder)
@@ -772,15 +779,15 @@ log lines arrive in your browser in real time.
    - **Keepalive**: `60000`
    - **Flush Timeout**: `2`
    - **Retry Count**: `3`
-3. **Scope**: `Service` → `httpbin-service`
+3. **Scope**: `Service` → `httpbun-service`
 4. Click **Save**
 
 ### 13.2 Test - logs appear at webhook.site
 
 ```bash
-curl -s $PROXY_URL/httpbin/get > /dev/null
-curl -s $PROXY_URL/httpbin/get > /dev/null
-curl -s $PROXY_URL/httpbin/get > /dev/null
+curl -s $PROXY_URL/httpbun/get > /dev/null
+curl -s $PROXY_URL/httpbun/get > /dev/null
+curl -s $PROXY_URL/httpbun/get > /dev/null
 ```
 
 **Expected**: Three JSON entries land in your webhook.site inbox within
@@ -796,7 +803,7 @@ response, latencies, route, service, consumer).
 ## Step 14 - Consumer Groups + ACL
 
 The capstone demo: combine three Kong features to build a tiered API
-access system on `httpbin-service`.
+access system on `httpbun-service`.
 
 1. **Key Auth** - identifies *who* is calling (authentication)
 2. **ACL (Access Control List)** - decides *if* they're allowed (authorization)
@@ -826,7 +833,7 @@ Client sends request with API key
 └────────┬────────┘
          │
          ▼
-    Request → upstream (httpbin)
+    Request → upstream (httpbun)
 ```
 
 > **Key concept:** ACL group ≠ Consumer Group.
@@ -835,25 +842,25 @@ Client sends request with API key
 > - A consumer can belong to both, independently
 
 > **Reset first:** if Step 5 / Step 7 already added a `key-auth` plugin
-> and other consumers to `httpbin-service`, delete them before starting
+> and other consumers to `httpbun-service`, delete them before starting
 > this step so the only auth path is the one you build below.
 
-### 14.1 Add Key Auth to httpbin-service
+### 14.1 Add Key Auth to httpbun-service
 
-1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Authentication → Key Authentication**
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Authentication → Key Authentication**
 2. Configure:
    - **Key Names**: `apikey`
    - **Hide Credentials**: `on`
-3. **Scope**: `Service` → `httpbin-service`
+3. **Scope**: `Service` → `httpbun-service`
 4. Click **Save**
 
-### 14.2 Add ACL to httpbin-service
+### 14.2 Add ACL to httpbun-service
 
-1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Security → ACL**
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Security → ACL**
 2. Configure:
    - **Allow**: `premium`, `standard`
    - **Hide Groups Header**: `off`
-3. **Scope**: `Service` → `httpbin-service`
+3. **Scope**: `Service` → `httpbun-service`
 4. Click **Save**
 
 ### 14.3 Create consumer `premium-user`
@@ -925,7 +932,7 @@ Client sends request with API key
 
 ### 14.8 Verify the full setup
 
-In **Gateway Services → `httpbin-service` → Plugins** you should see
+In **Gateway Services → `httpbun-service` → Plugins** you should see
 `key-auth` and `acl` (the rate-limiting plugins live on the consumer
 groups, not the service).
 
@@ -943,7 +950,7 @@ In **Consumer Groups**:
 ### 14.9 Test - no key
 
 ```bash
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 ```
 
 **Expected**: `401 Unauthorized`.
@@ -951,7 +958,7 @@ curl -i $PROXY_URL/httpbin/get
 ### 14.10 Test - premium tier (high limit)
 
 ```bash
-curl -i $PROXY_URL/httpbin/get -H "apikey: premium-key-123"
+curl -i $PROXY_URL/httpbun/get -H "apikey: premium-key-123"
 ```
 
 **Expected**: `200` with headers:
@@ -962,7 +969,7 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: premium-key-123"
 ### 14.11 Test - standard tier (low limit)
 
 ```bash
-curl -i $PROXY_URL/httpbin/get -H "apikey: standard-key-456"
+curl -i $PROXY_URL/httpbun/get -H "apikey: standard-key-456"
 ```
 
 **Expected**: `200` with:
@@ -973,7 +980,7 @@ curl -i $PROXY_URL/httpbin/get -H "apikey: standard-key-456"
 ### 14.12 Test - trial tier (authenticated but blocked)
 
 ```bash
-curl -i $PROXY_URL/httpbin/get -H "apikey: blocked-key-789"
+curl -i $PROXY_URL/httpbun/get -H "apikey: blocked-key-789"
 ```
 
 **Expected**: `403` with body `{"message":"You cannot consume this service"}` —
@@ -983,7 +990,7 @@ key-auth passes (the key is valid), but ACL blocks the `trial` group.
 
 ```bash
 for i in $(seq 1 12); do
-  code=$(curl -s -o /dev/null -w "%{http_code}" $PROXY_URL/httpbin/get \
+  code=$(curl -s -o /dev/null -w "%{http_code}" $PROXY_URL/httpbun/get \
     -H "apikey: standard-key-456")
   echo "Request $i: HTTP $code"
 done
@@ -998,7 +1005,7 @@ limit kicks in. (Reset the counter by waiting 60 seconds.)
 curl -i $PROXY_URL/httpbun/get
 ```
 
-**Expected**: `200` - all the Step 14 plugins are scoped to `httpbin-service`.
+**Expected**: `200` - all the Step 14 plugins are scoped to `httpbun-service`.
 
 #### Real-world mapping
 
@@ -1051,13 +1058,13 @@ browser SSO.)
 
 ### 15.3 Add the OpenID Connect plugin (validating Kong Identity)
 
-1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Authentication → OpenID Connect**
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Authentication → OpenID Connect**
 2. Configure:
    - **Issuer**: *(the Kong Identity Issuer URL from 15.1)*
    - **Client ID** / **Client Secret**: *(from 15.2)*
    - **Auth Methods**: `bearer`, `client_credentials`
    - **Scopes**: `openid`
-3. **Scope**: `Service` → `httpbin-service`
+3. **Scope**: `Service` → `httpbun-service`
 4. Click **Save**
 
 ### 15.4 Test - the M2M flow
@@ -1078,10 +1085,10 @@ TOKEN=$(curl -s -X POST "$ISSUER/oauth/token" \
 echo $TOKEN   # sanity-check: should be a long JWT string, not "null"
 
 # 2. Call Kong with that token → 200
-curl -i $PROXY_URL/httpbin/get -H "Authorization: Bearer $TOKEN"
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"
 
 # 3. No token → 401
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 ```
 
 > **Common pitfall:** the token endpoint is `/auth/oauth/token` (not
@@ -1090,7 +1097,7 @@ curl -i $PROXY_URL/httpbin/get
 
 **Expected**: `200` with a token, `401` without.
 
-> **Clean up:** delete the OpenID Connect plugin from `httpbin-service`.
+> **Clean up:** delete the OpenID Connect plugin from `httpbun-service`.
 
 ---
 
@@ -1135,7 +1142,7 @@ Client `kong` (confidential) - secret `kong-bootcamp-client-secret-replace-in-pr
 ### 16.2 Add the OpenID Connect plugin
 
 1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Authentication → OpenID Connect**
-2. Configure:
+2. Configure **Discovery / Auth**:
    - **Issuer**: `http://host.docker.internal:8080/realms/bootcamp`
      (Docker DP) - for serverless, your ngrok realm URL
    - **Client ID**: `kong`
@@ -1143,8 +1150,15 @@ Client `kong` (confidential) - secret `kong-bootcamp-client-secret-replace-in-pr
    - **Auth Methods**: `password`, `bearer`, `client_credentials`
    - **Scopes**: `openid`, `profile`, `email`
    - **Login Action**: `response`
-3. **Scope**: `Service` → `httpbun-service`
-4. Click **Save**
+   - **Cache Tokens Salt**: `bootcamp-oidc-salt-change-me`
+   - **Redirect URI**: `http://localhost:8000/httpbun/auth/callback`
+   - **Logout URI Suffix**: `/logout`
+3. Configure **Upstream Headers** (forwards identity claims to the upstream):
+   - **Upstream Access Token Header**: `authorization`
+   - **Upstream Headers Claims**: `preferred_username`, `email`
+   - **Upstream Headers Names**: `x-authenticated-user`, `x-authenticated-email`
+4. **Scope**: `Service` → `httpbun-service`
+5. Click **Save**
 
 ### 16.3 Test - no token is rejected
 
@@ -1250,7 +1264,7 @@ injects it as `Authorization: Bearer …` on the **upstream** request - so a
 protected backend gets a valid machine-to-machine token while the caller sends
 no auth at all.
 
-You'll scope it to `httpbin-service`, whose `/headers` echoes what the upstream
+You'll scope it to `httpbun-service`, whose `/headers` echoes what the upstream
 received, using the shared Keycloak's `kong-m2m` client.
 
 > **No `iss` matching here** - Kong is the OAuth *client*, not the validator, so
@@ -1260,7 +1274,7 @@ received, using the shared Keycloak's `kong-m2m` client.
 
 ### 17.1 Add the Upstream OAuth plugin
 
-1. **Gateway Services → `httpbin-service` → Plugins → New Plugin → Upstream OAuth**
+1. **Gateway Services → `httpbun-service` → Plugins → New Plugin → Upstream OAuth**
 2. Configure (under **Config → Oauth**):
    - **Token Endpoint**: `http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token`
    - **Client ID**: `kong-m2m`
@@ -1275,14 +1289,15 @@ received, using the shared Keycloak's `kong-m2m` client.
 5. Under **Config → Cache**:
    - **Strategy**: `memory`
    - **Default TTL**: `3600`
-6. **Scope**: `Service` → `httpbin-service`
+   - **Eagerly Expire**: `5` (re-fetch 5 s before token expiry)
+6. **Scope**: `Service` → `httpbun-service`
 7. Click **Save**
 
 ### 17.2 Test - the caller sends nothing, the upstream sees a token
 
 ```bash
 # Client sends NO Authorization header
-curl -s $PROXY_URL/httpbin/headers | jq '.headers.Authorization'
+curl -s $PROXY_URL/httpbun/headers | jq '.headers.Authorization'
 ```
 
 **Expected**: `"Bearer eyJhbGciOi..."` - Kong obtained this from Keycloak using
@@ -1290,7 +1305,7 @@ curl -s $PROXY_URL/httpbin/headers | jq '.headers.Authorization'
 
 ```bash
 # Decode it to prove it's a real M2M token minted for kong-m2m
-curl -s $PROXY_URL/httpbin/headers | jq -r '.headers.Authorization' \
+curl -s $PROXY_URL/httpbun/headers | jq -r '.headers.Authorization' \
   | cut -d' ' -f2 | cut -d. -f2 | base64 -d 2>/dev/null | jq '{iss, azp, typ}'
 ```
 
@@ -1298,13 +1313,13 @@ curl -s $PROXY_URL/httpbin/headers | jq -r '.headers.Authorization' \
 token (Default TTL) and auto-refreshes near expiry, so it isn't hitting Keycloak
 on every request.
 
-> **Clean up:** delete the Upstream OAuth plugin from `httpbin-service`.
+> **Clean up:** delete the Upstream OAuth plugin from `httpbun-service`.
 
 ---
 
 ## Cleanup
 
-To reset back to the base topology of Step 1 (three services + three routes):
+To reset back to the base topology of Step 1 (one service + one route):
 
 1. **Gateway Manager → `<your-control-plane>` → Plugins** - delete each plugin
    you added (`rate-limiting`, `proxy-cache`, `key-auth`, `jwt`, `cors`,
@@ -1316,8 +1331,8 @@ To reset back to the base topology of Step 1 (three services + three routes):
 3. **Consumer Groups** - delete `premium-tier`, `standard-tier`
 4. **Upstreams** - delete `demo-upstream`
 5. **Gateway Services** - delete `loadbalanced-service` (cascades to its route)
-6. Leave `httpbin-service`, `httpbun-service`, `konghq-service` in place if
-   you want to keep the base topology; otherwise delete those too.
+6. Leave `httpbun-service` in place if you want to keep the base topology;
+   otherwise delete it too.
 
 To wipe the control plane entirely (services, routes, plugins, consumers,
 consumer groups, upstreams) from the CLI:

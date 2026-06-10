@@ -4,18 +4,18 @@
 # Adds an OPA authorization layer in front of an MCP passthrough listener.
 # The OPA plugin intercepts every JSON-RPC request in the access phase and
 # calls a guardrail service (Python PDP) that enforces three checks:
-#   1. Method allowlist  — only known MCP methods are permitted
-#   2. Tool blocklist    — dangerous tools (execute_shell, drop_database, …) are denied
-#   3. Argument scanning — patterns like `rm -rf`, `DROP TABLE` are blocked
+#   1. Method allowlist  - only known MCP methods are permitted
+#   2. Tool blocklist    - dangerous tools (execute_shell, drop_database, …) are denied
+#   3. Argument scanning - patterns like `rm -rf`, `DROP TABLE` are blocked
 #
-# Architecture (hybrid — Docker DP):
+# Architecture (hybrid - Docker DP):
 #   MCP Client
 #     → Kong DP (localhost:8000/mcp-secure)
 #         → OPA plugin (access phase) → guardrail service PDP on kong-net
 #         → ai-mcp-proxy (passthrough-listener) → MCP demo server on kong-net
 #
 # Requires: docker compose up -d mcp-guardrail-demo mcp-guardrail-service
-# This is a self-contained state file — sync it to replace the previous state.
+# This is a self-contained state file - sync it to replace the previous state.
 # =============================================================================
 _format_version: "3.0"
 
@@ -39,7 +39,7 @@ services:
         strip_path: true
 
     plugins:
-      # OPA authorization (access phase, priority 1020) — fires BEFORE
+      # OPA authorization (access phase, priority 1020) - fires BEFORE
       # ai-mcp-proxy forwards the request. include_parsed_json_body sends
       # the full JSON-RPC payload so the PDP can inspect method + tool + args.
       - name: opa
@@ -50,13 +50,13 @@ services:
           opa_protocol: http
           opa_path: /v1/data/mcp/authz/allow
 
-      # ai-mcp-proxy in passthrough-listener mode — Kong is an authenticated,
+      # ai-mcp-proxy in passthrough-listener mode - Kong is an authenticated,
       # observable entrypoint for the upstream MCP server.
       - name: ai-mcp-proxy
         config:
           mode: passthrough-listener
 
-      # Request size limit — basic DoS protection for the MCP endpoint.
+      # Request size limit - basic DoS protection for the MCP endpoint.
       - name: request-size-limiting
         config:
           allowed_payload_size: 1

@@ -1,20 +1,20 @@
 # =============================================================================
 # Step 03 - Conversion Listener (REST → MCP)
-# Adds a conversion-listener route on httpbin-service that exposes REST
-# endpoints as MCP tools. The httpbin-service and httpbin-route are
+# Adds a conversion-listener route on httpbun-service that exposes REST
+# endpoints as MCP tools. The httpbun-service and httpbun-route are
 # included in this file so it is fully self-contained.
 # =============================================================================
 _format_version: "3.0"
 
 services:
-  - name: httpbin-service
-    host: httpbin.org
+  - name: httpbun-service
+    host: httpbun.com
     port: 443
     protocol: https
     routes:
-      - name: httpbin-route
+      - name: httpbun-route
         paths:
-          - /httpbin
+          - /httpbun
         strip_path: true
       - name: mcp-conversion
         paths:
@@ -35,25 +35,25 @@ services:
                 - name: get_ip
                   description: Get the origin IP address of the caller
                   method: GET
-                  path: /httpbin/ip
+                  path: /httpbun/ip
                   annotations:
                     title: Get IP
                 - name: get_headers
                   description: Get the request headers as seen by the server
                   method: GET
-                  path: /httpbin/headers
+                  path: /httpbun/headers
                   annotations:
                     title: Get Headers
                 - name: get_user_agent
                   description: Get the User-Agent string of the caller
                   method: GET
-                  path: /httpbin/user-agent
+                  path: /httpbun/user-agent
                   annotations:
                     title: Get User Agent
                 - name: echo_anything
                   description: Echo back any data sent to the server
                   method: POST
-                  path: /httpbin/anything
+                  path: /httpbun/anything
                   annotations:
                     title: Echo Anything
                   request_body:
@@ -68,7 +68,7 @@ services:
                 - name: check_status
                   description: Get an HTTP response with the specified status code
                   method: GET
-                  path: /httpbin/status/{code}
+                  path: /httpbun/status/{code}
                   annotations:
                     title: Check Status
                   parameters:

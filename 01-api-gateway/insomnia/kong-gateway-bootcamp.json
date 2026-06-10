@@ -134,7 +134,7 @@
       "_type": "request_group",
       "parentId": "wrk_bootcamp",
       "name": "02 - Rate Limiting",
-      "description": "Demonstrates rate limiting (5 req/min on httpbin-service)",
+      "description": "Demonstrates rate limiting (5 req/min on httpbun-service)",
       "metaSortKey": -13000
     },
     {
@@ -166,7 +166,7 @@
       "_type": "request_group",
       "parentId": "wrk_bootcamp",
       "name": "03 - Proxy Cache",
-      "description": "Demonstrates response caching (30s TTL on httpbin-service GET requests)",
+      "description": "Demonstrates response caching (30s TTL on httpbun-service GET requests)",
       "metaSortKey": -12000
     },
     {
@@ -262,7 +262,7 @@
       "_type": "request_group",
       "parentId": "wrk_bootcamp",
       "name": "05 - Key Auth",
-      "description": "Demonstrates API key authentication on httpbin-service",
+      "description": "Demonstrates API key authentication on httpbun-service",
       "metaSortKey": -10000
     },
     {
@@ -511,7 +511,7 @@
       "_type": "request_group",
       "parentId": "wrk_bootcamp",
       "name": "09 - IP Restriction",
-      "description": "Demonstrates IP-based access control on httpbin-service",
+      "description": "Demonstrates IP-based access control on httpbun-service",
       "metaSortKey": -7000
     },
     {
@@ -902,7 +902,7 @@
       "_type": "request_group",
       "parentId": "wrk_bootcamp",
       "name": "15 - Kong Identity (M2M)",
-      "description": "Konnect-native OAuth2 (client_credentials). Create an Auth Server + Client in Konnect \u2192 Identity, then set kong_identity_* env vars. Apply deck/15-kong-identity.yaml (httpbin-service).",
+      "description": "Konnect-native OAuth2 (client_credentials). Create an Auth Server + Client in Konnect \u2192 Identity, then set kong_identity_* env vars. Apply deck/15-kong-identity.yaml (httpbun-service).",
       "metaSortKey": -150
     },
     {
@@ -1072,7 +1072,7 @@
       "_type": "request_group",
       "parentId": "wrk_bootcamp",
       "name": "17 - Upstream OAuth",
-      "description": "Kong is the OAuth client: it fetches an M2M token (kong-m2m) and injects it on the UPSTREAM call. Apply deck/17-upstream-oauth.yaml (httpbin-service). The client below sends NO auth.",
+      "description": "Kong is the OAuth client: it fetches an M2M token (kong-m2m) and injects it on the UPSTREAM call. Apply deck/17-upstream-oauth.yaml (httpbun-service). The client below sends NO auth.",
       "metaSortKey": -130
     },
     {

@@ -2,7 +2,7 @@
 #
 # Only needed if you're running a Konnect Serverless data plane (which can't
 # reach Docker services directly). For a Docker hybrid DP on kong-net, the
-# deck file already uses Docker service names — skip this file entirely.
+# deck file already uses Docker service names - skip this file entirely.
 #
 # Prerequisites:
 #   1. ngrok account + authtoken: ngrok config add-authtoken <token>

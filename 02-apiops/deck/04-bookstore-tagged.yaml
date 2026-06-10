@@ -1,7 +1,7 @@
 _format_version: "3.0"
 services:
 - name: bookstore-service
-  url: https://httpbin.org
+  url: https://httpbun.com
   retries: 3
   connect_timeout: 30000
   read_timeout: 30000

@@ -4,7 +4,7 @@
 >
 > 7-step hands-on lab using declarative `deck gateway` commands.
 > Each step syncs a self-contained YAML file that **replaces** the
-> previous gateway state. Steps are independent — test each step
+> previous gateway state. Steps are independent - test each step
 > before moving to the next.
 
 > **What you bring forward from the previous modules:** Kong's job in MCP
@@ -259,9 +259,9 @@ X-RateLimit-Remaining-Minute: 29
 
 ## Step 3 - Conversion Listener (REST → MCP)
 
-Expose a plain REST API (httpbin) as MCP tools. Kong converts MCP JSON-RPC tool calls into standard HTTP requests - no changes to the backend required.
+Expose a plain REST API (httpbun) as MCP tools. Kong converts MCP JSON-RPC tool calls into standard HTTP requests - no changes to the backend required.
 
-> **Note:** This step uses httpbin instead of the travel backend to demonstrate
+> **Note:** This step uses httpbun instead of the travel backend to demonstrate
 > that conversion mode works with *any* existing REST API, not just MCP-aware services.
 
 ### 3.1 Sync
@@ -272,7 +272,7 @@ deck gateway sync deck/03-conversion-listener.yaml \
   --konnect-control-plane-name "$CP_NAME"
 ```
 
-> **Note:** This file includes `httpbin-service` + `httpbin-route` as prerequisites. If these already exist in your CP from another lab, decK merges them.
+> **Note:** This file includes `httpbun-service` + `httpbun-route` as prerequisites. If these already exist in your CP from another lab, decK merges them.
 
 ### 3.2 Test - Initialize session
 
@@ -300,7 +300,7 @@ curl -s -X POST $PROXY_URL/mcp/convert \
 
 **Expected:** `["check_status","echo_anything","get_headers","get_ip","get_user_agent"]`
 
-### 3.4 Test - Call get_ip (Kong converts to GET /httpbin/ip)
+### 3.4 Test - Call get_ip (Kong converts to GET /httpbun/ip)
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp/convert \
@@ -313,7 +313,7 @@ curl -s -X POST $PROXY_URL/mcp/convert \
 
 **Expected:** JSON string containing `"origin": "<your-ip>"`
 
-### 3.5 Test - Call echo_anything (Kong converts to POST /httpbin/anything)
+### 3.5 Test - Call echo_anything (Kong converts to POST /httpbun/anything)
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp/convert \
@@ -332,9 +332,9 @@ curl -s -X POST $PROXY_URL/mcp/convert \
 
 Three teams each own different tools. One aggregate endpoint merges them all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a `listener` plugin discovers them.
 
-> **Why httpbin?** Steps 3-4 demonstrate how Kong converts *any* REST API into MCP tools.
+> **Why httpbun?** Steps 3-4 demonstrate how Kong converts *any* REST API into MCP tools.
 > The travel backend from steps 1-2 already speaks MCP natively - here we show Kong
-> making a plain REST API (httpbin) available to MCP clients without any code changes.
+> making a plain REST API (httpbun) available to MCP clients without any code changes.
 
 ```
               /mcp/aggregate (listener, discovers tag: mcp-agg)
@@ -713,9 +713,9 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 
 Adds an **OPA authorization layer** in front of an MCP passthrough listener. Instead of trusting every tool call from MCP clients, the OPA plugin intercepts each JSON-RPC request in the access phase and calls a guardrail service (Python PDP) that enforces three checks:
 
-1. **Method allowlist** — only known MCP methods (`initialize`, `tools/list`, `tools/call`, `ping`, etc.) are permitted.
-2. **Tool blocklist** — dangerous tools (`execute_shell`, `drop_database`, `write_file`, `admin_reset`) are denied before reaching the server.
-3. **Argument scanning** — patterns like `rm -rf`, `DROP TABLE`, `/etc/passwd` in tool arguments are blocked.
+1. **Method allowlist** - only known MCP methods (`initialize`, `tools/list`, `tools/call`, `ping`, etc.) are permitted.
+2. **Tool blocklist** - dangerous tools (`execute_shell`, `drop_database`, `write_file`, `admin_reset`) are denied before reaching the server.
+3. **Argument scanning** - patterns like `rm -rf`, `DROP TABLE`, `/etc/passwd` in tool arguments are blocked.
 
 The demo MCP server exposes both **safe tools** (get_weather, calculator, search_docs, get_time) and **deliberately dangerous tools** (execute_shell, admin_reset, write_file, drop_database). With OPA in place, dangerous tool calls never reach the server.
 
@@ -779,7 +779,7 @@ curl -s -X POST $PROXY_URL/mcp-secure \
   }' | jq .
 ```
 
-**Expected:** `200` — server returns its capabilities and protocol version.
+**Expected:** `200` - server returns its capabilities and protocol version.
 
 ### 7.5 Test - List Available Tools
 
@@ -789,7 +789,7 @@ curl -s -X POST $PROXY_URL/mcp-secure \
   -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}' | jq '.result.tools[].name'
 ```
 
-**Expected:** Both safe and dangerous tools are listed (the MCP server advertises all tools — OPA blocks at call time, not at discovery).
+**Expected:** Both safe and dangerous tools are listed (the MCP server advertises all tools - OPA blocks at call time, not at discovery).
 
 ### 7.6 Test - Safe Tool Call (allowed by OPA)
 
@@ -804,7 +804,7 @@ curl -s -X POST $PROXY_URL/mcp-secure \
   }' | jq .
 ```
 
-**Expected:** `200` — OPA allows, server returns weather data for Sydney.
+**Expected:** `200` - OPA allows, server returns weather data for Sydney.
 
 ```bash
 # Calculator
@@ -818,12 +818,12 @@ curl -s -X POST $PROXY_URL/mcp-secure \
   }' | jq '.result.content[0].text'
 ```
 
-**Expected:** `"(3 + 5) * 2 = 16"` — safe arithmetic passes all OPA checks.
+**Expected:** `"(3 + 5) * 2 = 16"` - safe arithmetic passes all OPA checks.
 
 ### 7.7 Test - Blocked Tool (denied by OPA)
 
 ```bash
-# execute_shell — blocked by tool blocklist
+# execute_shell - blocked by tool blocklist
 curl -s -X POST $PROXY_URL/mcp-secure \
   -H "Content-Type: application/json" \
   -d '{
@@ -834,10 +834,10 @@ curl -s -X POST $PROXY_URL/mcp-secure \
   }' | jq .
 ```
 
-**Expected:** `403 Forbidden` — OPA blocks because `execute_shell` is in the tool blocklist. The request never reaches the MCP server.
+**Expected:** `403 Forbidden` - OPA blocks because `execute_shell` is in the tool blocklist. The request never reaches the MCP server.
 
 ```bash
-# drop_database — also blocked
+# drop_database - also blocked
 curl -s -X POST $PROXY_URL/mcp-secure \
   -H "Content-Type: application/json" \
   -d '{
@@ -848,7 +848,7 @@ curl -s -X POST $PROXY_URL/mcp-secure \
   }' | jq .
 ```
 
-**Expected:** `403 Forbidden` — `drop_database` is in the tool blocklist.
+**Expected:** `403 Forbidden` - `drop_database` is in the tool blocklist.
 
 ### 7.8 Test - Dangerous Argument Pattern (denied by OPA)
 
@@ -864,7 +864,7 @@ curl -s -X POST $PROXY_URL/mcp-secure \
   }' | jq .
 ```
 
-**Expected:** `403 Forbidden` — OPA blocks because the argument matches the `rm -rf` dangerous pattern, even though `get_weather` is a safe tool.
+**Expected:** `403 Forbidden` - OPA blocks because the argument matches the `rm -rf` dangerous pattern, even though `get_weather` is a safe tool.
 
 ### 7.9 Verify Guardrail Logs
 
@@ -895,12 +895,12 @@ docker compose stop mcp-tool-server opa-policy-service
 |---------|-----|
 | `name resolution failed` for mcp-backend | `docker network connect mcp-a2a_kong-net <kong-dp>` and fix DNS resolver |
 | `already exists in network` | Safe to ignore - Kong is already connected. Network name is `05-mcp-a2a_kong-net`. |
-| Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbin/ip` → httpbin-route) |
+| Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbun/ip` → httpbun-route) |
 | OAuth2 returns 401 with valid token | Check `jwks_endpoint` uses Docker hostname (`host.docker.internal:8080`), not `localhost` |
 | A2A hotels returns empty results | Use 3-letter airport codes (LHR, CDG) - backend matches on `location === code` |
 | OPA returns 500 instead of 403 | Check guardrail service is running: `docker compose logs opa-policy-service` |
 | OPA allows everything | Verify `include_parsed_json_body_in_opa_input: true` is set in the deck file |
-| Safe tool returns 403 | Check guardrail service logs — argument may match a dangerous pattern |
+| Safe tool returns 403 | Check guardrail service logs - argument may match a dangerous pattern |
 
 ## Cleanup
 

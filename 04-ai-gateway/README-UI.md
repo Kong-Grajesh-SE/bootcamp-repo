@@ -71,16 +71,16 @@ curl -s http://localhost:8085/status | jq .
 > on the `kong-net` Docker network so they can communicate with each other.
 > Since the Kong data plane also runs on this network, plugins use **container
 > names** (e.g. `redis`) to reach services directly. RediSearch vector indexes
-> only work on **database 0** — all semantic plugins share DB 0 (isolation is
+> only work on **database 0** - all semantic plugins share DB 0 (isolation is
 > by index name, not DB number). Set `Cache Control` to **off** for semantic
 > cache since upstream LLM providers (Mistral/Cloudflare) set `Cache-Control`
 > headers that would cause bypass.
 >
-> | Service | Plugin Host | Plugin Port | Container Port → Host Port |
-> |---------|-------------|-------------|---------------------------|
+> | Service | Plugin Host/URL | Plugin Port | Container Port → Host Port |
+> |---------|----------------|-------------|---------------------------|
 > | Redis | `redis` | `6379` | 6379 → 6379 |
-> | PII Service | `host.docker.internal` | `8086` | 8080 → 8086 |
-> | Compressor | `http://host.docker.internal:8085` | - | 8080 → 8085 |
+> | PII Service | `ai-pii-service` | `8080` | 8080 → 8086 |
+> | Compressor | `http://ai-compress-service:8080` | - | 8080 → 8085 |
 
 ---
 
@@ -366,13 +366,13 @@ curl -s $PROXY_URL/ai/proxy/chat \
 ## Step 6 - AI Sanitizer (PII Redaction)
 
 > **Serverless deployment?** The AI Sanitizer and Prompt Compressor plugins use
-> plain HTTP JSON-RPC — a standard `ngrok http` tunnel won't work because it
+> plain HTTP JSON-RPC - a standard `ngrok http` tunnel won't work because it
 > terminates TLS (the plugin sends plain HTTP → "connection reset by peer").
 >
-> **Option 1 — Skip:** Skip Steps 6 and 7 on serverless. These work out of the
+> **Option 1 - Skip:** Skip Steps 6 and 7 on serverless. These work out of the
 > box on hybrid deployments.
 >
-> **Option 2 — ngrok TCP tunnel:** Use a TCP tunnel which forwards raw traffic
+> **Option 2 - ngrok TCP tunnel:** Use a TCP tunnel which forwards raw traffic
 > without TLS termination:
 > ```bash
 > ngrok tcp 8086
@@ -391,11 +391,15 @@ curl -s $PROXY_URL/ai/proxy/chat \
 2. Click **New Plugin → AI → AI Sanitizer**
 3. Configure:
    - **Anonymize**: `general`, `email`, `phone`, `creditcard`, `ssn`, `ip`, `url`
-   - **Host**: `host.docker.internal`
-   - **Port**: `8086`
+   - **Host**: `ai-pii-service`
+   - **Port**: `8080`
    - **Redact Type**: `placeholder`
    - **Stop on Error**: `on`
+   - **Recover Redacted**: `off`
 4. Click **Save**
+
+> The DP must be on the `kong-net` Docker network to reach `ai-pii-service` by name.
+> If your DP isn't on kong-net, use `host.docker.internal` with port `8086` instead.
 
 ### 6.2 Test - Positive (PII redacted)
 
@@ -424,7 +428,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ## Step 7 - AI Prompt Compressor
 
-> **Serverless deployment?** Skip this step, or use an ngrok TCP tunnel — see
+> **Serverless deployment?** Skip this step, or use an ngrok TCP tunnel - see
 > the note in Step 6.
 >
 > ```bash
@@ -439,13 +443,18 @@ curl -s $PROXY_URL/ai/proxy/chat \
 2. Click **New Plugin → AI → AI Prompt Compressor**
 3. Configure:
    - **Compressor Type**: `rate`
-   - **Compressor URL**: `http://host.docker.internal:8085`
+   - **Compressor URL**: `http://ai-compress-service:8080`
    - **Stop on Error**: `on`
    - **Timeout**: `10000`
+   - **Keepalive Timeout**: `60000`
+   - **Log Text Data**: `off`
    - **Compression Ranges**:
      - Min Tokens: `20`, Max Tokens: `100`, Value: `0.8`
      - Min Tokens: `100`, Max Tokens: `1000000`, Value: `0.3`
 4. Click **Save**
+
+> The DP must be on the `kong-net` Docker network to reach `ai-compress-service` by name.
+> If your DP isn't on kong-net, use `http://host.docker.internal:8085` instead.
 
 ### 7.2 Test - Positive (long prompt compressed)
 
@@ -494,7 +503,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - **Redis Host**: `redis`
    - **Redis Port**: `6379`
 
-   > **Serverless?** Use Redis Cloud instead — see the callout in Step 4.1.
+   > **Serverless?** Use Redis Cloud instead - see the callout in Step 4.1.
 
 8. Click **Save**
 
@@ -545,7 +554,7 @@ done
    - **Distance Metric**: `cosine`
    - **Threshold**: `0.15`
 
-   > **Serverless?** Use Redis Cloud instead — see the callout in Step 4.1.
+   > **Serverless?** Use Redis Cloud instead - see the callout in Step 4.1.
 
 5. Add **Allow Prompts**:
    - `Kong Gateway configuration and architecture`
@@ -617,7 +626,7 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - **Distance Metric**: `cosine`
    - **Threshold**: `0.5`
 
-   > **Serverless?** Use Redis Cloud instead — see the callout in Step 4.1.
+   > **Serverless?** Use Redis Cloud instead - see the callout in Step 4.1.
 
 5. Add **Deny Responses**:
    - `Detailed exploitation techniques, vulnerability exploitation, or hacking instructions`

@@ -18,7 +18,7 @@ _format_version: "3.0"
 # ISSUER: http://host.docker.internal:8080/realms/bootcamp
 #   The Docker data plane reaches Keycloak on the host via host.docker.internal.
 #   A token's `iss` MUST equal this issuer, so mint tokens against the same
-#   host — make your machine resolve it too (one-time):
+#   host - make your machine resolve it too (one-time):
 #       echo "127.0.0.1 host.docker.internal" | sudo tee -a /etc/hosts
 #   (Docker Desktop already resolves it inside containers.)
 #

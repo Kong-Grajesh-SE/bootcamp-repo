@@ -1,5 +1,5 @@
 """
-Sample MCP Server — JSON-RPC 2.0
+Sample MCP Server - JSON-RPC 2.0
 =================================
 Implements the Model Context Protocol so Kong + OPA can intercept and
 authorize tool calls before they reach this server.
@@ -45,7 +45,7 @@ FAKE_DOCS: list[dict] = [
     {"id": 1, "title": "Kong AI Gateway Overview",      "snippet": "Kong AI Gateway routes, protects, and observes LLM traffic."},
     {"id": 2, "title": "MCP Protocol Specification",   "snippet": "The Model Context Protocol standardises LLM tool use over JSON-RPC."},
     {"id": 3, "title": "OPA Policy Engine",             "snippet": "Open Policy Agent decouples policy decisions from application code."},
-    {"id": 4, "title": "Konnect Serverless Nodes",     "snippet": "Serverless data planes are managed by Kong — no node admin required."},
+    {"id": 4, "title": "Konnect Serverless Nodes",     "snippet": "Serverless data planes are managed by Kong - no node admin required."},
     {"id": 5, "title": "Kong Pre-function Plugin",     "snippet": "pre-function runs Lua scripts in configurable Kong lifecycle phases."},
 ]
 
@@ -91,10 +91,10 @@ TOOLS: list[dict] = [
         "description": "Return the current UTC date and time.",
         "inputSchema": {"type": "object", "properties": {}},
     },
-    # ── Dangerous tools — present to demonstrate OPA blocking ─────────────
+    # ── Dangerous tools - present to demonstrate OPA blocking ─────────────
     {
         "name": "execute_shell",
-        "description": "⛔ DEMO ONLY — Execute an arbitrary shell command.",
+        "description": "⛔ DEMO ONLY - Execute an arbitrary shell command.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -105,12 +105,12 @@ TOOLS: list[dict] = [
     },
     {
         "name": "admin_reset",
-        "description": "⛔ DEMO ONLY — Reset admin credentials.",
+        "description": "⛔ DEMO ONLY - Reset admin credentials.",
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
         "name": "write_file",
-        "description": "⛔ DEMO ONLY — Write content to an arbitrary file path.",
+        "description": "⛔ DEMO ONLY - Write content to an arbitrary file path.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -121,7 +121,7 @@ TOOLS: list[dict] = [
     },
     {
         "name": "drop_database",
-        "description": "⛔ DEMO ONLY — Drop a named database.",
+        "description": "⛔ DEMO ONLY - Drop a named database.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -157,7 +157,7 @@ def _tool_calculator(args: dict) -> str:
         for node in ast.walk(tree):
             if not isinstance(node, allowed_nodes):
                 return f"Error: operation '{type(node).__name__}' is not allowed."
-        result = eval(compile(tree, "<string>", "eval"))  # noqa: S307 — safe: AST-validated
+        result = eval(compile(tree, "<string>", "eval"))  # noqa: S307 - safe: AST-validated
         return f"{expr} = {result}"
     except Exception as exc:
         return f"Error evaluating expression: {exc}"
@@ -218,7 +218,7 @@ def _handle_tools_call(rpc_id: Any, params: dict) -> JSONResponse:
     dangerous = {"execute_shell", "admin_reset", "write_file", "drop_database"}
     if tool in dangerous:
         logger.critical(
-            "DANGEROUS TOOL REACHED SERVER — OPA policy may not be enforced! tool=%r", tool
+            "DANGEROUS TOOL REACHED SERVER - OPA policy may not be enforced! tool=%r", tool
         )
         return _error(rpc_id, -32600, f"Tool '{tool}' is not permitted by server policy.")
 
@@ -241,7 +241,7 @@ async def jsonrpc(request: Request) -> JSONResponse:
     try:
         body = await request.json()
     except Exception:
-        return _error(None, -32700, "Parse error — body is not valid JSON")
+        return _error(None, -32700, "Parse error - body is not valid JSON")
 
     rpc_id = body.get("id")
     method = body.get("method", "")

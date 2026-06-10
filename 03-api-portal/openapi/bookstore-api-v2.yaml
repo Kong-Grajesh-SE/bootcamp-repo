@@ -3,7 +3,7 @@ info:
   title: Bookstore API v2
   version: 2.0.0
   description: |
-    Bookstore API v2 — adds /recommendations endpoint.
+    Bookstore API v2 - adds /recommendations endpoint.
     A bookstore API for the APIOps bootcamp.
   contact:
     name: Bookstore Team

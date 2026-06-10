@@ -305,40 +305,40 @@ X-RateLimit-Remaining-Minute: 29
 
 ## Step 3 - Conversion Listener (REST → MCP)
 
-Expose a plain REST API (httpbin) as MCP tools. Kong converts MCP JSON-RPC
+Expose a plain REST API (httpbun) as MCP tools. Kong converts MCP JSON-RPC
 tool calls into standard HTTP requests - no changes to the backend required.
 
-> **Note:** This step uses httpbin instead of the travel backend to
+> **Note:** This step uses httpbun instead of the travel backend to
 > demonstrate that conversion mode works with *any* existing REST API, not
 > just MCP-aware services.
 
-### 3.1 Create the httpbin Service
+### 3.1 Create the httpbun Service
 
 1. Go to **Gateway Manager → `<your-control-plane>` → Services**
 2. Click **New Gateway Service**
 3. Configure:
-   - **Name**: `httpbin-service`
+   - **Name**: `httpbun-service`
    - **Protocol**: `https`
-   - **Host**: `httpbin.org`
+   - **Host**: `httpbun.com`
    - **Port**: `443`
 4. Click **Save**
 
 ### 3.2 Create the Plain REST Route
 
-1. On `httpbin-service` → **Routes** tab → **New Route**
+1. On `httpbun-service` → **Routes** tab → **New Route**
 2. Configure:
-   - **Name**: `httpbin-route`
-   - **Path(s)**: `/httpbin`
+   - **Name**: `httpbun-route`
+   - **Path(s)**: `/httpbun`
    - **Strip Path**: `on`
 3. Click **Save**
 
 > Why this route matters: the conversion-listener plugin's tool paths
-> (`/httpbin/ip`, `/httpbin/headers`, …) must resolve to an existing Kong
-> route. This `httpbin-route` is what those internal calls hit.
+> (`/httpbun/ip`, `/httpbun/headers`, …) must resolve to an existing Kong
+> route. This `httpbun-route` is what those internal calls hit.
 
 ### 3.3 Create the Conversion Route
 
-1. Still on `httpbin-service` → **Routes** tab → **New Route**
+1. Still on `httpbun-service` → **Routes** tab → **New Route**
 2. Configure:
    - **Name**: `mcp-conversion`
    - **Path(s)**: `/mcp/convert`
@@ -360,28 +360,28 @@ tool calls into standard HTTP requests - no changes to the backend required.
    - **Name**: `get_ip`
    - **Description**: `Get the origin IP address of the caller`
    - **Method**: `GET`
-   - **Path**: `/httpbin/ip`
+   - **Path**: `/httpbun/ip`
    - **Annotations → Title**: `Get IP`
 
    **Tool 2 - get_headers**
    - **Name**: `get_headers`
    - **Description**: `Get the request headers as seen by the server`
    - **Method**: `GET`
-   - **Path**: `/httpbin/headers`
+   - **Path**: `/httpbun/headers`
    - **Annotations → Title**: `Get Headers`
 
    **Tool 3 - get_user_agent**
    - **Name**: `get_user_agent`
    - **Description**: `Get the User-Agent string of the caller`
    - **Method**: `GET`
-   - **Path**: `/httpbin/user-agent`
+   - **Path**: `/httpbun/user-agent`
    - **Annotations → Title**: `Get User Agent`
 
    **Tool 4 - echo_anything**
    - **Name**: `echo_anything`
    - **Description**: `Echo back any data sent to the server`
    - **Method**: `POST`
-   - **Path**: `/httpbin/anything`
+   - **Path**: `/httpbun/anything`
    - **Annotations → Title**: `Echo Anything`
    - **Request Body → Content → application/json → Schema**:
      ```json
@@ -397,7 +397,7 @@ tool calls into standard HTTP requests - no changes to the backend required.
    - **Name**: `check_status`
    - **Description**: `Get an HTTP response with the specified status code`
    - **Method**: `GET`
-   - **Path**: `/httpbin/status/{code}`
+   - **Path**: `/httpbun/status/{code}`
    - **Annotations → Title**: `Check Status`
    - **Parameters → + Add Parameter**:
      - **Name**: `code`
@@ -434,7 +434,7 @@ curl -s -X POST $PROXY_URL/mcp/convert \
 
 **Expected:** `["check_status","echo_anything","get_headers","get_ip","get_user_agent"]`
 
-### 3.7 Test - Call get_ip (Kong converts to GET /httpbin/ip)
+### 3.7 Test - Call get_ip (Kong converts to GET /httpbun/ip)
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp/convert \
@@ -447,7 +447,7 @@ curl -s -X POST $PROXY_URL/mcp/convert \
 
 **Expected:** JSON string containing `"origin": "<your-ip>"`
 
-### 3.8 Test - Call echo_anything (Kong converts to POST /httpbin/anything)
+### 3.8 Test - Call echo_anything (Kong converts to POST /httpbun/anything)
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp/convert \
@@ -468,9 +468,9 @@ Three teams each own different tools. One aggregate endpoint merges them
 all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
 `listener` plugin discovers them.
 
-> **Why httpbin?** Steps 3-4 demonstrate how Kong converts *any* REST API
+> **Why httpbun?** Steps 3-4 demonstrate how Kong converts *any* REST API
 > into MCP tools. The travel backend from steps 1-2 already speaks MCP
-> natively - here we show Kong making a plain REST API (httpbin) available
+> natively - here we show Kong making a plain REST API (httpbun) available
 > to MCP clients without any code changes.
 
 ```
@@ -480,12 +480,12 @@ all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
               └── /mcp/team-gamma   (conversion-only: check_status)
 ```
 
-> **Prerequisite:** `httpbin-service` and `httpbin-route` must already
+> **Prerequisite:** `httpbun-service` and `httpbun-route` must already
 > exist from Step 3. If you reset between steps, recreate them per 3.1–3.2.
 
 ### 4.1 Create the team-alpha Route
 
-1. On `httpbin-service` → **Routes** tab → **New Route**
+1. On `httpbun-service` → **Routes** tab → **New Route**
 2. Configure:
    - **Name**: `mcp-team-alpha`
    - **Path(s)**: `/mcp/team-alpha`
@@ -502,13 +502,13 @@ all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
    - **Mode**: `conversion-only`
    - **Tags**: `mcp-agg` *(critical - the listener discovers tools by this tag)*
 4. Add **Tools**:
-   - **get_ip** - `GET /httpbin/ip` - *Get origin IP address*
-   - **get_headers** - `GET /httpbin/headers` - *Get all HTTP request headers*
+   - **get_ip** - `GET /httpbun/ip` - *Get origin IP address*
+   - **get_headers** - `GET /httpbun/headers` - *Get all HTTP request headers*
 5. Click **Save**
 
 ### 4.3 Create the team-beta Route + Plugin
 
-1. New Route on `httpbin-service`:
+1. New Route on `httpbun-service`:
    - **Name**: `mcp-team-beta`
    - **Path(s)**: `/mcp/team-beta`
    - **Method(s)**: `POST`, `GET`
@@ -518,13 +518,13 @@ all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
    - **Mode**: `conversion-only`
    - **Tags**: `mcp-agg`
    - **Tools**:
-     - **get_user_agent** - `GET /httpbin/user-agent` - *Get User-Agent string*
-     - **echo_anything** - `POST /httpbin/anything` - *Echo back anything sent*
+     - **get_user_agent** - `GET /httpbun/user-agent` - *Get User-Agent string*
+     - **echo_anything** - `POST /httpbun/anything` - *Echo back anything sent*
 3. Click **Save**
 
 ### 4.4 Create the team-gamma Route + Plugin
 
-1. New Route on `httpbin-service`:
+1. New Route on `httpbun-service`:
    - **Name**: `mcp-team-gamma`
    - **Path(s)**: `/mcp/team-gamma`
    - **Method(s)**: `POST`, `GET`
@@ -534,13 +534,13 @@ all. `conversion-only` plugins register tools (tagged `mcp-agg`), and a
    - **Mode**: `conversion-only`
    - **Tags**: `mcp-agg`
    - **Tools**:
-     - **check_status** - `GET /httpbin/status/{code}` - *Get HTTP response with given status code*
+     - **check_status** - `GET /httpbun/status/{code}` - *Get HTTP response with given status code*
        - **Parameters → code**: `in: path`, `required: on`, `schema.type: integer`
 3. Click **Save**
 
 ### 4.5 Create the Aggregate Route + Listener Plugin
 
-1. New Route on `httpbin-service`:
+1. New Route on `httpbun-service`:
    - **Name**: `mcp-aggregate`
    - **Path(s)**: `/mcp/aggregate`
    - **Method(s)**: `POST`, `GET`
@@ -1033,7 +1033,7 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 1. Go to **Gateway Manager → `<your-control-plane>` → Services**
 2. Delete each service (cascades to routes + plugins):
    - `mcp-backend`
-   - `httpbin-service`
+   - `httpbun-service`
    - `mcp-backend-oauth`
    - `a2a-backend`
 3. Go to **Consumers** and delete:
@@ -1055,7 +1055,7 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 |---------|-----|
 | `name resolution failed` for mcp-backend | `docker network connect 05-mcp-a2a_kong-net <kong-dp>` and fix DNS resolver |
 | `already exists in network` | Safe to ignore - Kong is already connected. Network name is `05-mcp-a2a_kong-net`. |
-| Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbin/ip` → `httpbin-route`) |
+| Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbun/ip` → `httpbun-route`) |
 | Step 4 aggregate sees 0 tools | Each `conversion-only` plugin must carry the **plugin-level** tag `mcp-agg`, not just the route tag |
 | OAuth2 returns 401 with valid token | Check **JWKS Endpoint** uses Docker hostname (`host.docker.internal:8080`), not `localhost` |
 | OAuth2 returns 401 with audience error | Confirm **Insecure Relaxed Audience Validation** is `on` for the lab |

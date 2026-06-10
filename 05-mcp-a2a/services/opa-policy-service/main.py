@@ -2,9 +2,9 @@
 Guardrail Service
 
 Two responsibilities:
-  1. /moderate  — LLM content moderation for the ai-custom-guardrail plugin
+  1. /moderate  - LLM content moderation for the ai-custom-guardrail plugin
                   (main branch / local Kong stack)
-  2. /v1/data/mcp/authz/allow — MCP tool-call authorization for the Kong OPA plugin
+  2. /v1/data/mcp/authz/allow - MCP tool-call authorization for the Kong OPA plugin
                   (serverless-gw branch / Konnect Serverless)
                   Accepts OPA plugin input format, returns {"result": true/false}.
 """
@@ -146,7 +146,7 @@ def mcp_authz(body: dict) -> dict:
     http = inp.get("request", {}).get("http", {})
     http_method = http.get("method", "POST").upper()
 
-    # GET requests (SSE channel setup) have no body — allow through
+    # GET requests (SSE channel setup) have no body - allow through
     if http_method == "GET":
         logger.info("mcp_authz ALLOW  GET request (SSE channel)")
         return {"result": True}
@@ -161,17 +161,17 @@ def mcp_authz(body: dict) -> dict:
     tool_name = params.get("name", "")
     arguments = params.get("arguments", {}) or {}
 
-    # Check 1 — method allowlist
+    # Check 1 - method allowlist
     if method not in _ALLOWED_MCP_METHODS:
         logger.warning("mcp_authz DENY  method=%r not in allowlist", method)
         return {"result": False}
 
-    # Check 2 — tool blocklist
+    # Check 2 - tool blocklist
     if tool_name in _BLOCKED_TOOLS:
         logger.warning("mcp_authz DENY  tool=%r is blocked", tool_name)
         return {"result": False}
 
-    # Check 3 — dangerous argument patterns
+    # Check 3 - dangerous argument patterns
     for val in _iter_values(arguments):
         for pattern in _DANGEROUS_ARG_PATTERNS:
             if re.search(pattern, val, re.IGNORECASE):

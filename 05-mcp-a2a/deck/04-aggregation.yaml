@@ -4,19 +4,19 @@
 # "mcp-agg"). One aggregate route uses listener mode to discover and merge
 # all tagged tools into a single MCP endpoint.
 #
-# Prerequisites: httpbin-service must exist (step 03 creates it).
+# Prerequisites: httpbun-service must exist (step 03 creates it).
 # =============================================================================
 _format_version: "3.0"
 
 services:
-  - name: httpbin-service
-    host: httpbin.org
+  - name: httpbun-service
+    host: httpbun.com
     port: 443
     protocol: https
     routes:
-      - name: httpbin-route
+      - name: httpbun-route
         paths:
-          - /httpbin
+          - /httpbun
         strip_path: true
 
       # ── Team Routes (conversion-only) ──────────────────────────────────
@@ -39,11 +39,11 @@ services:
                 - name: get_ip
                   description: Get origin IP address
                   method: GET
-                  path: /httpbin/ip
+                  path: /httpbun/ip
                 - name: get_headers
                   description: Get all HTTP request headers
                   method: GET
-                  path: /httpbin/headers
+                  path: /httpbun/headers
 
       - name: mcp-team-beta
         paths:
@@ -64,11 +64,11 @@ services:
                 - name: get_user_agent
                   description: Get User-Agent string
                   method: GET
-                  path: /httpbin/user-agent
+                  path: /httpbun/user-agent
                 - name: echo_anything
                   description: Echo back anything sent
                   method: POST
-                  path: /httpbin/anything
+                  path: /httpbun/anything
 
       - name: mcp-team-gamma
         paths:
@@ -89,7 +89,7 @@ services:
                 - name: check_status
                   description: Get HTTP response with given status code
                   method: GET
-                  path: /httpbin/status/{code}
+                  path: /httpbun/status/{code}
                   parameters:
                     - name: code
                       in: path

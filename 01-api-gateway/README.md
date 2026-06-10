@@ -29,10 +29,10 @@ export PROXY_URL=http://localhost:8000
 
 ```
 ┌──────────────┐       ┌──────────────────────┐       ┌──────────────┐
-│   Client     │──────▶│  Docker Data Plane    │──────▶│  httpbin.org │
-│  (curl /     │       │  (localhost:8000)     │       │  httpbun.com │
-│   Insomnia)  │       │ kong/kong-gateway:3.14│       │  httpbin.    │
-│              │       │                       │       │  konghq.com  │
+│   Client     │──────▶│  Docker Data Plane    │──────▶│  httpbun.com │
+│  (curl /     │       │  (localhost:8000)     │       │              │
+│   Insomnia)  │       │ kong/kong-gateway:3.14│       │              │
+│              │       │                       │       │              │
 └──────────────┘       └──────────────────────┘       └──────────────┘
                               ▲
                               │ mTLS config sync
@@ -50,19 +50,19 @@ export PROXY_URL=http://localhost:8000
 ```
 api-gateway/
 ├── deck/
-│   ├── 01-services-and-routes.yaml   ← Base: 3 services + 3 routes
-│   ├── 02-rate-limiting.yaml         ← Rate Limiting (httpbin, 5 req/min)
+│   ├── 01-services-and-routes.yaml   ← Base: httpbun-service + httpbun-route
+│   ├── 02-rate-limiting.yaml         ← Rate Limiting (httpbun, 5 req/min)
 │   ├── 03-proxy-cache.yaml           ← Proxy Cache (30s TTL, memory)
 │   ├── 04-upstream.yaml              ← Load Balancing (round-robin)
 │   ├── 05-key-auth.yaml              ← Key Auth + consumers
 │   ├── 06-jwt-auth.yaml              ← JWT Auth + consumer
 │   ├── 07-consumers.yaml             ← Multiple consumers
 │   ├── 08-cors.yaml                  ← CORS (global)
-│   ├── 09-ip-restriction.yaml        ← IP Restriction (httpbin)
+│   ├── 09-ip-restriction.yaml        ← IP Restriction (httpbun)
 │   ├── 10-correlation-id.yaml        ← Correlation ID (global)
-│   ├── 11-request-transformer.yaml   ← Request Transformer (httpbin)
-│   ├── 12-response-transformer.yaml  ← Response Transformer (httpbin)
-│   ├── 13-http-log.yaml              ← HTTP Log (httpbin)
+│   ├── 11-request-transformer.yaml   ← Request Transformer (httpbun)
+│   ├── 12-response-transformer.yaml  ← Response Transformer (httpbun)
+│   ├── 13-http-log.yaml              ← HTTP Log (httpbun)
 │   ├── 14-consumer-groups-acl.yaml   ← Consumer Groups + ACL
 │   ├── 15-kong-identity.yaml         ← Kong Identity (Konnect-native M2M auth)
 │   ├── 16-oidc-keycloak.yaml         ← OpenID Connect via local Keycloak (AuthN/AuthZ)
@@ -81,17 +81,13 @@ api-gateway/
 
 | Service | Backend | Protocol | Port | Notes |
 |---------|---------|----------|------|-------|
-| httpbin-service | httpbin.org | HTTPS | 443 | Most popular HTTP echo service |
-| httpbun-service | httpbun.com | HTTPS | 443 | Reliable alternative |
-| konghq-service | httpbin.konghq.com | HTTP | 80 | Kong-hosted (HTTP only) |
+| httpbun-service | httpbun.com | HTTPS | 443 | HTTP echo service |
 
 ## Routes
 
 | Route | Path | Maps To |
 |-------|------|---------|
-| httpbin-route | `/httpbin/*` | httpbin.org/* |
 | httpbun-route | `/httpbun/*` | httpbun.com/* |
-| konghq-route | `/konghq/*` | httpbin.konghq.com/* |
 
 All routes use `strip_path: true` - the prefix is removed before forwarding.
 
@@ -99,18 +95,20 @@ All routes use `strip_path: true` - the prefix is removed before forwarding.
 
 ## Quick Start
 
-
-> Replace `<your-control-plane>` with the value you set in `$CP_NAME`.
+> **Placeholders used in this guide:**
+> - `<your-control-plane>` - replace with the value you set in `$CP_NAME`
+> - `<kong-dp-container>` - replace with the name Docker assigned to your
+>   Kong data plane container (run `docker ps` to find it, e.g. `eager_bell`)
 
 
 ### Step 3 - Verify DP is Connected
 
 ```bash
 # Check container is running
-docker ps --filter name=upbeat_yonath
+docker ps --filter name=<kong-dp-container>
 
 # Check DP logs for successful connection
-docker logs upbeat_yonath 2>&1 | tail -20
+docker logs <kong-dp-container> 2>&1 | tail -20
 
 # Look for: "successfully connected to the control plane"
 ```
@@ -135,9 +133,7 @@ deck gateway sync \
 ### Step 5 - Verify Routes
 
 ```bash
-curl -s $PROXY_URL/httpbin/get | jq .origin
 curl -s $PROXY_URL/httpbun/get | jq .url
-curl -s $PROXY_URL/konghq/get | jq .origin
 ```
 
 ### Step 6 - Import Insomnia Collection
@@ -153,22 +149,22 @@ Switch environment to **"Docker DP (localhost:8000)"** (default).
 
 ```bash
 # Stop the data plane
-docker stop upbeat_yonath
+docker stop <kong-dp-container>
 
 # Start it again
-docker start upbeat_yonath
+docker start <kong-dp-container>
 
 # Restart
-docker restart upbeat_yonath
+docker restart <kong-dp-container>
 
 # View logs (live)
-docker logs -f upbeat_yonath
+docker logs -f <kong-dp-container>
 ```
 
 ### Remove and Recreate
 
 ```bash
-docker rm -f upbeat_yonath
+docker rm -f <kong-dp-container>
 # Then re-run the docker run command from Step 2
 ```
 
@@ -176,7 +172,7 @@ docker rm -f upbeat_yonath
 
 ```bash
 # Kong status endpoint (inside the container)
-docker exec upbeat_yonath kong health
+docker exec <kong-dp-container> kong health
 ```
 
 ---
@@ -189,7 +185,7 @@ docker exec upbeat_yonath kong health
 | **Config propagation** | ~5 seconds after `deck gateway apply/sync` |
 | **Client IP** | Docker bridge IP (`172.x.x.x`), not `127.0.0.1` - affects IP Restriction plugin |
 | **host.docker.internal** | Resolves to your Mac/host machine - used by HTTP Log plugin |
-| **httpbin.konghq.com** | HTTP-only (port 80) - works from Docker DP (unlike serverless) |
+| **httpbun.com** | HTTP echo service used as the sole upstream backend |
 | **Certificates** | Must be saved in `certs/` and mounted into the container |
 
 ---
@@ -222,7 +218,7 @@ deck gateway sync \
 
 ### 02 - Rate Limiting
 
-Limits httpbin-service to **5 requests/minute** per IP.
+Limits httpbun-service to **5 requests/minute** per IP.
 
 ```bash
 deck gateway apply deck/02-rate-limiting.yaml \
@@ -231,11 +227,11 @@ deck gateway apply deck/02-rate-limiting.yaml \
 
 ```bash
 # First 5 calls → 200 with rate limit headers
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 # Headers: X-RateLimit-Limit-Minute: 5, X-RateLimit-Remaining-Minute: 4
 
 # 6th call → 429 Too Many Requests
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 
 # httpbun is NOT rate limited
 curl -i $PROXY_URL/httpbun/get
@@ -245,7 +241,7 @@ curl -i $PROXY_URL/httpbun/get
 
 ### 03 - Proxy Cache
 
-Caches GET 200 responses from httpbin-service for **30 seconds** in memory.
+Caches GET 200 responses from httpbun-service for **30 seconds** in memory.
 
 ```bash
 deck gateway apply deck/03-proxy-cache.yaml \
@@ -254,13 +250,13 @@ deck gateway apply deck/03-proxy-cache.yaml \
 
 ```bash
 # First call → X-Cache-Status: Miss
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 
 # Second call (within 30s) → X-Cache-Status: Hit
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 
 # POST → X-Cache-Status: Bypass (POST not cached)
-curl -i -X POST $PROXY_URL/httpbin/post -d '{}'
+curl -i -X POST $PROXY_URL/httpbun/post -d '{}'
 ```
 
 ---
@@ -285,7 +281,7 @@ curl -s $PROXY_URL/lb | jq .url
 
 ### 05 - Key Auth
 
-Protects httpbin-service with API key authentication.
+Protects httpbun-service with API key authentication.
 
 > **Consumer - quick primer (covered in depth in Step 07):** A **consumer**
 > in Kong is an identity that Kong knows about - typically a person, a
@@ -303,16 +299,16 @@ deck gateway apply deck/05-key-auth.yaml \
 
 ```bash
 # No key → 401
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 
 # Key in header → 200
-curl -i $PROXY_URL/httpbin/get -H "apikey: my-secret-key-123"
+curl -i $PROXY_URL/httpbun/get -H "apikey: my-secret-key-123"
 
 # Key in query → 200
-curl -i "$PROXY_URL/httpbin/get?apikey=my-secret-key-123"
+curl -i "$PROXY_URL/httpbun/get?apikey=my-secret-key-123"
 
 # Wrong key → 401
-curl -i $PROXY_URL/httpbin/get -H "apikey: wrong-key"
+curl -i $PROXY_URL/httpbun/get -H "apikey: wrong-key"
 
 # httpbun is open (no key-auth)
 curl -i $PROXY_URL/httpbun/get
@@ -380,9 +376,9 @@ deck gateway apply deck/07-consumers.yaml \
 ```
 
 ```bash
-curl -s $PROXY_URL/httpbin/get -H "apikey: alice-api-key"   # X-Consumer-Username: alice
-curl -s $PROXY_URL/httpbin/get -H "apikey: bob-api-key"     # X-Consumer-Username: bob
-curl -s $PROXY_URL/httpbin/get -H "apikey: charlie-api-key" # X-Consumer-Username: charlie
+curl -s $PROXY_URL/httpbun/get -H "apikey: alice-api-key"   # X-Consumer-Username: alice
+curl -s $PROXY_URL/httpbun/get -H "apikey: bob-api-key"     # X-Consumer-Username: bob
+curl -s $PROXY_URL/httpbun/get -H "apikey: charlie-api-key" # X-Consumer-Username: charlie
 ```
 
 ---
@@ -398,11 +394,11 @@ deck gateway apply deck/08-cors.yaml \
 
 ```bash
 # Simple request with Origin
-curl -i $PROXY_URL/httpbin/get -H "Origin: http://localhost:3000"
+curl -i $PROXY_URL/httpbun/get -H "Origin: http://localhost:3000"
 # → Access-Control-Allow-Origin: http://localhost:3000
 
 # Preflight request
-curl -i -X OPTIONS $PROXY_URL/httpbin/get \
+curl -i -X OPTIONS $PROXY_URL/httpbun/get \
   -H "Origin: http://localhost:3000" \
   -H "Access-Control-Request-Method: POST"
 ```
@@ -411,7 +407,7 @@ curl -i -X OPTIONS $PROXY_URL/httpbin/get \
 
 ### 09 - IP Restriction
 
-Allows only local/private IPs to access httpbin-service.
+Allows only local/private IPs to access httpbun-service.
 
 ```bash
 deck gateway apply deck/09-ip-restriction.yaml \
@@ -420,10 +416,10 @@ deck gateway apply deck/09-ip-restriction.yaml \
 
 ```bash
 # From local machine via Docker → 200 (Docker bridge IP is in allow list)
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 
 # To test blocking: remove 172.16.0.0/12 from allow list, re-apply, then:
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 # → 403 "Your IP address is not allowed"
 ```
 
@@ -442,21 +438,22 @@ deck gateway apply deck/10-correlation-id.yaml \
 
 ```bash
 # Check response header
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 # → X-Correlation-ID: uuid#1
 
 # Check upstream received it
-curl -s $PROXY_URL/httpbin/headers | jq '.headers["X-Correlation-Id"]'
+curl -s $PROXY_URL/httpbun/headers | jq '.headers["X-Correlation-Id"]'
 
 # Send your own ID
-curl -i $PROXY_URL/httpbin/get -H "X-Correlation-ID: my-trace-123"
+curl -i $PROXY_URL/httpbun/get -H "X-Correlation-ID: my-trace-123"
 ```
 
 ---
 
 ### 11 - Request Transformer
 
-Adds headers and query params to requests before they reach httpbin upstream.
+Demonstrates all five transformer operations on upstream requests: add, rename,
+replace, remove, and append.
 
 ```bash
 deck gateway apply deck/11-request-transformer.yaml \
@@ -464,20 +461,40 @@ deck gateway apply deck/11-request-transformer.yaml \
 ```
 
 ```bash
-# See added headers
-curl -s $PROXY_URL/httpbin/headers | jq '.headers'
+# ADD: injected headers
+curl -s $PROXY_URL/httpbun/headers | jq '.headers'
 # → "X-Added-By": "Kong-Gateway", "X-Bootcamp": "API-Gateway-Demo"
 
-# See added query params
-curl -s $PROXY_URL/httpbin/get | jq '.args'
+# ADD: injected query params
+curl -s $PROXY_URL/httpbun/get | jq '.args'
 # → "source": "kong", "gateway": "true"
+
+# RENAME: Accept → X-Original-Accept
+curl -s $PROXY_URL/httpbun/headers -H "Accept: application/json" \
+  | jq '{original_accept: .headers["X-Original-Accept"]}'
+
+# REPLACE: X-Env is overwritten to "production" (only if header already present)
+curl -s $PROXY_URL/httpbun/headers -H "X-Env: staging" \
+  | jq '.headers["X-Env"]'
+# → "production"
+
+# REMOVE: X-Remove-Me header and internal_debug query param are stripped
+curl -s "$PROXY_URL/httpbun/headers?internal_debug=1" -H "X-Remove-Me: secret" \
+  | jq '{header: .headers["X-Remove-Me"], param: .args.internal_debug}'
+# → both null
+
+# APPEND: X-Tags gets ",kong-appended" added
+curl -s $PROXY_URL/httpbun/headers -H "X-Tags: first" \
+  | jq '.headers["X-Tags"]'
+# → "first,kong-appended"
 ```
 
 ---
 
 ### 12 - Response Transformer
 
-Adds/removes response headers before they reach the client.
+Demonstrates all five transformer operations on responses: add, rename, replace,
+remove, and append.
 
 ```bash
 deck gateway apply deck/12-response-transformer.yaml \
@@ -485,9 +502,13 @@ deck gateway apply deck/12-response-transformer.yaml \
 ```
 
 ```bash
-curl -i $PROXY_URL/httpbin/get
-# Added:   X-Powered-By: Kong-Gateway, X-Bootcamp-Demo: true
-# Removed: Server, Via
+curl -i $PROXY_URL/httpbun/get
+# ADD:     X-Powered-By: Kong-Gateway, X-Bootcamp-Demo: true, X-Environment: bootcamp
+# RENAME:  Date → X-Response-Date
+# REPLACE: Content-Type forced to application/json; charset=utf-8
+# REMOVE:  X-Powered-By (upstream), Alt-Svc stripped
+# APPEND:  X-Cache-Tags: kong-gateway
+# Note: Kong's Server/Via headers cannot be removed by this plugin
 ```
 
 ---
@@ -502,7 +523,7 @@ deck gateway apply deck/13-http-log.yaml \
 ```
 
 ```bash
-curl -s $PROXY_URL/httpbin/get
+curl -s $PROXY_URL/httpbun/get
 # → Check your webhook.site dashboard for the logged JSON payload
 ```
 
@@ -547,12 +568,12 @@ Client sends request with API key
 └────────┬────────┘
          │
          ▼
-    Request → upstream (httpbin)
+    Request → upstream (httpbun)
 ```
 
 #### What Gets Created
 
-**Plugins (on httpbin-service):**
+**Plugins (on httpbun-service):**
 - `key-auth` - requires `apikey` header, hides credential from upstream
 - `acl` - only allows consumers in `premium` or `standard` groups
 
@@ -575,22 +596,22 @@ Client sends request with API key
 
 #### Step-by-Step Setup in Konnect UI
 
-**Step 1 - Add Key Auth plugin to httpbin-service:**
+**Step 1 - Add Key Auth plugin to httpbun-service:**
 
 ```
-Gateway Manager → your-control-plane → Services → httpbin-service → Plugins → Add Plugin
+Gateway Manager → your-control-plane → Services → httpbun-service → Plugins → Add Plugin
   → Authentication → Key Authentication
   → Config:
        Key Names: apikey
        Hide Credentials: enabled ✅
-  → Scope: httpbin-service (already selected)
+  → Scope: httpbun-service (already selected)
   → Save
 ```
 
-**Step 2 - Add ACL plugin to httpbin-service:**
+**Step 2 - Add ACL plugin to httpbun-service:**
 
 ```
-Gateway Manager → your-control-plane → Services → httpbin-service → Plugins → Add Plugin
+Gateway Manager → your-control-plane → Services → httpbun-service → Plugins → Add Plugin
   → Traffic Control → ACL
   → Config:
        Allow: premium, standard     ← only these groups can access
@@ -685,7 +706,7 @@ Gateway Manager → your-control-plane → Consumer Groups → New Consumer Grou
 
 ```
 Gateway Manager → your-control-plane → Plugins
-  → You should see: key-auth (httpbin-service), acl (httpbin-service)
+  → You should see: key-auth (httpbun-service), acl (httpbun-service)
 
 Gateway Manager → your-control-plane → Consumers
   → 3 consumers listed: premium-user, standard-user, trial-user
@@ -717,25 +738,25 @@ Gateway Manager → your-control-plane → Consumer Groups
 
 ```bash
 # 1. No key → 401 Unauthorized
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 
 # 2. Premium user → 200, check rate limit headers
-curl -i $PROXY_URL/httpbin/get -H "apikey: premium-key-123"
+curl -i $PROXY_URL/httpbun/get -H "apikey: premium-key-123"
 # → X-RateLimit-Limit-Minute: 1000
 # → X-Consumer-Username: premium-user
 # → X-Consumer-Groups: premium-tier
 
 # 3. Standard user → 200, lower rate limit
-curl -i $PROXY_URL/httpbin/get -H "apikey: standard-key-456"
+curl -i $PROXY_URL/httpbun/get -H "apikey: standard-key-456"
 # → X-RateLimit-Limit-Minute: 10
 # → X-Consumer-Username: standard-user
 
 # 4. Trial user → 403 Forbidden (authenticated but NOT authorized)
-curl -i $PROXY_URL/httpbin/get -H "apikey: blocked-key-789"
+curl -i $PROXY_URL/httpbun/get -H "apikey: blocked-key-789"
 # → {"message":"You cannot consume this service"}
 # Note: Key auth passes (it's a valid key), but ACL blocks (trial not in allow list)
 
-# 5. httpbun is unaffected (plugins scoped to httpbin-service only)
+# 5. httpbun is unaffected (plugins scoped to httpbun-service only)
 curl -i $PROXY_URL/httpbun/get
 # → 200 (no auth needed)
 ```
@@ -806,10 +827,10 @@ TOKEN=$(curl -s -X POST "$ISSUER/oauth2/token" \
   | jq -r .access_token)
 
 # 2. Call Kong with that token → 200
-curl -i $PROXY_URL/httpbin/get -H "Authorization: Bearer $TOKEN"
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"
 
 # 3. No token → 401
-curl -i $PROXY_URL/httpbin/get
+curl -i $PROXY_URL/httpbun/get
 ```
 
 > The exact `/oauth2/token` path is shown on your auth server's page in Konnect
@@ -884,7 +905,12 @@ Admin Console: http://localhost:8080 (`admin` / `admin`).
 #### Step 2 - Apply the openid-connect plugin
 
 The Docker DP reaches Keycloak on your host via `host.docker.internal:8080`
-(already set as the `issuer` in the deck file).
+(already set as the `issuer` in the deck file). The deck file also configures:
+- **Auth Methods**: `password`, `bearer`, `client_credentials` (testable from curl)
+- **Scopes**: `openid`, `profile`, `email`
+- **Redirect URI**: `http://localhost:8000/httpbun/auth/callback` (for browser flow)
+- **Upstream Header Forwarding**: maps `preferred_username` → `x-authenticated-user`
+  and `email` → `x-authenticated-email` so the upstream sees who authenticated
 
 ```bash
 deck gateway apply deck/16-oidc-keycloak.yaml \
@@ -1018,9 +1044,11 @@ client ─────────▶ Kong ────────────�
                    └──────────────── Authorization: Bearer <token> ──▶ upstream
 ```
 
-Scoped to `httpbin-service`, whose `/headers` echoes what the upstream received —
+Scoped to `httpbun-service`, whose `/headers` echoes what the upstream received —
 so you can literally see the token Kong added. Uses the shared Keycloak's
-`kong-m2m` client.
+`kong-m2m` client. The deck file configures: `client_secret_post` auth method,
+`memory` cache strategy with 3600 s TTL, `eagerly_expire: 5` (re-fetches 5 s
+before expiry), and `purge_token_on_upstream_status_codes: [401]`.
 
 > **No `iss` matching here.** Unlike step 16, Kong is the *client*, not the
 > validator - it just forwards the token upstream. You only need the
@@ -1036,11 +1064,11 @@ deck gateway apply deck/17-upstream-oauth.yaml \
 
 ```bash
 # Client sends NO Authorization header
-curl -s $PROXY_URL/httpbin/headers | jq '.headers.Authorization'
+curl -s $PROXY_URL/httpbun/headers | jq '.headers.Authorization'
 # → "Bearer eyJhbGciOi..."  (Kong obtained this from Keycloak using kong-m2m)
 
 # Decode it to prove it's a real M2M token minted for kong-m2m
-curl -s $PROXY_URL/httpbin/headers | jq -r '.headers.Authorization' \
+curl -s $PROXY_URL/httpbun/headers | jq -r '.headers.Authorization' \
   | cut -d' ' -f2 | cut -d. -f2 | base64 -d 2>/dev/null | jq '{iss, azp, typ}'
 # → { "iss": "http://host.docker.internal:8080/realms/bootcamp", "azp": "kong-m2m", "typ": "Bearer" }
 ```
@@ -1083,13 +1111,13 @@ deck gateway reset \
 ### Remove Docker DP
 
 ```bash
-docker rm -f upbeat_yonath
+docker rm -f <kong-dp-container>
 ```
 
 ### Clean Restart
 
 ```bash
-docker rm -f upbeat_yonath
+docker rm -f <kong-dp-container>
 deck gateway reset --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME" --force
 # Then re-run docker run + deck gateway sync from Quick Start
 ```
@@ -1100,16 +1128,16 @@ deck gateway reset --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `curl: (7) Failed to connect to localhost port 8000` | Docker container not running | `docker start upbeat_yonath` or re-run `docker run` |
-| DP not showing in Konnect UI | Certs wrong or CP endpoint typo | Check `docker logs upbeat_yonath`, verify certs and endpoint |
-| `no Route matched` after apply | Config not synced yet | Wait 5s and retry, or `docker restart upbeat_yonath` |
-| 503 on `/konghq/*` | httpbin.konghq.com unreachable | Try `/httpbin/*` or `/httpbun/*` instead |
+| `curl: (7) Failed to connect to localhost port 8000` | Docker container not running | `docker start <kong-dp-container>` or re-run `docker run` |
+| DP not showing in Konnect UI | Certs wrong or CP endpoint typo | Check `docker logs <kong-dp-container>`, verify certs and endpoint |
+| `no Route matched` after apply | Config not synced yet | Wait 5s and retry, or `docker restart <kong-dp-container>` |
+| 503 on `/httpbun/*` | httpbun.com unreachable | Check internet connectivity; try again after a few seconds |
 | IP Restriction blocking everything | Docker bridge IP not in allow list | Add `172.16.0.0/12` (the RFC 1918 range Docker bridges use) to the allow list |
 | HTTP Log not receiving | Python server not running or wrong port | Check `python3` is listening on 9999, check `host.docker.internal` resolves |
 
 ---
 
-## Useful httpbin/httpbun Paths
+## Useful httpbun Paths
 
 | Path | Method | What It Does |
 |------|--------|-------------|

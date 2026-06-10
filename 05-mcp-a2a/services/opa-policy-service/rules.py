@@ -111,7 +111,7 @@ def _check_keywords(
                 return ModerationResult(
                     block=True,
                     block_message=(
-                        f"[{source}] Blocked — category: {category}. "
+                        f"[{source}] Blocked - category: {category}. "
                         f"Content matches a prohibited keyword."
                     ),
                     category=category,
@@ -130,7 +130,7 @@ def _check_patterns(
                 return ModerationResult(
                     block=True,
                     block_message=(
-                        f"[{source}] Blocked — category: {category}. "
+                        f"[{source}] Blocked - category: {category}. "
                         f"Content matches a prohibited pattern."
                     ),
                     category=category,

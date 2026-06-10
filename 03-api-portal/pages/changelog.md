@@ -7,7 +7,7 @@
 - **Authors:** `GET /authors`, `GET /authors/{authorId}`
 - **Reviews:** `GET /reviews`, `POST /reviews`
 - Authentication: API key in `apikey` header
-- Backend: httpbin.org echo service (for development/testing)
+- Backend: httpbun.com echo service (for development/testing)
 
 ---
 

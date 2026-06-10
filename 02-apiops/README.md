@@ -175,7 +175,7 @@ cat > /tmp/bad-config.yaml << 'EOF'
 _format_version: "3.0"
 services:
 - name: bookstore-service
-  url: https://httpbin.org
+  url: https://httpbun.com
   routes:
   - name: bookstore-route
     paths:
@@ -229,10 +229,10 @@ Summary:
 
 ```bash
 curl -s $PROXY_URL/bookstore/get | jq .url
-# → "https://httpbin.org/get"
+# → "https://httpbun.com/get"
 
 curl -s $PROXY_URL/bookstore/headers | jq .headers.Host
-# → "httpbin.org"
+# → "httpbun.com"
 ```
 
 > **Teach:** `sync` = "Kong should look exactly like this YAML, nothing more, nothing less."
@@ -484,7 +484,7 @@ cat > /tmp/broken.yaml << 'EOF'
 _format_version: "3.0"
 services:
 - name: bookstore-service
-  url: https://httpbin.org
+  url: https://httpbun.com
   invalid_field: true
   routes:
   - name: bookstore-route
@@ -655,7 +655,7 @@ cat deck/05-bookstore-templated.yaml
 ```bash
 # Render for dev (set env vars, then render)
 DECK_ENV=dev \
-DECK_UPSTREAM_URL=https://httpbin.org \
+DECK_UPSTREAM_URL=https://httpbun.com \
 DECK_RATE_LIMIT=60 \
 DECK_CONNECT_TIMEOUT=30000 \
 DECK_READ_TIMEOUT=30000 \
@@ -665,7 +665,7 @@ deck file render deck/05-bookstore-templated.yaml \
   --output-file output/rendered-dev.yaml
 
 cat output/rendered-dev.yaml
-# → url: https://httpbin.org, minute: 60, env:dev
+# → url: https://httpbun.com, minute: 60, env:dev
 ```
 
 ```bash

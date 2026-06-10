@@ -751,7 +751,7 @@ echo "Open in incognito: https://$PORTAL_URL"
 export DEV_API_KEY="<PASTE-API-KEY-FROM-STEP-17>"
 export PROXY_URL=http://localhost:8000
 
-# ✅ With key → proxied to upstream (httpbin echoes back the request as JSON)
+# ✅ With key → proxied to upstream (httpbun echoes back the request as JSON)
 curl -i -H "apikey: $DEV_API_KEY" $PROXY_URL/books
 # → 200 OK with JSON echo (method, url, headers, origin)
 # Look for: Via: kong, X-Kong-Upstream-Latency (proves it went through)

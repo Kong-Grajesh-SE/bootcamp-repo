@@ -8,13 +8,13 @@ _format_version: "3.0"
 # Your backend gets a valid M2M token without the caller knowing anything about
 # OAuth. (Reference: https://developer.konghq.com/plugins/upstream-oauth/)
 #
-# Scoped to httpbin-service, whose `/headers` echoes what the upstream received —
+# Scoped to httpbun-service, whose `/headers` echoes what the upstream received —
 # so you can literally see the token Kong added.
 #
 # Uses the shared Keycloak's `kong-m2m` client (realm `bootcamp`). Spin it up:
 #     cd ../keycloak && docker compose up -d
 #
-# NOTE: unlike step 16, there is NO issuer/`iss` matching here — Kong is the
+# NOTE: unlike step 16, there is NO issuer/`iss` matching here - Kong is the
 # client, not the validator, so it just forwards the token upstream. You only
 # need the token_endpoint reachable FROM the Kong DP container
 # (host.docker.internal resolves to the host machine from inside Docker).
