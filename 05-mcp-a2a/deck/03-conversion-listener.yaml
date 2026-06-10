@@ -1,0 +1,80 @@
+# =============================================================================
+# Step 03 - Conversion Listener (REST → MCP)
+# Adds a conversion-listener route on httpbin-service that exposes REST
+# endpoints as MCP tools. The httpbin-service and httpbin-route are
+# included in this file so it is fully self-contained.
+# =============================================================================
+_format_version: "3.0"
+
+services:
+  - name: httpbin-service
+    host: httpbin.org
+    port: 443
+    protocol: https
+    routes:
+      - name: httpbin-route
+        paths:
+          - /httpbin
+        strip_path: true
+      - name: mcp-conversion
+        paths:
+          - /mcp/convert
+        methods:
+          - POST
+          - GET
+        strip_path: true
+        tags:
+          - conversion
+        plugins:
+          - name: ai-mcp-proxy
+            config:
+              mode: conversion-listener
+              server:
+                timeout: 60000
+              tools:
+                - name: get_ip
+                  description: Get the origin IP address of the caller
+                  method: GET
+                  path: /httpbin/ip
+                  annotations:
+                    title: Get IP
+                - name: get_headers
+                  description: Get the request headers as seen by the server
+                  method: GET
+                  path: /httpbin/headers
+                  annotations:
+                    title: Get Headers
+                - name: get_user_agent
+                  description: Get the User-Agent string of the caller
+                  method: GET
+                  path: /httpbin/user-agent
+                  annotations:
+                    title: Get User Agent
+                - name: echo_anything
+                  description: Echo back any data sent to the server
+                  method: POST
+                  path: /httpbin/anything
+                  annotations:
+                    title: Echo Anything
+                  request_body:
+                    content:
+                      application/json:
+                        schema:
+                          type: object
+                          properties:
+                            message:
+                              type: string
+                              description: Message to echo
+                - name: check_status
+                  description: Get an HTTP response with the specified status code
+                  method: GET
+                  path: /httpbin/status/{code}
+                  annotations:
+                    title: Check Status
+                  parameters:
+                    - name: code
+                      in: path
+                      required: true
+                      schema:
+                        type: integer
+                      description: HTTP status code to return (e.g. 200, 404, 500)

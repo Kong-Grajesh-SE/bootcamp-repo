@@ -1,0 +1,26 @@
+# =============================================================================
+# Step 11 - AI Custom Guardrail (plugin-only)
+# Sends request AND response text to a custom moderation service that checks
+# for jailbreak attempts, prohibited topics (INPUT), and PII leaks (OUTPUT).
+# Requires: docker compose up -d guardrail-service
+# Apply: deck file add-plugins -s <state> deck/11-custom-guardrails.yaml | deck gateway sync -s -
+# =============================================================================
+plugins:
+  - name: ai-custom-guardrail
+    service: ai-gateway-service
+    config:
+      guarding_mode: BOTH
+      text_source: concatenate_all_content
+      stop_on_error: true
+      ssl_verify: false
+      timeout: 5000
+      request:
+        url: http://guardrail-service:8080/moderate
+        body:
+          text: "$(content)"
+          source: "$(source)"
+      response:
+        block: "$(resp.block)"
+        block_message: "$(resp.block_message)"
+      metrics:
+        block_reason: "$(resp.block_message)"

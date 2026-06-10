@@ -1,0 +1,116 @@
+# =============================================================================
+# Step 04 - Multi-Team Aggregation (conversion-only + listener)
+# Three team routes each register tools via conversion-only mode (tagged
+# "mcp-agg"). One aggregate route uses listener mode to discover and merge
+# all tagged tools into a single MCP endpoint.
+#
+# Prerequisites: httpbin-service must exist (step 03 creates it).
+# =============================================================================
+_format_version: "3.0"
+
+services:
+  - name: httpbin-service
+    host: httpbin.org
+    port: 443
+    protocol: https
+    routes:
+      - name: httpbin-route
+        paths:
+          - /httpbin
+        strip_path: true
+
+      # ── Team Routes (conversion-only) ──────────────────────────────────
+      - name: mcp-team-alpha
+        paths:
+          - /mcp/team-alpha
+        methods:
+          - POST
+          - GET
+        strip_path: true
+        tags:
+          - mcp-agg
+        plugins:
+          - name: ai-mcp-proxy
+            tags:
+              - mcp-agg
+            config:
+              mode: conversion-only
+              tools:
+                - name: get_ip
+                  description: Get origin IP address
+                  method: GET
+                  path: /httpbin/ip
+                - name: get_headers
+                  description: Get all HTTP request headers
+                  method: GET
+                  path: /httpbin/headers
+
+      - name: mcp-team-beta
+        paths:
+          - /mcp/team-beta
+        methods:
+          - POST
+          - GET
+        strip_path: true
+        tags:
+          - mcp-agg
+        plugins:
+          - name: ai-mcp-proxy
+            tags:
+              - mcp-agg
+            config:
+              mode: conversion-only
+              tools:
+                - name: get_user_agent
+                  description: Get User-Agent string
+                  method: GET
+                  path: /httpbin/user-agent
+                - name: echo_anything
+                  description: Echo back anything sent
+                  method: POST
+                  path: /httpbin/anything
+
+      - name: mcp-team-gamma
+        paths:
+          - /mcp/team-gamma
+        methods:
+          - POST
+          - GET
+        strip_path: true
+        tags:
+          - mcp-agg
+        plugins:
+          - name: ai-mcp-proxy
+            tags:
+              - mcp-agg
+            config:
+              mode: conversion-only
+              tools:
+                - name: check_status
+                  description: Get HTTP response with given status code
+                  method: GET
+                  path: /httpbin/status/{code}
+                  parameters:
+                    - name: code
+                      in: path
+                      required: true
+                      schema:
+                        type: integer
+                      description: HTTP status code to return
+
+      # ── Aggregate Route (listener) ─────────────────────────────────────
+      - name: mcp-aggregate
+        paths:
+          - /mcp/aggregate
+        methods:
+          - POST
+          - GET
+        strip_path: true
+        tags:
+          - aggregation
+        plugins:
+          - name: ai-mcp-proxy
+            config:
+              mode: listener
+              server:
+                tag: mcp-agg

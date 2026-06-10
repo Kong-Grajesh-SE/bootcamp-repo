@@ -1,0 +1,44 @@
+# =============================================================================
+# Step 02 - Key-Auth + Rate-Limiting on Passthrough
+# Adds a consumer with an API key, key-auth, and rate-limiting on the
+# passthrough route. Apply on top of step 01.
+# =============================================================================
+_format_version: "3.0"
+
+consumers:
+  - username: mcp-user
+    tags:
+      - mcp
+    keyauth_credentials:
+      - key: mcp-key-001
+
+services:
+  - name: mcp-backend
+    host: mcp-backend
+    port: 3001
+    protocol: http
+    tags:
+      - mcp
+    routes:
+      - name: mcp-passthrough
+        paths:
+          - /mcp/tools
+        methods:
+          - POST
+          - GET
+        strip_path: false
+        tags:
+          - passthrough
+        plugins:
+          - name: ai-mcp-proxy
+            config:
+              mode: passthrough-listener
+          - name: key-auth
+            config:
+              key_names:
+                - X-API-Key
+              hide_credentials: true
+          - name: rate-limiting
+            config:
+              minute: 30
+              policy: local

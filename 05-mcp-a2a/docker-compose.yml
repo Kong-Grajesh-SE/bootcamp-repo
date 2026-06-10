@@ -1,0 +1,33 @@
+# =============================================================================
+# Agentic AI Bootcamp - Docker Compose
+# Kong Gateway 3.14+ (Enterprise) + MCP Backend
+# =============================================================================
+# NOTE: Keycloak is NOT in this compose file. The bootcamp uses ONE shared
+# Keycloak (realm `bootcamp`) for every module - start it from the repo root:
+#     cd ../keycloak && docker compose up -d
+# Kong's OAuth2 plugin reaches it via `host.docker.internal:8080` (see
+# deck/05-mcp-oauth2.yaml).
+# =============================================================================
+services:
+  # NOTE: Kong Gateway is NOT in this compose file.
+  # Kong is already running in hybrid mode (connected to Konnect).
+  # Connect Kong to this network with: docker network connect mcp-a2a_kong-net <kong-dp>
+
+  # ── MCP Travel Backend ──────────────────────────────────────────────────
+  mcp-backend:
+    build: ./mcp-server
+    container_name: mcp-backend
+    ports:
+      - "3001:3001"
+    networks:
+      - kong-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', r => { process.exit(r.statusCode === 200 ? 0 : 1) })"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  kong-net:
+    driver: bridge

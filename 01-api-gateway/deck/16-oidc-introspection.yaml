@@ -1,0 +1,52 @@
+_format_version: "3.0"
+# ---------------------------------------------------------------------------
+# OpenID Connect with Keycloak + INTROSPECTION
+#
+# Same as 16-oidc-keycloak.yaml but with token introspection enabled.
+# Instead of validating JWT tokens offline (JWKS), Kong calls Keycloak's
+# introspect endpoint on EVERY request to check "is this token still active?".
+#
+# Trade-off:
+#   • Slower (one HTTP call per request to Keycloak)
+#   • But revocation/logout takes effect IMMEDIATELY
+#   • Also works with opaque (non-JWT) tokens
+#
+# BEFORE APPLYING:
+#   1. Start Keycloak:  cd ../keycloak && docker compose up -d
+#   2. Ensure host.docker.internal resolves on your machine:
+#        echo "127.0.0.1 host.docker.internal" | sudo tee -a /etc/hosts
+# ---------------------------------------------------------------------------
+plugins:
+- name: openid-connect
+  service: httpbun-service
+  config:
+    issuer: http://host.docker.internal:8080/realms/bootcamp
+    cache_tokens_salt: bootcamp-oidc-salt-change-me
+    client_id:
+    - kong
+    client_secret:
+    - kong-bootcamp-client-secret-replace-in-prod
+    auth_methods:
+    - password
+    - bearer
+    - client_credentials
+    scopes:
+    - openid
+    - profile
+    - email
+    redirect_uri:
+    - http://localhost:8000/httpbun/auth/callback
+    login_action: response
+    logout_uri_suffix: /logout
+    upstream_access_token_header: authorization
+    upstream_headers_claims:
+    - preferred_username
+    - email
+    upstream_headers_names:
+    - x-authenticated-user
+    - x-authenticated-email
+    # ── Introspection (RFC 7662) ───────────────────────────────────────────
+    introspection_endpoint: http://host.docker.internal:8080/realms/bootcamp/protocol/openid-connect/token/introspect
+    introspect_jwt_tokens: true
+    introspection_endpoint_auth_method: client_secret_basic
+    cache_introspection: false

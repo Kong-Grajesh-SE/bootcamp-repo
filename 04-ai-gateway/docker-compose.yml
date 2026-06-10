@@ -1,0 +1,118 @@
+# =============================================================================
+# Kong AI Gateway Bootcamp - Supporting Services
+#
+# Starts Redis Stack (vector DB for semantic plugins),
+# AI PII Anonymizer, and AI Prompt Compressor.
+#
+# Prerequisites:
+#   docker network create kong-net 2>/dev/null || true
+#
+# Usage:
+#   docker compose up -d                # start all services
+#   docker compose up -d redis          # start Redis only (for semantic cache lab)
+#   docker compose logs -f ai-pii-service
+#   docker compose down                 # stop & remove
+# =============================================================================
+
+name: ai-gateway-bootcamp
+
+networks:
+  kong-net:
+    name: kong-net
+    external: true
+
+services:
+
+  # ── Redis Stack (vector search for semantic plugins) ──────────────────────
+  redis:
+    image: redis/redis-stack:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+      - "8001:8001"      # RedisInsight UI (optional)
+    networks:
+      kong-net:
+        aliases:
+          - redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # ── AI PII Anonymizer Service ─────────────────────────────────────────────
+  ai-pii-service:
+    build:
+      context: ./services/ai-pii-service
+      dockerfile: Dockerfile.local
+    image: ai-pii-service:local
+    container_name: ai-pii-service
+    ports:
+      - "8086:8080"
+    environment:
+      GUNICORN_WORKERS: 2
+      GUNICORN_LOG_LEVEL: info
+      PII_SERVICE_ENGINE_CONF: ai_pii_service/nlp_engine_conf.yml
+    networks:
+      kong-net:
+        aliases:
+          - ai-pii-service
+    healthcheck:
+      test: >
+        curl -sf http://localhost:8080/llm/v1/sanitize
+        -X POST -H "Content-Type: application/json"
+        -d '{"text":"","entities":[]}'
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # ── Custom Guardrail Service ───────────────────────────────────────────────
+  guardrail-service:
+    build:
+      context: ./services/guardrail-service
+      dockerfile: Dockerfile
+    image: guardrail-service:local
+    container_name: guardrail-service
+    ports:
+      - "8088:8080"
+    networks:
+      kong-net:
+        aliases:
+          - guardrail-service
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── AI Prompt Compressor Service ──────────────────────────────────────────
+  ai-compress-service:
+    build:
+      context: ./services/ai-compress-service
+      dockerfile: Dockerfile.local
+    image: ai-compress-service:local
+    container_name: ai-compress-service
+    ports:
+      - "8085:8080"
+    environment:
+      GUNICORN_WORKERS: 1
+      GUNICORN_LOG_LEVEL: info
+      LLMLINGUA_LOG_LEVEL: info
+      LLMLINGUA_MODEL_NAME: "microsoft/llmlingua-2-xlm-roberta-large-meetingbank"
+      LLMLINGUA_DEVICE_MAP: "cpu"
+    networks:
+      kong-net:
+        aliases:
+          - ai-compress-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped

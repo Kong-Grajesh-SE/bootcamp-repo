@@ -1,0 +1,17 @@
+_format_version: "3.0"
+services:
+# --- httpbun.com (HTTPS) ---
+- name: httpbun-service
+  url: https://httpbun.com
+  retries: 3
+  connect_timeout: 30000
+  read_timeout: 30000
+  write_timeout: 30000
+  routes:
+  - name: httpbun-route
+    paths:
+    - /httpbun
+    strip_path: true
+    protocols:
+    - http
+    - https

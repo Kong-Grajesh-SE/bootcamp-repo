@@ -1,0 +1,16 @@
+{
+  "_format_version": "1.0",
+  "patch": [
+    {
+      "selectors": [
+        "$..services[*]"
+      ],
+      "values": {
+        "retries": 5,
+        "connect_timeout": 60000,
+        "read_timeout": 60000,
+        "write_timeout": 60000
+      }
+    }
+  ]
+}

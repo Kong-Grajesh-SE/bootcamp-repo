@@ -1,0 +1,23 @@
+# =============================================================================
+# Step 03 - Prompt Guard (plugin-only)
+# Blocks prompt injection attacks with regex deny patterns.
+# Apply: deck file add-plugins -s <state> deck/03-prompt-guard.yaml | deck gateway sync -s -
+# =============================================================================
+plugins:
+  - name: ai-prompt-guard
+    service: ai-gateway-service
+    config:
+      deny_patterns:
+        - "(?i)ignore (all )?(previous |your )?instructions?"
+        - "(?i)you are now"
+        - "(?i)forget your (system prompt|instructions|rules)"
+        - "(?i)system override"
+        - "(?i)jailbreak"
+        - "(?i)DAN mode"
+        - "(?i)pretend (you are|you.re) (not an AI|human|unrestricted)"
+        - "(?i)(give me|tell me|show me|output|print).{0,50}(api key|secret|password|token)"
+        - "(?i)reveal.{0,30}(internal|system|hidden|confidential)"
+        - "(?i)sudo.{0,20}(mode|access|admin)"
+      allow_patterns: []
+      allow_all_conversation_history: false
+      match_all_roles: true

@@ -1,0 +1,13 @@
+_format_version: "3.0"
+plugins:
+- name: http-log
+  service: httpbun-service
+  config:
+    # Replace with your own webhook.site URL - go to https://webhook.site to get one
+    http_endpoint: https://webhook.site/<YOUR-UNIQUE-ID>
+    method: POST
+    content_type: application/json
+    timeout: 10000
+    keepalive: 60000
+    flush_timeout: 2
+    retry_count: 3

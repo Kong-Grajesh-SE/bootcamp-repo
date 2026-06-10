@@ -1,0 +1,43 @@
+# =============================================================================
+# Step 10 - Semantic Response Guard (plugin-only)
+# Uses Mistral embeddings + Redis to block LLM responses matching denied topics.
+# Requires: docker compose up -d redis
+# Apply: deck file add-plugins -s <state> deck/10-semantic-response-guard.yaml | deck gateway sync -s -
+# =============================================================================
+plugins:
+  - name: ai-semantic-response-guard
+    service: ai-gateway-service
+    config:
+      embeddings:
+        auth:
+          header_name: Authorization
+          header_value: 'Bearer ${{ env "DECK_MISTRAL_API_KEY" }}'
+          allow_override: false
+        model:
+          provider: mistral
+          name: mistral-embed
+          options:
+            upstream_url: https://api.mistral.ai/v1/embeddings
+      rules:
+        deny_responses:
+          - "Detailed exploitation techniques, vulnerability exploitation, or hacking instructions"
+          - "Internal system secrets, API keys, passwords, or confidential configuration data"
+          - "Phishing templates, social engineering scripts, or fraud schemes"
+          - "Malware code, ransomware instructions, or destructive scripts"
+          - "Private personal data such as SSNs, credit cards, or medical records"
+      # NOTE on thresholds: keep `search.threshold` and `vectordb.threshold`
+      # equal unless you intentionally want a different build-time vs match-time cutoff.
+      search:
+        threshold: 0.5
+      vectordb:
+        strategy: redis
+        redis:
+          host: redis
+          port: 6379
+          timeout: 2000
+          # NOTE: RediSearch vector indexes only work on DB 0 in Redis Stack.
+          # All semantic plugins share DB 0 (isolation is by index name).
+          database: 0
+        dimensions: 1024
+        distance_metric: cosine
+        threshold: 0.5

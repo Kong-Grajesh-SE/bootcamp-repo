@@ -1,0 +1,217 @@
+{
+  "realm": "bootcamp",
+  "enabled": true,
+  "displayName": "Kong Bootcamp",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "accessTokenLifespan": 900,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Standard application user",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "admin",
+        "description": "Administrator with elevated access",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "platform-engineers",
+      "path": "/platform-engineers",
+      "realmRoles": ["admin"]
+    },
+    {
+      "name": "travel-users",
+      "path": "/travel-users",
+      "realmRoles": ["user"]
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "email": "alice@bootcamp.local",
+      "firstName": "Alice",
+      "lastName": "Anderson",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"],
+      "groups": ["/travel-users"]
+    },
+    {
+      "username": "bob-admin",
+      "email": "bob@bootcamp.local",
+      "firstName": "Bob",
+      "lastName": "Builder",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "bob-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"],
+      "groups": ["/platform-engineers"]
+    },
+    {
+      "username": "agent-user",
+      "email": "agent@bootcamp.local",
+      "firstName": "Agent",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "agent123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "kong",
+      "name": "Kong OIDC Relying Party",
+      "description": "Server-side OIDC client used by the Kong openid-connect plugin (Auth Code Flow).",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "kong-bootcamp-client-secret-replace-in-prod",
+      "redirectUris": [
+        "http://localhost:8000/*",
+        "http://localhost:8080/*",
+        "https://*.kongcloud.dev/*",
+        "https://*.us.serverless.gateways.konggateway.com/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8000",
+        "http://localhost:8080",
+        "+"
+      ],
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "implicitFlowEnabled": false,
+      "frontchannelLogout": true,
+      "fullScopeAllowed": true,
+      "attributes": {
+        "post.logout.redirect.uris": "+",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "web-origins",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "clientId": "kong-m2m",
+      "name": "Kong Upstream OAuth M2M Client",
+      "description": "client_credentials grant. Token issued to Kong itself.",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "kong-m2m-client-secret-replace-in-prod",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "implicitFlowEnabled": false,
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {
+        "use.refresh.tokens": "false"
+      }
+    },
+    {
+      "clientId": "mcp-service-client",
+      "name": "MCP Service Client (confidential)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "mcp-service-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["mcp-tools"],
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "mcp-pkce-client",
+      "name": "MCP PKCE Client (public)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "http://localhost:8000/mcp-oauth/callback",
+        "http://localhost:8000/*",
+        "http://127.0.0.1:*/callback",
+        "vscode://*",
+        "claude://*"
+      ],
+      "webOrigins": ["http://localhost:8000"],
+      "defaultClientScopes": ["openid", "profile", "mcp-tools"],
+      "protocol": "openid-connect"
+    }
+  ],
+  "clientScopes": [
+    { "name": "openid",          "protocol": "openid-connect", "description": "OpenID Connect built-in scope",                              "attributes": { "include.in.token.scope": "true"  } },
+    { "name": "profile",         "protocol": "openid-connect", "description": "OpenID Connect built-in scope: profile",                     "attributes": { "include.in.token.scope": "true"  } },
+    { "name": "email",           "protocol": "openid-connect", "description": "OpenID Connect built-in scope: email",                       "attributes": { "include.in.token.scope": "true"  } },
+    { "name": "roles",           "protocol": "openid-connect", "description": "OpenID Connect scope for realm and client roles",            "attributes": { "include.in.token.scope": "false" } },
+    { "name": "web-origins",     "protocol": "openid-connect", "description": "OpenID Connect scope for allowed web origins",               "attributes": { "include.in.token.scope": "false" } },
+    { "name": "offline_access",  "protocol": "openid-connect", "description": "OpenID Connect built-in scope: offline_access",              "attributes": { "include.in.token.scope": "true"  } },
+    { "name": "microprofile-jwt","protocol": "openid-connect", "description": "Microprofile - JWT built-in scope",                         "attributes": { "include.in.token.scope": "true"  } },
+    { "name": "address",         "protocol": "openid-connect", "description": "OpenID Connect built-in scope: address",                     "attributes": { "include.in.token.scope": "true"  } },
+    { "name": "phone",           "protocol": "openid-connect", "description": "OpenID Connect built-in scope: phone",                       "attributes": { "include.in.token.scope": "true"  } },
+    { "name": "mcp-tools",       "protocol": "openid-connect", "description": "MCP tool access scope",                                      "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "true" } }
+  ],
+  "browserSecurityHeaders": {
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  }
+}
