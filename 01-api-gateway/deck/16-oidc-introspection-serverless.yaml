@@ -22,7 +22,7 @@ plugins:
   service: httpbun-service
   config:
     # ── REPLACE with your ngrok URL ──
-    issuer: https://<NGROK_URL>/realms/bootcamp
+    issuer: https://9805-49-249-135-74.ngrok-free.app/realms/bootcamp
     cache_tokens_salt: bootcamp-oidc-salt-change-me
     client_id:
     - kong
@@ -38,9 +38,9 @@ plugins:
     - email
     # ── REPLACE with your serverless proxy URL ──
     redirect_uri:
-    - https://<SERVERLESS_PROXY_URL>/httpbun/auth/callback
+    - https://95fa62461d.us.serverless.gateways.konggateway.com//httpbun/auth/callback
     login_action: response
-    logout_path: /logout
+    logout_uri_suffix: /logout
     upstream_access_token_header: authorization
     upstream_headers_claims:
     - preferred_username
@@ -50,7 +50,7 @@ plugins:
     - x-authenticated-email
     # ── Introspection (RFC 7662) ───────────────────────────────────────────
     # REPLACE <NGROK_URL> with the same ngrok URL used for issuer above.
-    introspection_endpoint: https://<NGROK_URL>/realms/bootcamp/protocol/openid-connect/token/introspect
+    introspection_endpoint: https://9805-49-249-135-74.ngrok-free.app/realms/bootcamp/protocol/openid-connect/token/introspect
     introspect_jwt_tokens: true
     introspection_endpoint_auth_method: client_secret_basic
     cache_introspection: false

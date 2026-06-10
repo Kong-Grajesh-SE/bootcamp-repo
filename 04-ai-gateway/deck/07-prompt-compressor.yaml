@@ -4,12 +4,13 @@
 # Requires: docker compose up -d ai-compress-service
 # Apply: deck file add-plugins -s <state> deck/07-prompt-compressor.yaml | deck gateway sync -s -
 # =============================================================================
+_format_version: "3.0"
 plugins:
   - name: ai-prompt-compressor
-    service: ai-gateway-service
+    service: AIManagerModelService_1781065841032
     config:
       compressor_type: rate
-      compressor_url: http://host.docker.internal:8085
+      compressor_url: http://0.tcp.in.ngrok.io:28351
       keepalive_timeout: 60000
       log_text_data: false
       stop_on_error: true

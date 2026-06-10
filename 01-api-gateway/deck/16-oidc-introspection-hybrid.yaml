@@ -37,7 +37,7 @@ plugins:
     redirect_uri:
     - http://localhost:8000/httpbun/auth/callback
     login_action: response
-    logout_path: /logout
+    logout_uri_suffix: /logout
     upstream_access_token_header: authorization
     upstream_headers_claims:
     - preferred_username

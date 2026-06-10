@@ -51,8 +51,8 @@
 
 ```bash
 export KONNECT_TOKEN="kpat_ISnpa4gjZhL3bULJChOfvQ21nQuOZudwrhAWJhHu4vnATHjtp"
-export CP_NAME="PE-Bootcamp"
-export PROXY_URL=http://localhost:8000
+export CP_NAME="HCL-Bootcamp"
+export PROXY_URL=https://95fa62461d.us.serverless.gateways.konggateway.com
 
 export KONNECT_PAT="$KONNECT_TOKEN"
 export KONNECT_API="https://us.api.konghq.com"

@@ -27,7 +27,7 @@ plugins:
   service: httpbun-service
   config:
     # Copy this from your Kong Identity auth server's "Issuer" field in Konnect.
-    issuer: <REPLACE-WITH-KONG-IDENTITY-ISSUER-URL>
+    issuer: https://zmk2nw5s1h5udfmg.us.identity.konghq.com/auth
     # Pins the session-cookie encryption salt so repeated `deck sync` runs don't
     # rotate it. Bootcamp placeholder - regenerate for prod: openssl rand -hex 16
     cache_tokens_salt: bootcamp-identity-salt-change-me
@@ -35,9 +35,9 @@ plugins:
     # discovery auth). The calling service uses the SAME client_id/secret to mint
     # its token from the auth server's /token endpoint.
     client_id:
-    - <REPLACE-WITH-KONG-IDENTITY-CLIENT-ID>
+    - gsjbeyco72vgip1w
     client_secret:
-    - <REPLACE-WITH-KONG-IDENTITY-CLIENT-SECRET>
+    - dt8iarwf8q61g3jbtj1lbaas
     # M2M: callers present a token they already obtained - validate it as a
     # bearer token. (client_credentials lets the plugin also mint one itself
     # when proxying, e.g. for upstream-oauth style scenarios.)

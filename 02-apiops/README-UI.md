@@ -59,7 +59,7 @@ The CLI walkthrough opens with a handshake:
 ```bash
 deck gateway ping \
   --konnect-token $KONNECT_TOKEN \
-  --konnect-control-plane-name "<your-control-plane>"
+  --konnect-control-plane-name $CP_NAME
 ```
 
 The UI version is purely visual:
@@ -102,7 +102,7 @@ The CLI command sends YAML to Kong's validation endpoint without applying:
 ```bash
 deck gateway validate deck/02-bookstore-plugins.yaml \
   --konnect-token $KONNECT_TOKEN \
-  --konnect-control-plane-name "<your-control-plane>"
+  --konnect-control-plane-name $CP_NAME
 ```
 
 > **Why use the CLI for this anyway:** CI pipelines need machine-readable
@@ -222,7 +222,7 @@ CLI:
 ```bash
 deck gateway dump -o output/live-state.yaml \
   --konnect-token $KONNECT_TOKEN \
-  --konnect-control-plane-name "<your-control-plane>"
+  --konnect-control-plane-name $CP_NAME
 ```
 
 UI version:
@@ -245,7 +245,7 @@ output, ready to commit to git.
 # Compare your UI download against a fresh CLI dump
 deck gateway dump -o /tmp/cli-dump.yaml \
   --konnect-token $KONNECT_TOKEN \
-  --konnect-control-plane-name "<your-control-plane>"
+  --konnect-control-plane-name $CP_NAME
 
 diff ~/Downloads/<your-control-plane>-config.yaml /tmp/cli-dump.yaml
 ```
@@ -442,7 +442,7 @@ CLI:
 ```bash
 deck gateway reset \
   --konnect-token $KONNECT_TOKEN \
-  --konnect-control-plane-name "<your-control-plane>" \
+  --konnect-control-plane-name $CP_NAME \
   --force
 ```
 
@@ -545,7 +545,7 @@ Either approach works:
 ```bash
 deck gateway reset \
   --konnect-token $KONNECT_TOKEN \
-  --konnect-control-plane-name "<your-control-plane>" \
+  --konnect-control-plane-name $CP_NAME \
   --force
 ```
 

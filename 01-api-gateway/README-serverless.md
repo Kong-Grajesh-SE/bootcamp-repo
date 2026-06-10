@@ -678,13 +678,13 @@ cd ../keycloak && docker compose up -d && cd -
 
 # 2. Expose it publicly (ngrok free tier is fine)
 ngrok http 8080
-# → copy the https URL, e.g. https://abc123.ngrok-free.app
+# → copy the https URL, e.g. https://9805-49-249-135-74.ngrok-free.app
 
 # 3. Point Keycloak's frontendUrl at the ngrok URL so `iss` matches.
 #    (Easiest: set KC_HOSTNAME on the container, or use the admin REST call
 #    in ../keycloak/README.md.) Verify:
-curl -s https://abc123.ngrok-free.app/realms/bootcamp/.well-known/openid-configuration | jq .issuer
-# → "https://abc123.ngrok-free.app/realms/bootcamp"
+curl -s https://9805-49-249-135-74.ngrok-free.app/realms/bootcamp/.well-known/openid-configuration | jq .issuer
+# → "https://9805-49-249-135-74.ngrok-free.app/realms/bootcamp"
 ```
 
 The realm already pre-approves `https://*.kongcloud.dev/*` and
@@ -716,7 +716,7 @@ deck gateway apply deck/16-oidc-keycloak-serverless.yaml \
 #### Test (token via password grant)
 
 ```bash
-KC=https://abc123.ngrok-free.app   # your ngrok URL
+KC=https://9805-49-249-135-74.ngrok-free.app   # your ngrok URL
 
 # 1. No token → 401
 curl -i $PROXY_URL/httpbun/get
@@ -842,7 +842,7 @@ Uses the shared Keycloak's `kong-m2m` client.
 > `host.docker.internal`).
 
 Edit `deck/17-upstream-oauth.yaml` and set `oauth.token_endpoint` to your ngrok
-URL (`https://abc123.ngrok-free.app/realms/bootcamp/protocol/openid-connect/token`),
+URL (`https://9805-49-249-135-74.ngrok-free.app/realms/bootcamp/protocol/openid-connect/token`),
 then:
 
 ```bash
@@ -860,7 +860,7 @@ curl -s $PROXY_URL/httpbun/headers | jq '.headers.Authorization'
 # Decode it to prove it's a real M2M token minted for kong-m2m
 curl -s $PROXY_URL/httpbun/headers | jq -r '.headers.Authorization' \
   | cut -d' ' -f2 | cut -d. -f2 | base64 -d 2>/dev/null | jq '{iss, azp, typ}'
-# → { "iss": "https://abc123.ngrok-free.app/realms/bootcamp", "azp": "kong-m2m", "typ": "Bearer" }
+# → { "iss": "https://9805-49-249-135-74.ngrok-free.app/realms/bootcamp", "azp": "kong-m2m", "typ": "Bearer" }
 ```
 
 Kong caches the token (`cache.default_ttl`) so it isn't calling Keycloak on every

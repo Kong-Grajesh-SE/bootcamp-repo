@@ -12,7 +12,7 @@
 4. **Proxy URL** - typically `http://localhost:8000` or your DP ingress
 
 ```bash
-export PROXY_URL=http://localhost:8000
+export PROXY_URL=https://95fa62461d.us.serverless.gateways.konggateway.com
 ```
 
 ### Docker Services Setup
@@ -276,6 +276,20 @@ curl -s $PROXY_URL/ai/proxy/chat \
 5. Set **Cache Control**: `off`
 6. Click **Save**
 
+> **Serverless deployment?** The serverless DP can't reach local Docker Redis.
+> Use [Redis Cloud](https://redis.io/cloud/) (free tier available) instead:
+>
+> | Field | Value |
+> |-------|-------|
+> | **Redis Host** | `redis-17275.c283.us-east-1-4.ec2.cloud.redislabs.com` |
+> | **Redis Port** | `17275` |
+> | **Database** | `0` |
+> | **Username** | `default` |
+> | **Password** | `<your-redis-cloud-password>` |
+>
+> All other fields (Dimensions, Distance Metric, Threshold) stay the same.
+> Ensure the **RediSearch** module is enabled on your Redis Cloud database.
+
 ### 4.2 Test - Positive (cache miss → hit)
 
 ```bash
@@ -351,6 +365,26 @@ curl -s $PROXY_URL/ai/proxy/chat \
 
 ## Step 6 - AI Sanitizer (PII Redaction)
 
+> **Serverless deployment?** The AI Sanitizer and Prompt Compressor plugins use
+> plain HTTP JSON-RPC — a standard `ngrok http` tunnel won't work because it
+> terminates TLS (the plugin sends plain HTTP → "connection reset by peer").
+>
+> **Option 1 — Skip:** Skip Steps 6 and 7 on serverless. These work out of the
+> box on hybrid deployments.
+>
+> **Option 2 — ngrok TCP tunnel:** Use a TCP tunnel which forwards raw traffic
+> without TLS termination:
+> ```bash
+> ngrok tcp 8086
+> # → Forwarding  tcp://0.tcp.ngrok.io:XXXXX -> localhost:8086
+> ```
+> Then configure the plugin with:
+> - **Host**: `0.tcp.ngrok.io` (the hostname ngrok gives you)
+> - **Port**: `XXXXX` (the port ngrok assigns)
+>
+> Note: ngrok free tier allows only **1 tunnel at a time**. Demo Step 6 first,
+> tear down the tunnel, then demo Step 7.
+
 ### 6.1 Add Plugin
 
 1. Navigate to the **ai-chat-route** → **Plugins**
@@ -389,6 +423,15 @@ curl -s $PROXY_URL/ai/proxy/chat \
 ---
 
 ## Step 7 - AI Prompt Compressor
+
+> **Serverless deployment?** Skip this step, or use an ngrok TCP tunnel — see
+> the note in Step 6.
+>
+> ```bash
+> ngrok tcp 8085
+> # → Forwarding  tcp://0.tcp.ngrok.io:YYYYY -> localhost:8085
+> ```
+> Then set **Compressor URL**: `http://0.tcp.ngrok.io:YYYYY`
 
 ### 7.1 Add Plugin
 
@@ -446,7 +489,14 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - Limits: `20 per 60s`, `200 per 3600s`
 6. Add **Policy 3** (global fallback):
    - Limits: `50 per 60s`
-7. Click **Save**
+7. Configure **Redis**:
+   - **Strategy**: `redis`
+   - **Redis Host**: `redis`
+   - **Redis Port**: `6379`
+
+   > **Serverless?** Use Redis Cloud instead — see the callout in Step 4.1.
+
+8. Click **Save**
 
 ### 8.2 Test - Positive (within limits)
 
@@ -494,6 +544,9 @@ done
    - **Dimensions**: `1024`
    - **Distance Metric**: `cosine`
    - **Threshold**: `0.15`
+
+   > **Serverless?** Use Redis Cloud instead — see the callout in Step 4.1.
+
 5. Add **Allow Prompts**:
    - `Kong Gateway configuration and architecture`
    - `DevOps automation and CI/CD pipelines`
@@ -563,6 +616,9 @@ curl -s $PROXY_URL/ai/proxy/chat \
    - **Dimensions**: `1024`
    - **Distance Metric**: `cosine`
    - **Threshold**: `0.5`
+
+   > **Serverless?** Use Redis Cloud instead — see the callout in Step 4.1.
+
 5. Add **Deny Responses**:
    - `Detailed exploitation techniques, vulnerability exploitation, or hacking instructions`
    - `Internal system secrets, API keys, passwords, or confidential configuration data`
