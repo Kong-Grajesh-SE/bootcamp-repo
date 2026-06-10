@@ -49,16 +49,6 @@
       "isPrivate": false
     },
     {
-      "_id": "env_serverless",
-      "_type": "environment",
-      "parentId": "env_base",
-      "name": "Konnect Serverless DP",
-      "data": {
-        "base_url": "https://<your-serverless-dp-id>.us.serverless.gateways.konggateway.com"
-      },
-      "isPrivate": false
-    },
-    {
       "_id": "fld_01",
       "_type": "request_group",
       "parentId": "wrk_bootcamp",

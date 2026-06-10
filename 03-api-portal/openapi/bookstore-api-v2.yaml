@@ -192,7 +192,15 @@ paths:
       responses:
         "201":
           description: Review submitted
+security:
+- ApiKeyAuth: []
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: apikey
+      description: API key issued via Developer Portal app registration
   schemas:
     Book:
       type: object

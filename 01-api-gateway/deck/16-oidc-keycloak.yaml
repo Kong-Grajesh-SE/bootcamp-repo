@@ -15,19 +15,12 @@ _format_version: "3.0"
 #   kong      (confidential - auth code + password + client_credentials)
 #   kong-m2m  (confidential - client_credentials only; see 15-kong-identity.yaml notes)
 #
-# ISSUER depends on your deployment:
-#   • Hybrid (Docker DP): http://host.docker.internal:8080/realms/bootcamp
-#     The DP container reaches Keycloak on the host via host.docker.internal.
-#     A token's `iss` MUST equal this issuer, so mint tokens against the same
-#     host - make your machine resolve it too (one-time):
-#         echo "127.0.0.1 host.docker.internal" | sudo tee -a /etc/hosts
-#     (Docker Desktop already resolves it inside containers.)
-#   • Serverless DP:      https://<your-ngrok-id>.ngrok-free.app/realms/bootcamp
-#     (Keycloak must be publicly reachable - expose it with ngrok, and set
-#      Keycloak's frontendUrl to the ngrok URL so the `iss` claim matches)
-#
-# The default below targets the HYBRID deployment. For serverless, replace the
-# issuer (and redirect_uri host) before applying.
+# ISSUER: http://host.docker.internal:8080/realms/bootcamp
+#   The Docker data plane reaches Keycloak on the host via host.docker.internal.
+#   A token's `iss` MUST equal this issuer, so mint tokens against the same
+#   host — make your machine resolve it too (one-time):
+#       echo "127.0.0.1 host.docker.internal" | sudo tee -a /etc/hosts
+#   (Docker Desktop already resolves it inside containers.)
 #
 # auth_methods are set to password + bearer + client_credentials so the demo is
 # testable from curl without a browser. To exercise the real browser login

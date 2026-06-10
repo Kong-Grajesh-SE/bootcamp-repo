@@ -8,8 +8,8 @@
 > OAuth client to the backend).
 
 > **What you bring forward from the previous module:** the decK-driven
-> `README-hybrid.md` (and `README-serverless.md`) walks you through the
-> same demos as YAML you `deck gateway apply`. This guide
+> `README.md` walks you through the same demos as YAML you
+> `deck gateway apply`. This guide
 > rebuilds the *same configuration* in the Konnect UI - Services, Routes,
 > Plugins, Consumers, Consumer Groups - so you can see where every decK
 > field lives in the web console. The plugin names, scopes, and config

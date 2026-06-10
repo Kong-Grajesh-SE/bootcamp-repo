@@ -14,12 +14,10 @@ _format_version: "3.0"
 # Uses the shared Keycloak's `kong-m2m` client (realm `bootcamp`). Spin it up:
 #     cd ../keycloak && docker compose up -d
 #
-# NOTE: unlike step 16, there is NO issuer/`iss` matching here - Kong is the
+# NOTE: unlike step 16, there is NO issuer/`iss` matching here — Kong is the
 # client, not the validator, so it just forwards the token upstream. You only
-# need the token_endpoint reachable FROM the Kong DP container:
-#   • Hybrid (Docker DP): http://host.docker.internal:8080/realms/bootcamp/...
-#   • Serverless DP:      your public ngrok URL
-# (No /etc/hosts entry needed for this plugin.)
+# need the token_endpoint reachable FROM the Kong DP container
+# (host.docker.internal resolves to the host machine from inside Docker).
 # ---------------------------------------------------------------------------
 plugins:
 - name: upstream-oauth

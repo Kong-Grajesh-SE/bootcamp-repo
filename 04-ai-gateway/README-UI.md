@@ -12,7 +12,7 @@
 4. **Proxy URL** - typically `http://localhost:8000` or your DP ingress
 
 ```bash
-export PROXY_URL=https://95fa62461d.us.serverless.gateways.konggateway.com
+export PROXY_URL=http://localhost:8000
 ```
 
 ### Docker Services Setup

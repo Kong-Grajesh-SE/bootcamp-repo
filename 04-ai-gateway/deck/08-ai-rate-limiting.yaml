@@ -14,7 +14,7 @@ plugins:
       sync_rate: 1
       strategy: redis
       redis:
-        host: host.docker.internal
+        host: redis
         port: 6379
         timeout: 2000
       llm_providers:

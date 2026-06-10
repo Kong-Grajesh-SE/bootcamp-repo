@@ -10,11 +10,11 @@ state on the same control plane.
 
 | Module | Description | CLI guide | UI guide |
 |--------|-------------|-----------|----------|
-| [api-gateway](api-gateway/) | Core gateway plugins - rate limiting, caching, auth, CORS, logging, consumer groups - plus Kong Identity (M2M), OIDC with Keycloak, and Upstream OAuth | [serverless](api-gateway/README-serverless.md) · [hybrid](api-gateway/README-hybrid.md) | [README-UI](api-gateway/README-UI.md) |
-| [apiops](apiops/) | decK CLI mastery - sync, diff, validate, dump, lint, OpenAPI-to-Kong, tags, templates | [README](apiops/README.md) | [README-UI](apiops/README-UI.md) (gateway ops only - see note inside) |
-| [ai-gateway](ai-gateway/) | LLM controls - multi-provider routing, prompt guards, semantic cache, PII sanitization, AI rate limiting | [README-DECK](ai-gateway/README-DECK.md) | [README-UI](ai-gateway/README-UI.md) |
-| [mcp-a2a](mcp-a2a/) | Agentic AI - MCP passthrough & conversion listeners, multi-team aggregation, OAuth2 PKCE, A2A routing | [README-DECK](mcp-a2a/README-DECK.md) | [README-UI](mcp-a2a/README-UI.md) |
-| [api-portal](api-portal/) | Developer Portal - publish APIs, app registration, self-service credentials | [README](api-portal/README.md) (dual-track inline) | (same file - UI navigation paired with each API call) |
+| [api-gateway](01-api-gateway/) | Core gateway plugins — rate limiting, caching, auth, CORS, logging, consumer groups — plus Kong Identity (M2M), OIDC with Keycloak, and Upstream OAuth | [README](01-api-gateway/README.md) | [README-UI](01-api-gateway/README-UI.md) |
+| [apiops](02-apiops/) | decK CLI mastery — sync, diff, validate, dump, lint, OpenAPI-to-Kong, tags, templates | [README](02-apiops/README.md) | [README-UI](02-apiops/README-UI.md) |
+| [ai-gateway](04-ai-gateway/) | LLM controls — multi-provider routing, prompt guards, semantic cache, PII sanitization, AI rate limiting, custom guardrails | [README](04-ai-gateway/README.md) | [README-UI](04-ai-gateway/README-UI.md) |
+| [mcp-a2a](05-mcp-a2a/) | Agentic AI — MCP passthrough & conversion listeners, multi-team aggregation, OAuth2 PKCE, A2A routing | [README](05-mcp-a2a/README.md) | [README-UI](05-mcp-a2a/README-UI.md) |
+| [api-portal](03-api-portal/) | Developer Portal — publish APIs, app registration, self-service credentials | [README](03-api-portal/README.md) | (dual-track: UI walkthrough inline) |
 
 ### Stage Demo (optional)
 
@@ -26,7 +26,7 @@ state on the same control plane.
 
 | Folder | Description | Used by |
 |---|---|---|
-| [keycloak](keycloak/) | **One shared Keycloak** (realm `bootcamp`) - external OpenID Connect / OAuth2 provider. Holds every module's clients (`kong`, `kong-m2m`, `mcp-service-client`, `mcp-pkce-client`) and users (`alice`, `bob-admin`, `agent-user`). Start once: `cd keycloak && docker compose up -d`. | api-gateway (steps 16–17), mcp-a2a (step 5) |
+| [keycloak](keycloak/) | **One shared Keycloak** (realm `bootcamp`) — external OpenID Connect / OAuth2 provider. Holds every module's clients (`kong`, `kong-m2m`, `mcp-service-client`, `mcp-pkce-client`) and users (`alice`, `bob-admin`, `agent-user`). Start once: `cd keycloak && docker compose up -d`. | 01-api-gateway (steps 16–17), 05-mcp-a2a (step 5) |
 
 ## Prerequisites
 
@@ -38,7 +38,7 @@ state on the same control plane.
 ```bash
 export KONNECT_TOKEN="<your-konnect-pat>"
 export CP_NAME="<your-control-plane-name>"
-export PROXY_URL=http://localhost:8000   # or your serverless gateway URL
+export PROXY_URL=http://localhost:8000
 ```
 
 ## Recommended Order

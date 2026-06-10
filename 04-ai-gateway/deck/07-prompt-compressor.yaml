@@ -7,10 +7,10 @@
 _format_version: "3.0"
 plugins:
   - name: ai-prompt-compressor
-    service: AIManagerModelService_1781065841032
+    service: ai-gateway-service
     config:
       compressor_type: rate
-      compressor_url: http://0.tcp.in.ngrok.io:28351
+      compressor_url: http://ai-compress-service:8080
       keepalive_timeout: 60000
       log_text_data: false
       stop_on_error: true

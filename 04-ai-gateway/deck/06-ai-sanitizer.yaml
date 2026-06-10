@@ -16,8 +16,8 @@ plugins:
         - ssn
         - ip
         - url
-      host: host.docker.internal
-      port: 8086
+      host: ai-pii-service
+      port: 8080
       redact_type: placeholder
       stop_on_error: true
       recover_redacted: false
