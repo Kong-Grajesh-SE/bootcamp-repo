@@ -24,7 +24,9 @@ consumers:
 
 services:
   - name: a2a-backend
-    url: http://<MCP_BACKEND_URL>
+    protocol: https
+    host: <MCP_BACKEND_URL>
+    port: 443
     tags:
       - a2a
     routes:
