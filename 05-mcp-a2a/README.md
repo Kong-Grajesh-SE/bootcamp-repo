@@ -428,22 +428,7 @@ issued JWT either way - Kong doesn't care which OAuth2 flow produced the token.
 
 > **Rule:** `ai-mcp-oauth2` MUST pair with `passthrough-listener` - never with `conversion-listener`.
 
-```
-                       ┌───────── Auth0 Tenant ──────────────────────┐
-                       │  mcp-service-app  (M2M, client_credentials) │
-                       │  mcp-pkce-app     (SPA, PKCE-only)          │
-                       └─────────────────────────────────────────────┘
-                                       ▲                ▲
-                                       │ client_creds   │ auth_code + PKCE
-                                       │                │
-                              ┌────────┴───┐    ┌───────┴──────┐
-                              │ curl / CI  │    │ VS Code etc. │
-                              └────────┬───┘    └──────────────┘
-                                       │  Bearer <JWT>
-                                       ▼
-                            POST /mcp-oauth/tools
-                               (Kong validates JWT → ai-mcp-proxy)
-```
+![MCP + OAuth2 Flow](assets/mcp_oauth2_flow.png)
 
 ### 5.1 Auth0 Setup
 
