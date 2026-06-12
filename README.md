@@ -62,6 +62,11 @@ export PROXY_URL=https://<YOUR_SERVERLESS_PROXY_URL>
 Each module's README opens with a "What you bring forward" preamble so you
 know which concepts carry through from earlier modules.
 
+## Feedback and Contributions
+
+Found an error, outdated step, or have a suggestion to improve the content?
+Please [open an issue](https://github.com/Kong-Grajesh-SE/bootcamp-repo/issues) - all feedback is welcome and appreciated.
+
 ## Cleanup Between Bootcamps
 
 Run these steps to reset the environment so the repo is ready for the next
