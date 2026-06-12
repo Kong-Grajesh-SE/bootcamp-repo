@@ -809,32 +809,7 @@ access system on `httpbun-service`.
 2. **ACL (Access Control List)** - decides *if* they're allowed (authorization)
 3. **Consumer Groups** - applies *different rate limits per tier* (policy)
 
-```
-Client sends request with API key
-        │
-        ▼
-┌─────────────────┐
-│  1. Key Auth    │  Looks up the API key → finds the consumer
-│     Plugin      │  No key or wrong key → 401 Unauthorized
-└────────┬────────┘
-         │ Consumer identified (e.g., premium-user)
-         ▼
-┌─────────────────┐
-│  2. ACL Plugin  │  Checks consumer's ACL group against allow list
-│                 │  premium, standard → allowed
-│                 │  trial → 403 Forbidden
-└────────┬────────┘
-         │ Consumer authorized
-         ▼
-┌─────────────────┐
-│  3. Consumer    │  Applies group-specific rate limit
-│     Group       │  premium-tier → 1000 req/min
-│     Rate Limit  │  standard-tier → 10 req/min
-└────────┬────────┘
-         │
-         ▼
-    Request → upstream (httpbun)
-```
+![Kong Consumer Flow](assets/kong_auth_flow.png)
 
 > **Key concept:** ACL group ≠ Consumer Group.
 > - **ACL group** (e.g., `premium`) → used by the ACL plugin for authorization

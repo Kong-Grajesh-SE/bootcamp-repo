@@ -895,38 +895,7 @@ deck file list-tags output/no-tags.yaml
 
 Here's how these commands chain together in a real CI/CD pipeline:
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Git Push / PR                               │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │  deck file validate  │  ← Syntax & schema check
-                    │  deck file lint      │  ← Naming, tags, standards
-                    └──────────┬──────────┘
-                               │ pass
-                    ┌──────────▼──────────┐
-                    │  deck file merge     │  ← Combine team files
-                    │  deck file render    │  ← Resolve env vars
-                    │  deck file add-tags  │  ← Add deployment tags
-                    └──────────┬──────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │ deck gateway validate│  ← Check against live Kong
-                    └──────────┬──────────┘
-                               │ pass
-              ┌────────────────┼────────────────┐
-              │ PR (preview)   │                 │ Merge (deploy)
-    ┌─────────▼─────────┐           ┌───────────▼──────────┐
-    │  deck gateway diff │           │  deck gateway sync    │
-    │  (show changes)    │           │  (apply changes)      │
-    └────────────────────┘           └───────────┬──────────┘
-                                                 │
-                                      ┌──────────▼──────────┐
-                                      │  deck gateway diff   │  ← Verify: no drift
-                                      │  (expect zero diff)  │
-                                      └─────────────────────┘
-```
+![GitOps Pipeline for APIOps](assets/gitops_pipeline.png)
 
 ### Example CI Script
 

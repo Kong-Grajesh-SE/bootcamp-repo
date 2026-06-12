@@ -23,20 +23,6 @@
 ## The Flow
 
 ```
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  OpenAPI Spec    │────▶│  deck file       │────▶│  deck gateway    │
-│  bookstore-api   │     │  openapi2kong    │     │  sync            │
-│  .yaml           │     │  + add-plugins   │     │  (deploy to CP)  │
-└──────────────────┘     └──────────────────┘     └────────┬─────────┘
-                                                           │
-                    ┌──────────────────────────────────────┘
-                    ▼
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  Create API      │────▶│  Publish to      │────▶│  Developer       │
-│  Product in      │     │  Portal with     │     │  registers, gets │
-│  Konnect         │     │  auth strategy   │     │  key, calls API  │
-└──────────────────┘     └──────────────────┘     └──────────────────┘
-```
 
 ---
 
@@ -1089,30 +1075,7 @@ Konnect Organization
 
 **The end-to-end flow:**
 
-```
-OpenAPI Spec
-    │ deck file openapi2kong
-    ▼
-Kong Config (YAML)
-    │ deck file add-plugins (CORS)
-    ▼
-Kong Config + CORS
-    │ deck gateway sync
-    ▼
-Live Gateway Service
-    │ Create API Product + Version + Implementation
-    ▼
-API Product in Catalog
-    │ Publish to Portal + Attach Auth Strategy
-    ▼
-Developer Portal (live)
-    │ Developer registers → creates app → gets API key
-    ▼
-Authenticated API Calls
-    │ curl -H "apikey: KEY" → Kong → httpbun.com
-    ▼
-200 OK ✅ (or 401 without key ❌)
-```
+![End-to-End API Portal Flow](assets/api_portal_end_to_end_flow.png)
 
 ---
 

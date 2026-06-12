@@ -613,22 +613,7 @@ issued JWT either way - Kong doesn't care which OAuth2 flow produced the token.
 
 > **Rule:** `ai-mcp-oauth2` MUST pair with `passthrough-listener` - never with `conversion-listener`.
 
-```
-                       ┌───────── Keycloak (realm: bootcamp) ─────────┐
-                       │  mcp-service-client  (confidential, secret)  │
-                       │  mcp-pkce-client     (public, PKCE-only)     │
-                       └──────────────────────────────────────────────┘
-                                       ▲                ▲
-                                       │ client_creds   │ auth_code + PKCE
-                                       │                │
-                              ┌────────┴───┐    ┌───────┴──────┐
-                              │ curl / CI  │    │ VS Code etc. │
-                              └────────┬───┘    └──────────────┘
-                                       │  Bearer <JWT>
-                                       ▼
-                            POST /mcp-oauth/tools
-                               (Kong validates JWT → ai-mcp-proxy)
-```
+![MCP + OAuth2 Flow](assets/mcp_oauth2_keycloak_flow.png)
 
 ### 5.1 Create the OAuth-Protected Service
 

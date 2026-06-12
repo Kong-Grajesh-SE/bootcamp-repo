@@ -27,21 +27,7 @@ export PROXY_URL=http://localhost:8000
 
 ## Architecture
 
-```
-┌──────────────┐       ┌──────────────────────┐       ┌──────────────┐
-│   Client     │──────▶│  Docker Data Plane    │──────▶│  httpbun.com │
-│  (curl /     │       │  (localhost:8000)     │       │              │
-│   Insomnia)  │       │ kong/kong-gateway:3.14│       │              │
-│              │       │                       │       │              │
-└──────────────┘       └──────────────────────┘       └──────────────┘
-                              ▲
-                              │ mTLS config sync
-                       ┌──────┴──────┐
-                       │   Konnect   │
-                       │   Control   │◀──── deck gateway sync/apply
-                       │   Plane     │
-                       └─────────────┘
-```
+![Konnect Architecture](assets/konnect_architecture.png)
 
 ---
 
@@ -544,32 +530,8 @@ This demo combines **three Kong features** to build a tiered API access system:
 
 #### How It Works - Request Flow
 
-```
-Client sends request with API key
-        │
-        ▼
-┌─────────────────┐
-│  1. Key Auth    │  Looks up the API key → finds the consumer
-│     Plugin      │  No key or wrong key → 401 Unauthorized
-└────────┬────────┘
-         │ Consumer identified (e.g., premium-user)
-         ▼
-┌─────────────────┐
-│  2. ACL Plugin  │  Checks consumer's ACL group against allow list
-│                 │  premium, standard → allowed
-│                 │  trial → 403 Forbidden
-└────────┬────────┘
-         │ Consumer authorized
-         ▼
-┌─────────────────┐
-│  3. Consumer    │  Applies group-specific rate limit
-│     Group       │  premium-tier → 1000 req/min
-│     Rate Limit  │  standard-tier → 10 req/min
-└────────┬────────┘
-         │
-         ▼
-    Request → upstream (httpbun)
-```
+
+![Kong Consumer Flow](assets/kong_auth_flow.png)
 
 #### What Gets Created
 
@@ -848,17 +810,7 @@ the same **`openid-connect`** plugin at that external provider. Here you protect
 `httpbun-service` with a local **Keycloak** acting as the OAuth2 / OIDC provider,
 which also unlocks the **browser SSO (Authorization Code)** flow with real users.
 
-```
-┌────────┐  1. login / get token   ┌──────────────┐
-│ Client │ ───────────────────────▶│   Keycloak   │  realm: bootcamp
-│ (curl/ │ ◀───────────────────────│  :8080 (IdP) │  users: alice, bob-admin
-│ browser)│      access token       └──────────────┘
-│        │                                 ▲ 3. validate token (JWKS / discovery)
-│        │  2. Bearer <token>      ┌────────┴───────┐
-│        │ ───────────────────────▶│  Kong DP :8000  │ openid-connect plugin
-└────────┘ ◀───────────────────────│  → httpbun.com  │ on httpbun-service
-              4. 200 (or 401)       └────────────────┘
-```
+![OIDC Authentication Flow with Keycloak](assets/oidc_keycloak_flow.png)
 
 > Mirrors the enterprise OIDC lab from
 > [learn-kong-gateway / module-07-enterprise](https://github.com/Kong-Grajesh-SE/learn-kong-gateway/tree/main/module-07-enterprise).
@@ -1037,12 +989,7 @@ backend gets a valid machine-to-machine token without the caller knowing anythin
 about OAuth. Classic use: a public/edge API whose upstream is a protected
 internal service.
 
-```
-        no auth          Kong fetches M2M token        Bearer <token>
-client ─────────▶ Kong ──────────────────────▶ Keycloak (kong-m2m)
-                   │  ◀── token ────────────────┘
-                   └──────────────── Authorization: Bearer <token> ──▶ upstream
-```
+![Upstream OAuth Flow](assets/upstream_oauth_keycloak_flow.png)
 
 Scoped to `httpbun-service`, whose `/headers` echoes what the upstream received —
 so you can literally see the token Kong added. Uses the shared Keycloak's

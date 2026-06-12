@@ -33,25 +33,7 @@ kongctl version
 
 ## Architecture
 
-```
-┌────────────────┐     skill files      ┌─────────────────────────────┐
-│  AI Coding     │◄────────────────────  │ .kongctl/skills/            │
-│  Agent         │   (auto-loaded)       │   kongctl-declarative/      │
-│  (Copilot /    │                       │   kongctl-extension-builder/│
-│   Claude /     │                       ├─────────────────────────────┤
-│   Cursor)      │                       │ .agents/skills/ (symlinks)  │
-│                │                       │ .claude/skills/ (symlinks)  │
-└───────┬────────┘                       └─────────────────────────────┘
-        │ runs CLI commands
-        ▼
-┌────────────────┐      plan / apply     ┌─────────────────────────────┐
-│   kongctl      │─────────────────────▶ │  Konnect Platform           │
-│   CLI          │      diff / sync      │  (APIs, Portals, CPs,       │
-│                │                       │   Teams, Auth Strategies)   │
-│                │── _deck integration──▶│  Kong Gateway Entities      │
-│                │   (runs decK inside)  │  (Services, Routes, Plugins)│
-└────────────────┘                       └─────────────────────────────┘
-```
+![kongctl Architecture](assets/kongctl_architecture.png)
 
 ---
 
