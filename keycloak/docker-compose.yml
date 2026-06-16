@@ -43,7 +43,6 @@ services:
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       # Dev mode uses an in-memory H2 DB - fine for the bootcamp, not for prod.
     ports:
       - "8080:8080"        # Admin Console + token/discovery endpoints
