@@ -12,7 +12,7 @@ _format_version: "3.0"
 
 services:
   - name: mcp-backend-oauth
-    host: mcp-backend
+    host: host.docker.internal
     port: 3001
     protocol: http
     path: /mcp

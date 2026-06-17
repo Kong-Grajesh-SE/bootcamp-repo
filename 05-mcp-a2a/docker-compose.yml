@@ -11,7 +11,7 @@
 services:
   # NOTE: Kong Gateway is NOT in this compose file.
   # Kong is already running in hybrid mode (connected to Konnect).
-  # Connect Kong to this network with: docker network connect mcp-a2a_kong-net <kong-dp>
+  # Kong reaches these services via host.docker.internal + host-mapped ports.
 
   # ── MCP Travel Backend ──────────────────────────────────────────────────
   mcp-backend:

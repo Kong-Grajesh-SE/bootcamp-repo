@@ -164,10 +164,22 @@
       "enabled": true,
       "publicClient": false,
       "secret": "mcp-service-secret",
-      "standardFlowEnabled": false,
+      "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
-      "defaultClientScopes": ["mcp-tools"],
+      "redirectUris": [
+        "http://localhost:8000/mcp-oauth/callback",
+        "http://localhost:8000/*",
+        "http://127.0.0.1:*",
+        "http://127.0.0.1:33418/",
+        "http://127.0.0.1:*/*",
+        "https://app.insomnia.rest/oauth/redirect",
+        "https://vscode.dev/redirect",
+        "vscode://*"
+      ],
+      "webOrigins": ["http://localhost:8000"],
+      "defaultClientScopes": ["openid", "profile", "mcp-tools"],
+      "optionalClientScopes": ["address", "web-origins", "microprofile-jwt", "roles", "phone", "email", "offline_access"],
       "protocol": "openid-connect"
     },
     {
@@ -184,12 +196,41 @@
       "redirectUris": [
         "http://localhost:8000/mcp-oauth/callback",
         "http://localhost:8000/*",
+        "http://127.0.0.1:*",
+        "http://127.0.0.1:33418/",
+        "http://127.0.0.1:*/*",
         "http://127.0.0.1:*/callback",
         "vscode://*",
-        "claude://*"
+        "claude://*",
+        "https://vscode.dev/redirect",
+        "https://app.insomnia.rest/oauth/redirect"
       ],
       "webOrigins": ["http://localhost:8000"],
       "defaultClientScopes": ["openid", "profile", "mcp-tools"],
+      "optionalClientScopes": ["address", "web-origins", "microprofile-jwt", "roles", "phone", "email", "offline_access"],
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "mcp-vscode-client",
+      "name": "MCP VS Code Client (public)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "https://vscode.dev/redirect",
+        "vscode://*",
+        "http://127.0.0.1:*",
+        "http://127.0.0.1:33418/",
+        "http://127.0.0.1:*/*"
+      ],
+      "webOrigins": ["https://vscode.dev", "http://localhost:8000"],
+      "defaultClientScopes": ["openid", "profile", "mcp-tools"],
+      "optionalClientScopes": ["address", "web-origins", "microprofile-jwt", "roles", "phone", "email", "offline_access"],
       "protocol": "openid-connect"
     }
   ],

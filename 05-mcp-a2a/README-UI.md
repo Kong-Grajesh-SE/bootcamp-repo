@@ -119,11 +119,11 @@ export PROXY_URL=http://localhost:8000
 ### Docker Services
 
 ```bash
-cd mcp-a2a
-docker compose up -d --build          # MCP backend only
+cd 05-mcp-a2a
+docker compose up -d --build mcp-backend          # MCP backend only
 
 # Step 5 (OAuth2/PKCE) also needs the shared Keycloak - start it once:
-cd ../keycloak && docker compose up -d && cd ../mcp-a2a
+cd ../keycloak && docker compose up -d && cd ../05-mcp-a2a
 ```
 
 This starts:
@@ -131,33 +131,17 @@ This starts:
 - **Keycloak** (`localhost:8080`) - shared bootcamp OIDC provider, realm
   `bootcamp` (from `../keycloak/`; only required for Step 5)
 
-### Connect Kong DP to the backend network
-
-Kong DP runs on Docker's default `bridge` network. The MCP backend runs on
-`05-mcp-a2a_kong-net`. Connect Kong so it can resolve the `mcp-backend` hostname
-(Keycloak is reached separately via `host.docker.internal:8080`, so it needs no
-network connection):
-
-```bash
-# Find your Kong DP container name
-docker ps --format '{{.Names}}\t{{.Image}}' | grep kong-gateway
-
-# Connect it to the mcp-a2a network
-docker network connect 05-mcp-a2a_kong-net <kong-dp-container-name>
-```
-
-**Fix Kong DNS** - Required if you get `name resolution failed` errors (needed when Kong DP is not running with Docker's embedded DNS by default):
-
-```bash
-docker exec <kong-dp-container-name> sh -c \
-  'echo "dns_resolver = 127.0.0.11" >> /etc/kong/kong.conf && kong reload'
-```
+> **Networking:** All services in the Konnect control plane use
+> `host.docker.internal` to reach backend services from inside the Kong DP
+> container. No Docker network connection or DNS resolver changes are needed -
+> Kong reaches the MCP backend via the host-mapped port (`3001`).
 
 ### Verify
 
 ```bash
 curl -s http://localhost:3001/health | jq '.'                # MCP Backend
 curl -s http://localhost:8080/realms/bootcamp | jq '.realm'  # Keycloak
+curl -s http://localhost:8080/realms/bootcamp/.well-known/openid-configuration | jq '.issuer'  # OIDC Discovery
 ```
 
 ### Reset Gateway
@@ -180,7 +164,7 @@ only has to enforce the protocol shape - no translation.
 3. Configure:
    - **Name**: `mcp-backend`
    - **Protocol**: `http`
-   - **Host**: `mcp-backend`
+   - **Host**: `host.docker.internal`
    - **Port**: `3001`
    - **Tags**: `mcp`
 4. Click **Save**
@@ -622,7 +606,7 @@ issued JWT either way - Kong doesn't care which OAuth2 flow produced the token.
 3. Configure:
    - **Name**: `mcp-backend-oauth`
    - **Protocol**: `http`
-   - **Host**: `mcp-backend`
+   - **Host**: `host.docker.internal`
    - **Port**: `3001`
    - **Path**: `/mcp` *(the backend's MCP endpoint lives under `/mcp`)*
    - **Tags**: `mcp`, `oauth`
@@ -683,6 +667,8 @@ Uses the **confidential** Keycloak client `mcp-service-client`
 an access token directly. No browser, no user.
 
 ```bash
+PROXY_URL=${PROXY_URL:-http://localhost:8000}
+
 TOKEN=$(curl -s -X POST \
   http://localhost:8080/realms/bootcamp/protocol/openid-connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -692,7 +678,7 @@ TOKEN=$(curl -s -X POST \
   | jq -r '.access_token')
 echo "Token (first 40 chars): ${TOKEN:0:40}..."
 
-curl -s -X POST $PROXY_URL/mcp-oauth/tools \
+curl -s -X POST "$PROXY_URL/mcp-oauth/tools" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
@@ -701,6 +687,26 @@ curl -s -X POST $PROXY_URL/mcp-oauth/tools \
 ```
 
 **Expected:** `["search_flights","book_flight","get_weather","search_hotels","book_hotel"]`
+
+**Insomnia:** for this server-to-server test, use normal OAuth2
+`client_credentials` or the imported **Get Token (client_credentials)**
+request - not the interactive **MCP Auth Flow**.
+
+If configuring OAuth2 directly on the `POST /mcp-oauth/tools` request:
+
+| Field | Value |
+|---|---|
+| **Grant Type** | `Client Credentials` |
+| **Access Token URL** | `http://localhost:8080/realms/bootcamp/protocol/openid-connect/token` |
+| **Client ID** | `mcp-service-client` |
+| **Client Secret** | `mcp-service-secret` |
+| **Scope** | `openid profile mcp-tools` |
+| **Credentials** | `As Basic Auth Header` |
+| **Header Prefix** | `Bearer` |
+
+Then click **Fetch Tokens** and send the MCP request. The request must include
+`Authorization: Bearer <access_token>`; if that header is missing or the prefix
+is blank, Kong correctly returns `401 Authorization Required`.
 
 > **What you just proved:** A trusted backend can mint its own tokens
 > against the IdP and call MCP tools without any user interaction. The
@@ -763,7 +769,54 @@ is `agent-user`. Inspect the token at [jwt.io](https://jwt.io) to compare.
 > user-scoped token. The `code_verifier` never touches the wire until the
 > exchange, and the `code` alone is useless without it.
 
-### 5.8 Connect VS Code Copilot
+### 5.8 Flow C - `authorization_code` without PKCE (confidential client)
+
+Same auth code dance, but using the **confidential** client
+`mcp-service-client`. Because this client has a secret, it doesn't need PKCE -
+the secret itself proves client identity during the code exchange. Use this
+when your calling app is a server-side web application (not a desktop binary).
+
+```bash
+# 1. Open this URL in a browser, sign in as agent-user / agent123,
+#    and grab the `code=...` value from the redirect URL.
+echo "http://localhost:8080/realms/bootcamp/protocol/openid-connect/auth?\
+client_id=mcp-service-client&\
+response_type=code&\
+scope=openid+profile+mcp-tools&\
+redirect_uri=http://localhost:8000/mcp-oauth/callback"
+
+read -p "Paste the code from the redirect URL: " CODE
+
+# 2. Exchange code + client_secret for a token (no PKCE verifier needed).
+TOKEN=$(curl -s -X POST \
+  http://localhost:8080/realms/bootcamp/protocol/openid-connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=authorization_code" \
+  -d "client_id=mcp-service-client" \
+  -d "client_secret=mcp-service-secret" \
+  -d "code=$CODE" \
+  -d "redirect_uri=http://localhost:8000/mcp-oauth/callback" \
+  | jq -r '.access_token')
+echo "Token (first 40 chars): ${TOKEN:0:40}..."
+
+# 3. Call Kong with the user-bound token.
+curl -s -X POST $PROXY_URL/mcp-oauth/tools \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+  | jq '[.result.tools[].name]'
+```
+
+**Expected:** same five tool names. The token's `sub` is `agent-user` (like
+Flow B) but `azp` is `mcp-service-client` (the confidential client).
+
+> **Flow B vs Flow C:** Both produce user-scoped tokens via auth code. The
+> difference is **how the client proves its identity** during the code exchange:
+> Flow B uses a one-time PKCE verifier (safe for desktops), Flow C uses a
+> static secret (only safe for backends that can keep secrets).
+
+### 5.9 Connect VS Code Copilot
 
 VS Code does PKCE for you. Create `.vscode/mcp.json`:
 
@@ -790,7 +843,7 @@ VS Code does PKCE for you. Create `.vscode/mcp.json`:
 `Ctrl+Shift+P` → **GitHub Copilot: Open MCP Tools** → `kong-travel-mcp` →
 first call triggers browser login.
 
-### 5.9 Connect Claude Desktop
+### 5.10 Connect Claude Desktop
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -812,7 +865,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-### 5.10 (Exploration) Swap Keycloak for Kong Identity
+### 5.11 (Exploration) Swap Keycloak for Kong Identity
 
 Keycloak is fine for a lab, but introduces a second piece of infrastructure
 to run, patch, back up, and SSO into. **Kong Identity** is Konnect's
@@ -868,7 +921,7 @@ Orchestrator Agent
 3. Configure:
    - **Name**: `a2a-backend`
    - **Protocol**: `http`
-   - **Host**: `mcp-backend`
+   - **Host**: `host.docker.internal`
    - **Port**: `3001`
    - **Tags**: `a2a`
 4. Click **Save**
@@ -1026,7 +1079,7 @@ curl -s -X POST $PROXY_URL/a2a/weather \
    - `orchestrator-agent`
 4. Stop the Docker services:
    ```bash
-   cd mcp-a2a
+  cd 05-mcp-a2a
    docker compose down -v        # stops the MCP backend only
    ```
    > The shared Keycloak lives in `../keycloak/`. Stop it separately when you're
@@ -1038,8 +1091,7 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 
 | Symptom | Fix |
 |---------|-----|
-| `name resolution failed` for mcp-backend | `docker network connect 05-mcp-a2a_kong-net <kong-dp>` and fix DNS resolver |
-| `already exists in network` | Safe to ignore - Kong is already connected. Network name is `05-mcp-a2a_kong-net`. |
+| `name resolution failed` for host.docker.internal | Ensure your Docker Desktop supports `host.docker.internal` (macOS/Windows: built-in; Linux: add `--add-host=host.docker.internal:host-gateway` to your Kong DP `docker run`) |
 | Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbun/ip` → `httpbun-route`) |
 | Step 4 aggregate sees 0 tools | Each `conversion-only` plugin must carry the **plugin-level** tag `mcp-agg`, not just the route tag |
 | OAuth2 returns 401 with valid token | Check **JWKS Endpoint** uses Docker hostname (`host.docker.internal:8080`), not `localhost` |

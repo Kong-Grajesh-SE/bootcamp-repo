@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Bookstore API
-  version: 1.1.0
+  version: 1.0.0
   description: |
     A bookstore API for the APIOps bootcamp.
     This spec will be converted to Kong Gateway config using deck file openapi2kong.

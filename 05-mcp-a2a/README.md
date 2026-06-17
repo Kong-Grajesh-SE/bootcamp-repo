@@ -112,19 +112,20 @@ Each step's "Why this auth?" callout assumes you've read the table above.
 ## Prerequisites
 
 ```bash
-export KONNECT_TOKEN="<your-konnect-pat>"
-export CP_NAME="<your-control-plane-name>"
+export KONNECT_TOKEN="<your-konnect-token>"
+export CP_NAME="PE-Bootcamp"
+export KONNECT_ADDR=https://us.api.konghq.com
 export PROXY_URL=http://localhost:8000
 ```
 
 ### Docker Services
 
 ```bash
-cd mcp-a2a
-docker compose up -d --build          # MCP backend only
+cd 05-mcp-a2a
+docker compose up -d --build mcp-backend          # MCP backend only
 
 # Step 5 (OAuth2/PKCE) also needs the shared Keycloak - start it once:
-cd ../keycloak && docker compose up -d && cd ../mcp-a2a
+cd ../keycloak && docker compose up -d && cd ../05-mcp-a2a
 ```
 
 This starts:
@@ -132,33 +133,21 @@ This starts:
 - **Keycloak** (`localhost:8080`) - shared bootcamp OIDC provider, realm
   `bootcamp` (from [`../keycloak/`](../keycloak/); only required for Step 5)
 
-### Connect Kong DP to the backend network
-
-Kong DP runs on Docker's default `bridge` network. The MCP backend runs on `mcp-a2a_kong-net`. Connect Kong so it can resolve the `mcp-backend` hostname (Keycloak is reached separately via `host.docker.internal:8080`, so it needs no network connection):
-
-```bash
-# Find your Kong DP container name
-docker ps --format '{{.Names}}\t{{.Image}}' | grep kong-gateway
-# e.g. kong-dp
-
-# Connect it to the mcp-a2a network
-docker network connect 05-mcp-a2a_kong-net <kong-dp-container-name>
-```
-
-**Fix Kong DNS** - Required if you get `name resolution failed` errors (needed when Kong DP is not running with Docker's embedded DNS by default):
-
-```bash
-docker exec <kong-dp-container-name> sh -c \
-  'echo "dns_resolver = 127.0.0.11" >> /etc/kong/kong.conf && kong reload'
-```
+> **Networking:** All deck files use `host.docker.internal` to reach backend
+> services from inside the Kong DP container. No Docker network connection or
+> DNS resolver changes are needed - Kong reaches the MCP backend via the
+> host-mapped port (`3001`). Step 7 starts the guardrail services on `8092`
+> and `8089` when needed.
 
 ### Verify
 
 ```bash
 curl -s http://localhost:3001/health | jq '.'                        # MCP Backend
 curl -s http://localhost:8080/realms/bootcamp | jq '.realm'          # Keycloak
+curl -s http://localhost:8080/realms/bootcamp/.well-known/openid-configuration | jq '.issuer'  # OIDC Discovery
 deck gateway ping --konnect-token "$KONNECT_TOKEN" \
-  --konnect-control-plane-name "$CP_NAME"                            # decK → Konnect
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr "$KONNECT_ADDR"                                      # decK → Konnect
 ```
 
 ### Reset Gateway
@@ -168,7 +157,8 @@ Clear any existing configuration so you start from a clean slate:
 ```bash
 deck gateway reset --force \
   --konnect-token "$KONNECT_TOKEN" \
-  --konnect-control-plane-name "$CP_NAME"
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr "$KONNECT_ADDR"
 ```
 
 ---
@@ -182,7 +172,8 @@ Client sends native MCP JSON-RPC → Kong forwards it unchanged → MCP backend 
 ```bash
 deck gateway sync deck/01-mcp-passthrough.yaml \
   --konnect-token "$KONNECT_TOKEN" \
-  --konnect-control-plane-name "$CP_NAME"
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr "$KONNECT_ADDR"
 ```
 
 ### 1.2 Test - List tools
@@ -223,7 +214,8 @@ Protect the passthrough route with API key authentication and a 30 req/min rate 
 ```bash
 deck gateway sync deck/02-passthrough-auth.yaml \
   --konnect-token "$KONNECT_TOKEN" \
-  --konnect-control-plane-name "$CP_NAME"
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr "$KONNECT_ADDR"
 ```
 
 ### 2.2 Test - No key → 401
@@ -269,7 +261,8 @@ Expose a plain REST API (httpbun) as MCP tools. Kong converts MCP JSON-RPC tool 
 ```bash
 deck gateway sync deck/03-conversion-listener.yaml \
   --konnect-token "$KONNECT_TOKEN" \
-  --konnect-control-plane-name "$CP_NAME"
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr "$KONNECT_ADDR"
 ```
 
 > **Note:** This file includes `httpbun-service` + `httpbun-route` as prerequisites. If these already exist in your CP from another lab, decK merges them.
@@ -348,7 +341,8 @@ Three teams each own different tools. One aggregate endpoint merges them all. `c
 ```bash
 deck gateway sync deck/04-aggregation.yaml \
   --konnect-token "$KONNECT_TOKEN" \
-  --konnect-control-plane-name "$CP_NAME"
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr "$KONNECT_ADDR"
 ```
 
 ### 4.2 Test - Initialize + list all tools
@@ -420,7 +414,8 @@ issued JWT either way - Kong doesn't care which OAuth2 flow produced the token.
 ```bash
 deck gateway sync deck/05-mcp-oauth2.yaml \
   --konnect-token "$KONNECT_TOKEN" \
-  --konnect-control-plane-name "$CP_NAME"
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr "$KONNECT_ADDR"
 ```
 
 ### 5.2 Test - No token → 401
@@ -520,7 +515,54 @@ is bound to* - Flow A's `sub` is the service account; Flow B's `sub` is
 > user-scoped token. The `code_verifier` never touches the wire until the
 > exchange, and the `code` alone is useless without it.
 
-### 5.5 Connect VS Code Copilot
+### 5.5 Flow C - `authorization_code` without PKCE (confidential client)
+
+Same auth code dance, but using the **confidential** client
+`mcp-service-client`. Because this client has a secret, it doesn't need PKCE -
+the secret itself proves client identity during the code exchange. Use this
+when your calling app is a server-side web application (not a desktop binary).
+
+```bash
+# 1. Open this URL in a browser, sign in as agent-user / agent123,
+#    and grab the `code=...` value from the redirect URL.
+echo "http://localhost:8080/realms/bootcamp/protocol/openid-connect/auth?\
+client_id=mcp-service-client&\
+response_type=code&\
+scope=openid+profile+mcp-tools&\
+redirect_uri=http://localhost:8000/mcp-oauth/callback"
+
+read -p "Paste the code from the redirect URL: " CODE
+
+# 2. Exchange code + client_secret for a token (no PKCE verifier needed).
+TOKEN=$(curl -s -X POST \
+  http://localhost:8080/realms/bootcamp/protocol/openid-connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=authorization_code" \
+  -d "client_id=mcp-service-client" \
+  -d "client_secret=mcp-service-secret" \
+  -d "code=$CODE" \
+  -d "redirect_uri=http://localhost:8000/mcp-oauth/callback" \
+  | jq -r '.access_token')
+echo "Token (first 40 chars): ${TOKEN:0:40}..."
+
+# 3. Call Kong with the user-bound token.
+curl -s -X POST $PROXY_URL/mcp-oauth/tools \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+  | jq '[.result.tools[].name]'
+```
+
+**Expected:** same five tool names. The token's `sub` is `agent-user` (like
+Flow B) but `azp` is `mcp-service-client` (the confidential client).
+
+> **Flow B vs Flow C:** Both produce user-scoped tokens via auth code. The
+> difference is **how the client proves its identity** during the code exchange:
+> Flow B uses a one-time PKCE verifier (safe for desktops), Flow C uses a
+> static secret (only safe for backends that can keep secrets).
+
+### 5.6 Connect VS Code Copilot
 
 VS Code does PKCE for you. Create `.vscode/mcp.json`:
 
@@ -546,7 +588,7 @@ VS Code does PKCE for you. Create `.vscode/mcp.json`:
 
 `Ctrl+Shift+P` → **GitHub Copilot: Open MCP Tools** → `kong-travel-mcp` → first call triggers browser login.
 
-### 5.6 Connect Claude Desktop
+### 5.7 Connect Claude Desktop
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -568,7 +610,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-### 5.7 (Exploration) Swap Keycloak for Kong Identity
+### 5.8 (Exploration) Swap Keycloak for Kong Identity
 
 Keycloak is fine for a lab, but introduces a second piece of infrastructure to
 run, patch, back up, and SSO into. **Kong Identity** is Konnect's
@@ -619,7 +661,8 @@ Orchestrator Agent
 ```bash
 deck gateway sync deck/06-a2a-routing.yaml \
   --konnect-token "$KONNECT_TOKEN" \
-  --konnect-control-plane-name "$CP_NAME"
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr "$KONNECT_ADDR"
 ```
 
 ### 6.2 Test - Agent Card discovery
@@ -714,7 +757,7 @@ MCP Client
 ### 7.1 Start the Guardrail Services
 
 ```bash
-docker compose up -d mcp-tool-server opa-policy-service
+docker compose up -d --build mcp-tool-server opa-policy-service
 
 # Verify both services are healthy
 curl -s http://localhost:8092/health | jq .
@@ -724,38 +767,30 @@ curl -s http://localhost:8089/health | jq .
 # → {"status":"ok","service":"custom-guardrail"}
 ```
 
-> **Docker networking:** Both services run on the same `kong-net` bridge network
-> as the Kong data plane. The deck file uses Docker service names
-> (`mcp-tool-server:8090` and `opa-policy-service:8080`) so no ngrok or
-> host mapping is needed.
+> **Docker networking:** The deck file uses `host.docker.internal` with host-mapped
+> ports (`8092` for the MCP tool server, `8089` for the OPA policy service) so Kong
+> can reach them without Docker network plumbing.
 >
 > **Serverless data planes:** If you're using a Konnect Serverless DP, the
 > gateway can't reach Docker services directly. Use the ngrok config in
 > `ngrok-mcp-guardrails.yml` to create tunnels, then update the deck file
 > with the ngrok URLs. See comments in the ngrok config for details.
 
-### 7.2 Connect Kong to the Network
-
-If your Kong data plane container is not already on the `05-mcp-a2a_kong-net` network:
-
-```bash
-docker network connect 05-mcp-a2a_kong-net <your-kong-dp-container>
-```
-
-### 7.3 Sync the Deck File
+### 7.2 Sync the Deck File
 
 ```bash
 deck gateway sync deck/07-mcp-guardrails.yaml \
   --konnect-token "$KONNECT_TOKEN" \
   --konnect-control-plane-name "$CP_NAME" \
-  --konnect-addr https://us.api.konghq.com
+  --konnect-addr "$KONNECT_ADDR"
 ```
 
-### 7.4 Test - Initialize MCP Session
+### 7.3 Test - Initialize MCP Session
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp-secure \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
     "id": 1,
@@ -766,21 +801,23 @@ curl -s -X POST $PROXY_URL/mcp-secure \
 
 **Expected:** `200` - server returns its capabilities and protocol version.
 
-### 7.5 Test - List Available Tools
+### 7.4 Test - List Available Tools
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp-secure \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}' | jq '.result.tools[].name'
 ```
 
 **Expected:** Both safe and dangerous tools are listed (the MCP server advertises all tools - OPA blocks at call time, not at discovery).
 
-### 7.6 Test - Safe Tool Call (allowed by OPA)
+### 7.5 Test - Safe Tool Call (allowed by OPA)
 
 ```bash
 curl -s -X POST $PROXY_URL/mcp-secure \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
     "id": 3,
@@ -795,6 +832,7 @@ curl -s -X POST $PROXY_URL/mcp-secure \
 # Calculator
 curl -s -X POST $PROXY_URL/mcp-secure \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
     "id": 4,
@@ -805,12 +843,13 @@ curl -s -X POST $PROXY_URL/mcp-secure \
 
 **Expected:** `"(3 + 5) * 2 = 16"` - safe arithmetic passes all OPA checks.
 
-### 7.7 Test - Blocked Tool (denied by OPA)
+### 7.6 Test - Blocked Tool (denied by OPA)
 
 ```bash
 # execute_shell - blocked by tool blocklist
 curl -s -X POST $PROXY_URL/mcp-secure \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
     "id": 5,
@@ -825,6 +864,7 @@ curl -s -X POST $PROXY_URL/mcp-secure \
 # drop_database - also blocked
 curl -s -X POST $PROXY_URL/mcp-secure \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
     "id": 6,
@@ -835,12 +875,13 @@ curl -s -X POST $PROXY_URL/mcp-secure \
 
 **Expected:** `403 Forbidden` - `drop_database` is in the tool blocklist.
 
-### 7.8 Test - Dangerous Argument Pattern (denied by OPA)
+### 7.7 Test - Dangerous Argument Pattern (denied by OPA)
 
 ```bash
 # Safe tool name, but dangerous argument content
 curl -s -X POST $PROXY_URL/mcp-secure \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
     "id": 7,
@@ -851,7 +892,7 @@ curl -s -X POST $PROXY_URL/mcp-secure \
 
 **Expected:** `403 Forbidden` - OPA blocks because the argument matches the `rm -rf` dangerous pattern, even though `get_weather` is a safe tool.
 
-### 7.9 Verify Guardrail Logs
+### 7.8 Verify Guardrail Logs
 
 ```bash
 docker compose logs opa-policy-service --tail 20
@@ -859,14 +900,14 @@ docker compose logs opa-policy-service --tail 20
 
 You should see `mcp_authz ALLOW` for safe calls and `mcp_authz DENY` with the specific reason (blocked tool, dangerous pattern) for rejected calls.
 
-### 7.10 Clean Up
+### 7.9 Clean Up
 
 ```bash
 # Reset to Step 6 state (or any previous step)
 deck gateway sync deck/06-a2a-routing.yaml \
   --konnect-token "$KONNECT_TOKEN" \
   --konnect-control-plane-name "$CP_NAME" \
-  --konnect-addr https://us.api.konghq.com
+  --konnect-addr "$KONNECT_ADDR"
 
 # Stop the guardrail services (keeps the travel MCP backend running)
 docker compose stop mcp-tool-server opa-policy-service
@@ -878,8 +919,7 @@ docker compose stop mcp-tool-server opa-policy-service
 
 | Symptom | Fix |
 |---------|-----|
-| `name resolution failed` for mcp-backend | `docker network connect mcp-a2a_kong-net <kong-dp>` and fix DNS resolver |
-| `already exists in network` | Safe to ignore - Kong is already connected. Network name is `05-mcp-a2a_kong-net`. |
+| `name resolution failed` for host.docker.internal | Ensure your Docker Desktop supports `host.docker.internal` (macOS/Windows: built-in; Linux: add `--add-host=host.docker.internal:host-gateway` to your Kong DP `docker run`) |
 | Step 3/4 tool calls return 404 | Tool `path` must match an existing Kong route (e.g. `/httpbun/ip` → httpbun-route) |
 | OAuth2 returns 401 with valid token | Check `jwks_endpoint` uses Docker hostname (`host.docker.internal:8080`), not `localhost` |
 | A2A hotels returns empty results | Use 3-letter airport codes (LHR, CDG) - backend matches on `location === code` |
@@ -892,7 +932,8 @@ docker compose stop mcp-tool-server opa-policy-service
 ```bash
 deck gateway reset --force \
   --konnect-token "$KONNECT_TOKEN" \
-  --konnect-control-plane-name "$CP_NAME"
+  --konnect-control-plane-name "$CP_NAME" \
+  --konnect-addr "$KONNECT_ADDR"
 docker compose down -v        # stops the MCP backend only
 ```
 

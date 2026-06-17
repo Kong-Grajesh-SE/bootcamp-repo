@@ -14,7 +14,7 @@ consumers:
 
 services:
   - name: mcp-backend
-    host: mcp-backend
+    host: host.docker.internal
     port: 3001
     protocol: http
     tags:
