@@ -9,7 +9,7 @@
       "parentId": null,
       "_type": "workspace",
       "name": "Kong MCP & A2A Bootcamp",
-      "description": "6-step MCP/A2A bootcamp with positive and negative test cases. Covers passthrough, key-auth, conversion, aggregation, OAuth2, and A2A agent routing.",
+      "description": "7-step MCP/A2A bootcamp with positive and negative test cases. Covers passthrough, key-auth, conversion, aggregation, OAuth2, A2A agent routing, and MCP guardrails.",
       "scope": "collection"
     },
     {

@@ -121,18 +121,19 @@ Generate valid, ready-to-edit YAML for any supported resource:
 
 ```bash
 # Scaffold an API definition
-kongctl scaffold apis --name bookstore-api
+kongctl scaffold api
 
 # Scaffold a developer portal
-kongctl scaffold portals --name dev-portal
+kongctl scaffold portal
 
 # Scaffold a control plane
-kongctl scaffold control_planes --name bootcamp-cp
+kongctl scaffold control_plane
 ```
 
 Save and customize the output:
 ```bash
-kongctl scaffold apis --name bookstore-api > config/bookstore-api.yaml
+mkdir -p config
+kongctl scaffold api > config/bookstore-api.yaml
 ```
 
 > **Agent usage:** The skill tells your agent to use `scaffold` as a starting
@@ -164,8 +165,9 @@ apis:
 
     versions:
       - ref: bookstore-v1
-        name: "v1.0.0"
-        spec: !file ../openapi/bookstore-api.yaml
+        version: "v1.0.0"
+        spec:
+          content: !file ../../../03-api-portal/openapi/bookstore-api.yaml
 
     publications:
       - ref: bookstore-publication
@@ -177,6 +179,7 @@ apis:
 > - `ref` is a local identifier for cross-referencing within the file
 > - `!ref` resolves references between resources (e.g., `!ref bootcamp-portal`)
 > - `!file` loads external files (specs, docs) relative to the config file
+> - `--base-dir` must include the external file path when `!file` points outside `config/`
 
 ---
 
@@ -186,8 +189,10 @@ Always preview before applying:
 
 ```bash
 # Generate a plan artifact (JSON file)
+mkdir -p plans
 kongctl plan --mode apply \
   -f config/bootcamp-platform.yaml \
+  --base-dir "$(git rev-parse --show-toplevel)" \
   --output-file plans/bootcamp-plan.json
 
 # Human-readable diff
@@ -214,7 +219,8 @@ The diff output shows exactly what will be created, updated, or deleted:
 kongctl apply --plan plans/bootcamp-plan.json
 
 # Or apply directly from config (generates plan internally)
-kongctl apply -f config/bootcamp-platform.yaml
+kongctl apply -f config/bootcamp-platform.yaml \
+  --base-dir "$(git rev-parse --show-toplevel)"
 ```
 
 Verify:
@@ -239,7 +245,7 @@ the config, show me the diff, and apply it after I approve."
 
 Expected agent workflow:
 1. Runs `kongctl explain apis` (discover schema)
-2. Runs `kongctl scaffold apis --name weather-api` (generate starter YAML)
+2. Runs `kongctl scaffold api` (generate starter YAML)
 3. Writes a YAML config file
 4. Runs `kongctl diff --mode apply -f config/weather-api.yaml` (preview)
 5. Waits for your approval
@@ -248,7 +254,7 @@ Expected agent workflow:
 #### Exercise 2: Publish an API to the portal
 ```
 Prompt: "Publish the Bookstore API v1.0.0 to our bootcamp portal with
-public visibility. Load the spec from openapi/bookstore-api.yaml."
+public visibility. Load the spec from 03-api-portal/openapi/bookstore-api.yaml."
 ```
 
 #### Exercise 3: Multi-team namespace isolation
@@ -275,7 +281,7 @@ declarative management:
 
 ```bash
 # Bring a UI-created portal under kongctl management
-kongctl adopt portals --name "My Existing Portal" --namespace platform-team
+kongctl adopt portal "My Existing Portal" --namespace platform-team
 ```
 
 This adds kongctl metadata labels to the resource without modifying any other
@@ -308,16 +314,14 @@ apis:
 # Gateway entities (managed by decK, orchestrated by kongctl)
 control_planes:
   - ref: bootcamp-cp
-    name: "bootcamp-cp"
+    name: "PE-Bootcamp"
     _external:
       selector:
         matchFields:
-          name: "bootcamp-cp"
+          name: "PE-Bootcamp"
     _deck:
       files:
-        - "../../deck/01-services-and-routes.yaml"
-      flags:
-        - "--select-tag=kongctl"
+        - "../../../01-api-gateway/deck/01-services-and-routes.yaml"
 
     gateway_services:
       - ref: httpbun-gw
@@ -329,10 +333,12 @@ control_planes:
 
 ```bash
 # Preview everything - platform AND gateway
-kongctl diff --mode apply -f config/full-stack.yaml
+kongctl diff --mode apply -f config/full-stack.yaml \
+  --base-dir "$(git rev-parse --show-toplevel)"
 
 # Apply everything in one command
-kongctl apply -f config/full-stack.yaml
+kongctl apply -f config/full-stack.yaml \
+  --base-dir "$(git rev-parse --show-toplevel)"
 ```
 
 > `kongctl plan` runs `deck gateway diff` under the hood for the `_deck` section.
@@ -392,7 +398,9 @@ kongctl apply -f config/full-stack.yaml
 
 ```bash
 # Delete resources created during the exercise
-kongctl delete -f config/bootcamp-platform.yaml --auto-approve
+kongctl delete -f config/bootcamp-platform.yaml \
+  --base-dir "$(git rev-parse --show-toplevel)" \
+  --auto-approve
 
 # Or remove specific resources
 kongctl get apis

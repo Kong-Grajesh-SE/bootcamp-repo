@@ -94,7 +94,7 @@ seen in api-gateway.
 
 ### How the auth story progresses
 
-The six steps escalate auth deliberately:
+The seven steps escalate auth and authorization deliberately:
 
 | Step | Auth on the route | Why |
 |---|---|---|
@@ -104,6 +104,7 @@ The six steps escalate auth deliberately:
 | 4 | None | Focus on multi-team aggregation, not auth. |
 | 5 | `ai-mcp-oauth2` (JWT bearer) | Real MCP clients (VS Code, Claude Desktop) - `client_credentials` for backends, PKCE for desktops. |
 | 6 | Per-sub-agent (key-auth on some, open on others) | Trust isolation between sibling agents. |
+| 7 | `opa` + `ai-mcp-proxy` | Tool-call authorization - block dangerous MCP methods, tools, and arguments before they reach the server. |
 
 Each step's "Why this auth?" callout assumes you've read the table above.
 
@@ -112,8 +113,8 @@ Each step's "Why this auth?" callout assumes you've read the table above.
 ## Prerequisites
 
 ```bash
-export KONNECT_TOKEN="<your-konnect-token>"
-export CP_NAME="PE-Bootcamp"
+export KONNECT_TOKEN="kpat_1VoffHZeCSq6FYQvMTJyJBEYYna826t58fZkovKIuZlwYjj9X"
+export CP_NAME="Infosys-Bootcamp"
 export KONNECT_ADDR=https://us.api.konghq.com
 export PROXY_URL=http://localhost:8000
 ```
@@ -779,7 +780,7 @@ curl -s http://localhost:8089/health | jq .
 ### 7.2 Sync the Deck File
 
 ```bash
-deck gateway sync deck/07-mcp-guardrails.yaml \
+deck gateway apply deck/07-mcp-guardrails.yaml \
   --konnect-token "$KONNECT_TOKEN" \
   --konnect-control-plane-name "$CP_NAME" \
   --konnect-addr "$KONNECT_ADDR"

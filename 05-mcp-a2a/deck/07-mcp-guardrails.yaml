@@ -14,19 +14,19 @@
 #         → OPA plugin (access phase) → guardrail service PDP on kong-net
 #         → ai-mcp-proxy (passthrough-listener) → MCP demo server on kong-net
 #
-# Requires: docker compose up -d mcp-guardrail-demo mcp-guardrail-service
+# Requires: docker compose up -d mcp-tool-server opa-policy-service
 # This is a self-contained state file - sync it to replace the previous state.
 # =============================================================================
 _format_version: "3.0"
 
 services:
 
-  - name: mcp-guardrail-demo-service
+  - name: mcp-guardrail-demo
     url: http://host.docker.internal:8092
     tags: [mcp-guardrails]
 
     routes:
-      - name: mcp-guardrail-route
+      - name: mcp-guardrails-route
         tags: [mcp-guardrails]
         paths:
           - /mcp-secure

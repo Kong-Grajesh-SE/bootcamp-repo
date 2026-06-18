@@ -1,6 +1,6 @@
 # Agentic AI Bootcamp - Konnect UI Walkthrough
 
-> 6-step hands-on lab using the Konnect web console. Each step adds one
+> 7-step hands-on lab using the Konnect web console. Each step adds one
 > self-contained slice of MCP / A2A configuration. Steps are independent —
 > test each one before moving on.
 
@@ -54,7 +54,7 @@ shapes. Pick one per route:
 | `conversion-only` | - (no listener) | - (just declares tools) | Per-team REST APIs that will be aggregated elsewhere. |
 | `listener` (aggregate) | MCP JSON-RPC | Multiple upstreams via tagged `conversion-only` plugins | Multi-team catalog: one MCP endpoint, many backends. |
 
-Steps 1–4 walk through each in turn. Steps 5–6 layer auth on top.
+Steps 1–4 walk through each in turn. Steps 5–7 layer auth and guardrails on top.
 
 ### PKCE (Proof Key for Code Exchange)
 
@@ -91,7 +91,7 @@ seen in api-gateway.
 
 ### How the auth story progresses
 
-The six steps escalate auth deliberately:
+The seven steps escalate auth and authorization deliberately:
 
 | Step | Auth on the route | Why |
 |---|---|---|
@@ -101,6 +101,7 @@ The six steps escalate auth deliberately:
 | 4 | None | Focus on multi-team aggregation, not auth. |
 | 5 | `ai-mcp-oauth2` (JWT bearer) | Real MCP clients (VS Code, Claude Desktop) - `client_credentials` for backends, PKCE for desktops. |
 | 6 | Per-sub-agent (key-auth on some, open on others) | Trust isolation between sibling agents. |
+| 7 | `opa` + `ai-mcp-proxy` | Tool-call authorization - block dangerous MCP methods, tools, and arguments before they reach the server. |
 
 Each step's "Why this auth?" callout assumes you've read the table above.
 
@@ -1066,6 +1067,177 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 
 ---
 
+## Step 7 - MCP Tool-Call Authorization with OPA
+
+Add an OPA authorization layer in front of an MCP passthrough listener. The
+OPA plugin inspects each JSON-RPC request before the MCP proxy forwards it,
+then asks a local guardrail service whether to allow or deny the call.
+
+This step uses a separate demo MCP server with safe tools (`get_weather`,
+`calculator`, `search_docs`, `get_time`) and deliberately dangerous tools
+(`execute_shell`, `admin_reset`, `write_file`, `drop_database`). Tool
+discovery still lists everything; OPA blocks dangerous calls at invocation
+time.
+
+```
+MCP Client
+     │
+     └── POST /mcp-secure
+             ├── OPA plugin → guardrail service on localhost:8089
+             └── AI MCP Proxy → demo MCP server on localhost:8092
+```
+
+### 7.1 Start the Guardrail Services
+
+```bash
+cd 05-mcp-a2a
+docker compose up -d --build mcp-tool-server opa-policy-service
+
+curl -s http://localhost:8092/health | jq '.'
+curl -s http://localhost:8089/health | jq '.'
+```
+
+**Expected:** the MCP tool server returns `demo-mcp-server`, and the policy
+service returns `custom-guardrail`.
+
+> **Serverless data planes:** if your data plane cannot reach host Docker
+> services, run `ngrok start --all --config ngrok-mcp-guardrails.yml`, then
+> use the ngrok hostnames in the service host and OPA plugin fields below.
+
+### 7.2 Create the Guardrail MCP Service
+
+1. Go to **Gateway Manager → `<your-control-plane>` → Services**
+2. Click **New Gateway Service**
+3. Configure:
+   - **Name**: `mcp-guardrail-demo-service`
+   - **Protocol**: `http`
+   - **Host**: `host.docker.internal`
+   - **Port**: `8092`
+   - **Tags**: `mcp-guardrails`
+4. Click **Save**
+
+### 7.3 Create the Secure MCP Route
+
+1. On `mcp-guardrail-demo-service` → **Routes** tab → **New Route**
+2. Configure:
+   - **Name**: `mcp-guardrail-route`
+   - **Path(s)**: `/mcp-secure`
+   - **Method(s)**: `POST`, `GET`
+   - **Strip Path**: `on`
+   - **Tags**: `mcp-guardrails`
+3. Click **Save**
+
+### 7.4 Add the OPA Plugin
+
+1. On the `mcp-guardrail-route` route → **Plugins** tab
+2. Click **New Plugin → Security → OPA**
+3. Configure:
+   - **Include Parsed JSON Body In OPA Input**: `on`
+   - **OPA Host**: `host.docker.internal`
+   - **OPA Port**: `8089`
+   - **OPA Protocol**: `http`
+   - **OPA Path**: `/v1/data/mcp/authz/allow`
+4. Click **Save**
+
+> The parsed JSON body setting is critical. Without it, the guardrail service
+> cannot inspect `method`, `params.name`, or tool arguments.
+
+### 7.5 Add the AI MCP Proxy Plugin
+
+1. Still on the `mcp-guardrail-route` route → **Plugins** tab
+2. Click **New Plugin → AI → AI MCP Proxy**
+3. Configure:
+   - **Mode**: `passthrough-listener`
+4. Click **Save**
+
+### 7.6 Test - Initialize
+
+```bash
+curl -s -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc":"2.0",
+    "id":1,
+    "method":"initialize",
+    "params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}
+  }' | jq '.'
+```
+
+**Expected:** `200` with MCP server capabilities.
+
+### 7.7 Test - List Tools
+
+```bash
+curl -s -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+  | jq '[.result.tools[].name]'
+```
+
+**Expected:** safe and dangerous tools are both listed. OPA blocks at call
+time, not during discovery.
+
+### 7.8 Test - Safe Tool Allowed
+
+```bash
+curl -s -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc":"2.0",
+    "id":3,
+    "method":"tools/call",
+    "params":{"name":"get_weather","arguments":{"city":"Sydney"}}
+  }' | jq '.'
+```
+
+**Expected:** `200` with weather output.
+
+### 7.9 Test - Dangerous Tool Blocked
+
+```bash
+curl -si -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc":"2.0",
+    "id":4,
+    "method":"tools/call",
+    "params":{"name":"execute_shell","arguments":{"cmd":"ls -la"}}
+  }' | head -1
+```
+
+**Expected:** `HTTP/1.1 403 Forbidden`
+
+### 7.10 Test - Dangerous Argument Blocked
+
+```bash
+curl -si -X POST $PROXY_URL/mcp-secure \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc":"2.0",
+    "id":5,
+    "method":"tools/call",
+    "params":{"name":"get_weather","arguments":{"city":"rm -rf /tmp/data"}}
+  }' | head -1
+```
+
+**Expected:** `HTTP/1.1 403 Forbidden`
+
+### 7.11 Verify Guardrail Logs
+
+```bash
+docker compose logs opa-policy-service --tail 20
+```
+
+**Expected:** `mcp_authz ALLOW` entries for safe calls and `mcp_authz DENY`
+entries for blocked tools or dangerous argument patterns.
+
+---
+
 ## Cleanup
 
 1. Go to **Gateway Manager → `<your-control-plane>` → Services**
@@ -1074,6 +1246,7 @@ curl -s -X POST $PROXY_URL/a2a/weather \
    - `httpbun-service`
    - `mcp-backend-oauth`
    - `a2a-backend`
+  - `mcp-guardrail-demo-service`
 3. Go to **Consumers** and delete:
    - `mcp-user`
    - `orchestrator-agent`
@@ -1097,4 +1270,7 @@ curl -s -X POST $PROXY_URL/a2a/weather \
 | OAuth2 returns 401 with valid token | Check **JWKS Endpoint** uses Docker hostname (`host.docker.internal:8080`), not `localhost` |
 | OAuth2 returns 401 with audience error | Confirm **Insecure Relaxed Audience Validation** is `on` for the lab |
 | A2A hotels returns empty results | Use 3-letter airport codes (LHR, CDG) - backend matches on `location === code` |
+| OPA returns 500 instead of 403 | Check the guardrail service is running: `docker compose logs opa-policy-service` |
+| OPA allows dangerous tools | Confirm **Include Parsed JSON Body In OPA Input** is `on` in the OPA plugin |
+| Safe tool returns 403 | Check guardrail logs - the argument may match a blocked pattern |
 | Plugin not visible in UI | Ensure your Kong Gateway version is 3.14+ with AI plugins enabled |

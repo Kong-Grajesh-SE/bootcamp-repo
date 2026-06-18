@@ -1,12 +1,12 @@
 # ngrok multi-tunnel config for the MCP + OPA guardrails demo.
 #
 # Only needed if you're running a Konnect Serverless data plane (which can't
-# reach Docker services directly). For a Docker hybrid DP on kong-net, the
-# deck file already uses Docker service names - skip this file entirely.
+# reach Docker services directly). For a Docker hybrid DP, the deck file uses
+# host.docker.internal with host-mapped ports - skip this file entirely.
 #
 # Prerequisites:
 #   1. ngrok account + authtoken: ngrok config add-authtoken <token>
-#   2. Both services running: docker compose up -d mcp-guardrail-demo mcp-guardrail-service
+#   2. Both services running: docker compose up -d mcp-tool-server opa-policy-service
 #
 # Start both tunnels:
 #   ngrok start --all --config ngrok-mcp-guardrails.yml
