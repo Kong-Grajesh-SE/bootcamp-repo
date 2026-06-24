@@ -46,7 +46,7 @@ plugins:
     - profile
     - email
     redirect_uri:
-    - <SERVERLESS_PROXY_URL>/httpbun/auth/callback
+    - https://<YOUR_SERVERLESS_PROXY_URL>/httpbun/auth/callback
     login_action: response
     logout_uri_suffix: /logout
     upstream_access_token_header: authorization

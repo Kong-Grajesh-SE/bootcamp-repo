@@ -418,7 +418,7 @@ curl -i $PROXY_URL/httpbun/get
 ### 6.5 Test - valid JWT is accepted
 
 ```bash
-curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"
+curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJteS1qd3QtaXNzdWVyIiwiZXhwIjoxNzgyMjEyMzI3fQ.uptCwlbL65pbIYXGwfkAVqnfNeRs9e-YI4bLUEGAWsc"
 ```
 
 **Expected**: `200`. Upstream sees `X-Consumer-Username: jwt-user`.
@@ -1106,7 +1106,12 @@ the same **OpenID Connect** plugin at that external provider. Here you protect
 
 4. **Create an API** (optional, for `client_credentials` flow):
    - Auth0 Dashboard → Applications → APIs → Create API
-   - Set an **Identifier** (audience), e.g. `https://<AUTH0_DOMAIN>/api/v2/`
+   - Set an **Identifier** (audience), e.g. `https://bootcamp-api.example.com`
+     (`https://<AUTH0_DOMAIN>/api/v2/` is reserved for Auth0's Management API)
+   - Open the API → **Machine to Machine Applications** tab and **authorize**
+     the application that owns `<AUTH0_CLIENT_ID>` (toggle it green)
+   - If using a Regular Web Application, enable **Client Credentials** grant
+     under Settings → Advanced Settings → Grant Types
 
 ### 16.1 Add the OpenID Connect plugin
 
@@ -1144,9 +1149,14 @@ curl -i $PROXY_URL/httpbun/get
 
 ```bash
 TOKEN=$(curl -s --request POST \
-  --url https://<AUTH0_DOMAIN>/oauth/token \
+  --url "https://${AUTH0_DOMAIN}/oauth/token" \
   --header 'content-type: application/json' \
-  --data '{"client_id":"<AUTH0_CLIENT_ID>","client_secret":"<AUTH0_CLIENT_SECRET>","audience":"https://<AUTH0_DOMAIN>/api/v2/","grant_type":"client_credentials"}' | jq -r '.access_token')
+  --data "$(jq -n \
+    --arg client_id "$AUTH0_CLIENT_ID" \
+    --arg client_secret "$AUTH0_CLIENT_SECRET" \
+    --arg audience "$AUTH0_AUDIENCE" \
+    '{client_id:$client_id,client_secret:$client_secret,audience:$audience,grant_type:"client_credentials"}')" \
+  | jq -r '.access_token')
 
 curl -i $PROXY_URL/httpbun/get -H "Authorization: Bearer $TOKEN"
 ```
@@ -1160,6 +1170,13 @@ Edit the plugin: set **Auth Methods** to `authorization_code`, `bearer`,
 `$PROXY_URL/httpbun/get` in a browser → you're redirected to the
 Auth0 Universal Login page → sign in as **alice@bootcamp.dev / AlicePassword1!** →
 redirected back with a session cookie and the upstream `200`.
+
+> **decK shortcut** (no manual edit needed):
+> ```bash
+> deck gateway apply deck/16-oidc-auth-code-auth0.yaml \
+>   --konnect-token $KONNECT_TOKEN --konnect-control-plane-name "$CP_NAME"
+> ```
+> To revert: re-apply `deck/16-oidc-auth0.yaml`.
 
 ### 16.5 (optional) Token introspection - real-time revocation
 

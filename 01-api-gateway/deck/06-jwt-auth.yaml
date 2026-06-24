@@ -23,4 +23,4 @@ consumers:
   jwt_secrets:
   - algorithm: HS256
     key: my-jwt-issuer
-    secret: 9905688994c4a2ae380fc2e21c50df417b9c125ab760dd235b24af0bd191a628
+    secret: <REPLACE-WITH-RANDOM-SECRET>

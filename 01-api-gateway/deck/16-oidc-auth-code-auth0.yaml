@@ -1,0 +1,54 @@
+_format_version: "3.0"
+# ---------------------------------------------------------------------------
+# OpenID Connect with Auth0 - Authorization Code (browser login) variant
+#
+# Same as 16-oidc-auth0.yaml but configured for the full browser SSO flow:
+#   - auth_methods: authorization_code, bearer, session
+#   - login_action: redirect (sends unauthenticated users to Auth0 login page)
+#
+# After login, Auth0 redirects back to Kong which sets a session cookie.
+# Subsequent requests use the session (no re-auth until session expires).
+#
+# BEFORE APPLYING - replace the placeholders below:
+#   <AUTH0_DOMAIN>         → your Auth0 tenant domain
+#   <AUTH0_CLIENT_ID>      → Application client ID (Regular Web App type)
+#   <AUTH0_CLIENT_SECRET>  → Application client secret
+#   <SERVERLESS_PROXY_URL> → Konnect serverless proxy URL
+#
+# Auth0 setup:
+#   1. Create a Regular Web Application in Auth0
+#   2. Set Allowed Callback URLs to:
+#        <SERVERLESS_PROXY_URL>/httpbun/auth/callback
+#   3. Create test users in Auth0 → User Management → Users:
+#        alice@bootcamp.dev / AlicePassword1!
+#        bob@bootcamp.dev   / BobPassword1!
+# ---------------------------------------------------------------------------
+plugins:
+- name: openid-connect
+  service: httpbun-service
+  config:
+    issuer: https://<AUTH0_DOMAIN>/
+    cache_tokens_salt: bootcamp-oidc-salt-change-me
+    client_id:
+    - <AUTH0_CLIENT_ID>
+    client_secret:
+    - <AUTH0_CLIENT_SECRET>
+    auth_methods:
+    - authorization_code
+    - bearer
+    - session
+    scopes:
+    - openid
+    - profile
+    - email
+    redirect_uri:
+    - https://<YOUR_SERVERLESS_PROXY_URL>/httpbun/auth/callback
+    login_action: redirect
+    logout_uri_suffix: /logout
+    upstream_access_token_header: authorization
+    upstream_headers_claims:
+    - nickname
+    - email
+    upstream_headers_names:
+    - x-authenticated-user
+    - x-authenticated-email

@@ -93,7 +93,7 @@ safely stored.
 
 3. Click **Create**
 4. Go to the **Settings** tab and configure the following URLs
-   (replace `$PROXY_URL` with your actual Konnect serverless proxy URL): https://95fa62461d.us.serverless.gateways.konggateway.com/mcp-oauth/callback
+   (replace `$PROXY_URL` with your actual Konnect serverless proxy URL): https://<YOUR_SERVERLESS_PROXY_URL>/mcp-oauth/callback
 
    | Field | Value |
    |---|---|
@@ -101,19 +101,19 @@ safely stored.
    | **Allowed Logout URLs** | `$PROXY_URL` |
    | **Allowed Web Origins** | `$PROXY_URL` |
 
-   For example, if your proxy URL is `https://95fa62461d.us.serverless.gateways.konggateway.com`:
+   For example, if your proxy URL is `https://<YOUR_SERVERLESS_PROXY_URL>`:
 
    | Field | Value |
    |---|---|
-   | **Allowed Callback URLs** | `https://95fa62461d.us.serverless.gateways.konggateway.com/mcp-oauth/callback` |
-   | **Allowed Logout URLs** | `https://95fa62461d.us.serverless.gateways.konggateway.com` |
-   | **Allowed Web Origins** | `https://95fa62461d.us.serverless.gateways.konggateway.com` |
+   | **Allowed Callback URLs** | `https://<YOUR_SERVERLESS_PROXY_URL>/mcp-oauth/callback` |
+   | **Allowed Logout URLs** | `https://<YOUR_SERVERLESS_PROXY_URL>` |
+   | **Allowed Web Origins** | `https://<YOUR_SERVERLESS_PROXY_URL>` |
 
 5. Scroll down → click **Save Changes**
 6. Note the **Client ID** from the top of the Settings tab
 
 ```bash
-export AUTH0_SPA_CLIENT_ID="zeaZmQdgTI3wVPOnkkhLC4bQKHIGdRhg"
+export AUTH0_SPA_CLIENT_ID="<AUTH0_SPA_CLIENT_ID>"
 ```
 
 > **PKCE is enabled by default** for Single Page Applications — there is no
