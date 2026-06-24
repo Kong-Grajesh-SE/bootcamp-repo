@@ -113,7 +113,7 @@ Each step's "Why this auth?" callout assumes you've read the table above.
 ## Prerequisites
 
 ```bash
-export KONNECT_TOKEN="kpat_1VoffHZeCSq6FYQvMTJyJBEYYna826t58fZkovKIuZlwYjj9X"
+export KONNECT_TOKEN="<your-konnect-pat>"
 export CP_NAME="Infosys-Bootcamp"
 export KONNECT_ADDR=https://us.api.konghq.com
 export PROXY_URL=http://localhost:8000
